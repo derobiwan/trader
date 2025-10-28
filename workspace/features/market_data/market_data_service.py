@@ -24,6 +24,7 @@ from .models import (
 from .indicators import IndicatorCalculator
 from .websocket_client import BybitWebSocketClient
 from workspace.shared.database.connection import DatabasePool
+from workspace.features.caching import CacheService
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ class MarketDataService:
         timeframe: Timeframe = Timeframe.M3,
         testnet: bool = True,
         lookback_periods: int = 100,  # Keep 100 candles in memory
+        cache_service: Optional[CacheService] = None,
     ):
         """
         Initialize Market Data Service
@@ -64,6 +66,7 @@ class MarketDataService:
             timeframe: Primary timeframe (default: 3m)
             testnet: Use testnet (default: True)
             lookback_periods: Number of historical periods to maintain
+            cache_service: Optional CacheService instance (default: creates new one)
 
         Example:
             ```python
@@ -78,6 +81,12 @@ class MarketDataService:
         self.timeframe = timeframe
         self.testnet = testnet
         self.lookback_periods = lookback_periods
+
+        # Initialize cache service
+        if cache_service is not None:
+            self.cache = cache_service
+        else:
+            self.cache = CacheService()
 
         # In-memory data stores
         self.latest_tickers: Dict[str, Ticker] = {}
@@ -173,29 +182,144 @@ class MarketDataService:
 
         return snapshot
 
-    async def get_latest_ticker(self, symbol: str) -> Optional[Ticker]:
-        """Get latest ticker for symbol"""
+    async def get_latest_ticker(self, symbol: str, use_cache: bool = True) -> Optional[Ticker]:
+        """
+        Get latest ticker for symbol with caching
+
+        Cache TTL: 30 seconds (ticker updates frequently)
+
+        Args:
+            symbol: Trading pair
+            use_cache: Whether to use cache (default: True)
+
+        Returns:
+            Ticker object or None if not available
+        """
         formatted_symbol = self._format_symbol(symbol)
-        return self.latest_tickers.get(formatted_symbol)
+
+        if use_cache:
+            # Generate cache key
+            cache_key = f"market_data:ticker:{formatted_symbol}"
+
+            # Try cache first
+            cached_ticker = await self.cache.get(cache_key)
+            if cached_ticker is not None:
+                logger.debug(f"Cache hit for ticker {formatted_symbol}")
+                # Convert back to Ticker object
+                return Ticker(
+                    symbol=cached_ticker['symbol'],
+                    last=Decimal(str(cached_ticker['last'])),
+                    bid=Decimal(str(cached_ticker.get('bid', 0))),
+                    ask=Decimal(str(cached_ticker.get('ask', 0))),
+                    high_24h=Decimal(str(cached_ticker.get('high_24h', 0))),
+                    low_24h=Decimal(str(cached_ticker.get('low_24h', 0))),
+                    volume_24h=Decimal(str(cached_ticker.get('volume_24h', 0))),
+                    change_24h=Decimal(str(cached_ticker.get('change_24h', 0))),
+                    change_24h_pct=Decimal(str(cached_ticker.get('change_24h_pct', 0))),
+                    timestamp=datetime.fromisoformat(cached_ticker['timestamp']) if isinstance(cached_ticker['timestamp'], str) else cached_ticker['timestamp'],
+                )
+
+            # Cache miss
+            logger.debug(f"Cache miss for ticker {formatted_symbol}")
+
+        # Get from memory
+        ticker = self.latest_tickers.get(formatted_symbol)
+
+        if use_cache and ticker:
+            # Serialize for caching
+            serialized = {
+                'symbol': ticker.symbol,
+                'last': str(ticker.last),
+                'bid': str(ticker.bid) if ticker.bid else '0',
+                'ask': str(ticker.ask) if ticker.ask else '0',
+                'high_24h': str(ticker.high_24h) if hasattr(ticker, 'high_24h') else '0',
+                'low_24h': str(ticker.low_24h) if hasattr(ticker, 'low_24h') else '0',
+                'volume_24h': str(ticker.volume_24h) if hasattr(ticker, 'volume_24h') else '0',
+                'change_24h': str(ticker.change_24h) if hasattr(ticker, 'change_24h') else '0',
+                'change_24h_pct': str(ticker.change_24h_pct) if hasattr(ticker, 'change_24h_pct') else '0',
+                'timestamp': ticker.timestamp.isoformat() if hasattr(ticker.timestamp, 'isoformat') else str(ticker.timestamp),
+            }
+            # Cache for 30 seconds
+            cache_key = f"market_data:ticker:{formatted_symbol}"
+            await self.cache.set(cache_key, serialized, ttl_seconds=30)
+
+        return ticker
 
     async def get_ohlcv_history(
         self,
         symbol: str,
         limit: int = 100,
+        use_cache: bool = True,
     ) -> List[OHLCV]:
         """
-        Get historical OHLCV data for symbol
+        Get historical OHLCV data for symbol with caching
+
+        Cache TTL: 60 seconds (data updates every minute)
 
         Args:
             symbol: Trading pair
             limit: Maximum number of candles
+            use_cache: Whether to use cache (default: True)
 
         Returns:
             List of OHLCV candles (sorted by timestamp ascending)
         """
         formatted_symbol = self._format_symbol(symbol)
+
+        if use_cache:
+            # Generate cache key
+            cache_key = f"market_data:ohlcv:{formatted_symbol}:{self.timeframe.value}:{limit}"
+
+            # Try cache first
+            cached_data = await self.cache.get(cache_key)
+            if cached_data is not None:
+                logger.debug(f"Cache hit for OHLCV {formatted_symbol} {self.timeframe.value}")
+                # Convert back to OHLCV objects
+                return [
+                    OHLCV(
+                        symbol=candle['symbol'],
+                        timeframe=Timeframe(candle['timeframe']),
+                        timestamp=datetime.fromisoformat(candle['timestamp']) if isinstance(candle['timestamp'], str) else candle['timestamp'],
+                        open=Decimal(str(candle['open'])),
+                        high=Decimal(str(candle['high'])),
+                        low=Decimal(str(candle['low'])),
+                        close=Decimal(str(candle['close'])),
+                        volume=Decimal(str(candle['volume'])),
+                        quote_volume=Decimal(str(candle.get('quote_volume', 0))),
+                        trades_count=candle.get('trades_count', 0),
+                    )
+                    for candle in cached_data
+                ]
+
+            # Cache miss
+            logger.debug(f"Cache miss for OHLCV {formatted_symbol} {self.timeframe.value}")
+
+        # Get from memory
         candles = self.ohlcv_data.get(formatted_symbol, [])
-        return candles[-limit:] if candles else []
+        result = candles[-limit:] if candles else []
+
+        if use_cache and result:
+            # Serialize for caching
+            serialized = [
+                {
+                    'symbol': c.symbol,
+                    'timeframe': c.timeframe.value if hasattr(c.timeframe, 'value') else str(c.timeframe),
+                    'timestamp': c.timestamp.isoformat() if hasattr(c.timestamp, 'isoformat') else str(c.timestamp),
+                    'open': str(c.open),
+                    'high': str(c.high),
+                    'low': str(c.low),
+                    'close': str(c.close),
+                    'volume': str(c.volume),
+                    'quote_volume': str(c.quote_volume) if c.quote_volume else '0',
+                    'trades_count': c.trades_count or 0,
+                }
+                for c in result
+            ]
+            # Cache for 60 seconds
+            cache_key = f"market_data:ohlcv:{formatted_symbol}:{self.timeframe.value}:{limit}"
+            await self.cache.set(cache_key, serialized, ttl_seconds=60)
+
+        return result
 
     async def _handle_ticker_update(self, ticker: Ticker):
         """Handle incoming ticker update from WebSocket"""

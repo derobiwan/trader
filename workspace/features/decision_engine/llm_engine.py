@@ -11,6 +11,7 @@ Date: 2025-10-28
 import asyncio
 import logging
 import json
+import hashlib
 from typing import Dict, List, Optional
 from decimal import Decimal
 from enum import Enum
@@ -20,6 +21,7 @@ import httpx
 
 from workspace.features.market_data import MarketDataSnapshot
 from workspace.features.trading_loop import TradingSignal, TradingDecision
+from workspace.features.caching import CacheService
 from .prompt_builder import PromptBuilder
 
 
@@ -90,6 +92,7 @@ class LLMDecisionEngine:
         temperature: float = 0.7,
         max_tokens: int = 2000,
         timeout: float = 30.0,
+        cache_service: Optional[CacheService] = None,
     ):
         """
         Initialize LLM Decision Engine
@@ -101,6 +104,7 @@ class LLMDecisionEngine:
             temperature: Sampling temperature (0.0-1.0, default: 0.7)
             max_tokens: Maximum response tokens (default: 2000)
             timeout: Request timeout in seconds (default: 30.0)
+            cache_service: Optional CacheService instance (default: creates new one)
         """
         self.config = LLMConfig(
             provider=LLMProvider(provider),
@@ -114,9 +118,88 @@ class LLMDecisionEngine:
         self.prompt_builder = PromptBuilder()
         self.client = httpx.AsyncClient(timeout=timeout)
 
+        # Initialize cache service
+        if cache_service is not None:
+            self.cache = cache_service
+        else:
+            self.cache = CacheService()
+
+        logger.info("LLM Decision Engine initialized with caching")
+
     async def close(self):
         """Close HTTP client"""
         await self.client.aclose()
+
+    def _generate_cache_key(
+        self,
+        snapshots: Dict[str, MarketDataSnapshot],
+    ) -> str:
+        """
+        Generate cache key from market snapshots
+
+        Key includes:
+        - Symbol
+        - Rounded price (to nearest $10 for BTC, $1 for others)
+        - Rounded indicators (RSI to nearest 5, MACD to 2 decimals)
+        - Model name
+
+        This allows caching similar market conditions.
+
+        Args:
+            snapshots: Market data snapshots
+
+        Returns:
+            Cache key string
+        """
+        # Build cache input by rounding market data for each symbol
+        cache_inputs = {}
+
+        for symbol, snapshot in snapshots.items():
+            # Extract price from ticker
+            price = float(snapshot.ticker.last) if snapshot.ticker else 0.0
+
+            # Round price to reduce cache misses
+            if 'BTC' in symbol:
+                rounded_price = round(price / 10) * 10  # Nearest $10
+            else:
+                rounded_price = round(price)  # Nearest $1
+
+            # Round indicators
+            # RSI and MACD can be objects or Decimals, handle both
+            if snapshot.rsi:
+                if hasattr(snapshot.rsi, 'value'):
+                    rsi = float(snapshot.rsi.value)
+                else:
+                    rsi = float(snapshot.rsi)
+                rounded_rsi = round(rsi / 5) * 5  # Nearest 5
+            else:
+                rounded_rsi = 0
+
+            if snapshot.macd:
+                if hasattr(snapshot.macd, 'macd_line'):
+                    macd = float(snapshot.macd.macd_line)
+                else:
+                    macd = float(snapshot.macd)
+                rounded_macd = round(macd, 2)  # 2 decimals
+            else:
+                rounded_macd = 0
+
+            cache_inputs[symbol] = {
+                'price': rounded_price,
+                'rsi': rounded_rsi,
+                'macd': rounded_macd,
+            }
+
+        # Create hashable representation
+        cache_data = {
+            'snapshots': cache_inputs,
+            'model': self.config.model,
+        }
+
+        # Generate cache key
+        cache_key = f"llm:signals:{hashlib.md5(json.dumps(cache_data, sort_keys=True).encode()).hexdigest()}"
+
+        return cache_key
 
     async def generate_signals(
         self,
@@ -125,9 +208,12 @@ class LLMDecisionEngine:
         max_position_size_chf: Decimal = Decimal("525.39"),
         current_positions: Optional[Dict[str, Dict]] = None,
         risk_context: Optional[Dict] = None,
+        use_cache: bool = True,
     ) -> Dict[str, TradingSignal]:
         """
-        Generate trading signals for all symbols
+        Generate trading signals for all symbols with LLM response caching
+
+        Cache TTL: 180 seconds (3 minutes - one decision cycle)
 
         Args:
             snapshots: Market data snapshots for each symbol
@@ -135,6 +221,7 @@ class LLMDecisionEngine:
             max_position_size_chf: Maximum position size per trade
             current_positions: Current open positions (optional)
             risk_context: Additional risk context (optional)
+            use_cache: Whether to use cache (default: True)
 
         Returns:
             Dictionary mapping symbol to TradingSignal
@@ -148,6 +235,43 @@ class LLMDecisionEngine:
         logger.info(f"Generating trading signals for {len(snapshots)} symbols")
 
         try:
+            # Generate cache key
+            cache_key = self._generate_cache_key(snapshots)
+
+            # Try cache first
+            if use_cache:
+                cached_signals = await self.cache.get(cache_key)
+                if cached_signals is not None:
+                    logger.info(f"LLM cache hit for {len(snapshots)} symbols")
+
+                    # Reconstruct signals from cached data
+                    signals = {}
+                    for symbol, signal_data in cached_signals.items():
+                        signal = TradingSignal(
+                            symbol=signal_data['symbol'],
+                            decision=TradingDecision(signal_data['decision']),
+                            confidence=Decimal(str(signal_data['confidence'])),
+                            size_pct=Decimal(str(signal_data['size_pct'])),
+                            stop_loss_pct=Decimal(str(signal_data['stop_loss_pct'])) if signal_data.get('stop_loss_pct') else None,
+                            take_profit_pct=Decimal(str(signal_data['take_profit_pct'])) if signal_data.get('take_profit_pct') else None,
+                            reasoning=signal_data.get('reasoning', ''),
+                            model_used=signal_data.get('model_used', ''),
+                            tokens_input=signal_data.get('tokens_input', 0),
+                            tokens_output=signal_data.get('tokens_output', 0),
+                            cost_usd=Decimal(str(signal_data.get('cost_usd', 0))),
+                            generation_time_ms=signal_data.get('generation_time_ms', 0),
+                        )
+                        signals[symbol] = signal
+
+                    # Add cache metadata
+                    for signal in signals.values():
+                        signal.from_cache = True
+
+                    return signals
+
+            # Cache miss - call LLM
+            logger.info(f"LLM cache miss for {len(snapshots)} symbols, calling LLM")
+
             # Build prompt
             prompt = self.prompt_builder.build_trading_prompt(
                 snapshots=snapshots,
@@ -177,6 +301,7 @@ class LLMDecisionEngine:
                 signal.tokens_input = usage_data.get('prompt_tokens', prompt_tokens)
                 signal.tokens_output = usage_data.get('completion_tokens', len(response_text.split()))
                 signal.generation_time_ms = generation_time_ms
+                signal.from_cache = False
 
                 # Calculate cost based on provider/model
                 if signal.tokens_input and signal.tokens_output:
@@ -192,6 +317,29 @@ class LLMDecisionEngine:
                 f"cost: ${sum(s.cost_usd or Decimal('0') for s in signals.values()):.4f}, "
                 f"time: {generation_time_ms}ms)"
             )
+
+            # Cache the signals for 180 seconds (one decision cycle)
+            if use_cache:
+                # Serialize signals for caching
+                serialized_signals = {}
+                for symbol, signal in signals.items():
+                    serialized_signals[symbol] = {
+                        'symbol': signal.symbol,
+                        'decision': signal.decision.value,
+                        'confidence': str(signal.confidence),
+                        'size_pct': str(signal.size_pct),
+                        'stop_loss_pct': str(signal.stop_loss_pct) if signal.stop_loss_pct else None,
+                        'take_profit_pct': str(signal.take_profit_pct) if signal.take_profit_pct else None,
+                        'reasoning': signal.reasoning or '',
+                        'model_used': signal.model_used or '',
+                        'tokens_input': signal.tokens_input or 0,
+                        'tokens_output': signal.tokens_output or 0,
+                        'cost_usd': str(signal.cost_usd) if signal.cost_usd else '0',
+                        'generation_time_ms': signal.generation_time_ms or 0,
+                    }
+
+                await self.cache.set(cache_key, serialized_signals, ttl_seconds=180)
+                logger.debug(f"Cached LLM signals with key: {cache_key[:16]}...")
 
             return signals
 

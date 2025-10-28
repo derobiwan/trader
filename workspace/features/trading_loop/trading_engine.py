@@ -71,6 +71,7 @@ class TradingSignal:
     tokens_output: Optional[int] = None  # Output tokens generated
     cost_usd: Optional[Decimal] = None  # Estimated cost in USD
     generation_time_ms: Optional[int] = None  # Generation time in milliseconds
+    from_cache: bool = False  # Whether signal was retrieved from cache
 
     # Additional metadata
     metadata: Dict[str, Any] = field(default_factory=dict)

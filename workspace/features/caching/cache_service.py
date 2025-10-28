@@ -253,6 +253,7 @@ class CacheService:
             **self.stats,
             "total_requests": total_requests,
             "hit_rate": f"{hit_rate:.2f}%",
+            "hit_rate_percent": hit_rate,  # Also provide as float
             "cache_size": len(self._cache),
             "enabled": self.enabled,
         }
