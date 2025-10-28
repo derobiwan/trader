@@ -1,0 +1,175 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+*.pyc
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# Environment files
+.env
+.env.local
+*.env
+
+# Agent System - Session Management
+.agent-system/sessions/active/*.lock
+.agent-system/sessions/active/*.tmp
+.agent-system/sync/conflicts.json
+.agent-system/agents/*/changelog-*.bak
+
+# Cache directories
+PRPs/.cache/
+*.cache/
+.cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Node (if using JS/TS features)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Java/Gradle/Maven (if using Java features)
+target/
+*.class
+*.jar
+*.war
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# Testing
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+*.cover
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+tmp/
+temp/
+
+# Secrets (NEVER commit these)
+secrets/
+*.key
+*.pem
+*.crt
+*.p12
+credentials.json
+service-account.json
+
+# Generated reports (optional - you may want to keep these)
+# reports/daily/*.md
+# reports/metrics/*.json
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+site/
+
+# Monitoring data
+*.rrd
+*.pid
+
+# Claude-specific (keep settings but not local overrides)
+.claude/settings.local.json
+
+# Integration environment configs (may contain secrets)
+integration/environments/*/secrets.yaml
+integration/environments/*/.env
+
+# Workspace temporary files
+workspace/features/*/.tmp/
+workspace/fixes/*/.tmp/
+
+# Agent System
+.agent-system/sessions/active/*.lock
+.agent-system/sync/conflicts.json
+.agent-system/agents/*/context.json.backup
+*.tmp
+*.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# Java
+*.class
+*.jar
+*.war
+target/
+build/
+
+# JavaScript/TypeScript
+node_modules/
+dist/
+*.log
+.npm
+.next/
+out/
+
+# Reports (keep structure but not content)
+reports/daily/*.md
+reports/metrics/*.json
+!reports/daily/.gitkeep
+!reports/metrics/.gitkeep
+
+# Workspace temporary files
+workspace/**/.meta/*.tmp
+workspace/**/.meta/*.backup

@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "updated": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "next_task_id": 1,
+  "tasks": {},
+  "statistics": {
+    "total": 0,
+    "completed": 0,
+    "in_progress": 0,
+    "blocked": 0,
+    "pending": 0
+  }
+}

@@ -1,0 +1,109 @@
+# Context Loading Configuration
+# Defines what each agent should load to minimize context consumption
+
+agents:
+  orchestrator:
+    always_load:
+      - ".agent-system/registry/tasks.json"
+      - ".agent-system/sync/broadcasts.json"
+      - ".agent-system/registry/milestones.md"
+      - "reports/daily/latest.md"
+    conditional_load:
+      when_coordinating:
+        - ".agent-system/agents/*/tasks.json"
+    max_context_tokens: 12000
+
+  business-analyst:
+    always_load:
+      - ".agent-system/agents/business-analyst/context.json"
+      - ".agent-system/agents/business-analyst/tasks.json"
+    conditional_load:
+      when_task_requires:
+        - "PRPs/.cache/task-briefs/TASK-{current}.md"
+        - "PRPs/planning/requirements.md"
+        - "PRPs/planning/user-stories.md"
+    max_context_tokens: 8000
+
+  context-researcher:
+    always_load:
+      - ".agent-system/agents/context-researcher/context.json"
+      - "workspace/shared/**/*.md"
+    conditional_load:
+      when_researching:
+        - "workspace/features/{feature}/**/*.md"
+        - "PRPs/architecture/*.md"
+    max_context_tokens: 10000
+
+  implementation-specialist:
+    always_load:
+      - ".agent-system/agents/implementation-specialist/context.json"
+      - ".agent-system/agents/implementation-specialist/tasks.json"
+    conditional_load:
+      when_task_requires:
+        - "PRPs/.cache/task-briefs/TASK-{current}.md"
+        - "PRPs/contracts/{feature}-api-contract.md"
+        - "workspace/features/{feature}/.meta/"
+    never_load:
+      - "PRPs/planning/*.md"  # Full planning documents
+      - ".agent-system/agents/*/changelog.md"  # Other agents' logs
+    max_context_tokens: 8000
+
+  validation-engineer:
+    always_load:
+      - ".agent-system/agents/validation-engineer/context.json"
+      - ".agent-system/agents/validation-engineer/tasks.json"
+    conditional_load:
+      when_testing:
+        - "workspace/features/{feature}/tests/"
+        - "PRPs/.cache/agent-views/validation-engineer.md"
+    max_context_tokens: 8000
+
+  integration-architect:
+    always_load:
+      - ".agent-system/agents/integration-architect/context.json"
+      - "PRPs/architecture/integration-map.md"
+    conditional_load:
+      when_designing:
+        - "PRPs/contracts/*.md"
+        - "workspace/shared/contracts/*.md"
+    max_context_tokens: 10000
+
+  documentation-curator:
+    always_load:
+      - ".agent-system/agents/documentation-curator/context.json"
+    conditional_load:
+      when_documenting:
+        - "workspace/features/{feature}/docs/"
+    max_context_tokens: 6000
+
+  security-auditor:
+    always_load:
+      - ".agent-system/agents/security-auditor/context.json"
+      - "PRPs/security/*.md"
+    conditional_load:
+      when_auditing:
+        - "workspace/features/{feature}/**/*.{py,java,js,ts}"
+    max_context_tokens: 8000
+
+  performance-optimizer:
+    always_load:
+      - ".agent-system/agents/performance-optimizer/context.json"
+      - "PRPs/architecture/performance-targets.md"
+    conditional_load:
+      when_optimizing:
+        - "reports/metrics/*.json"
+    max_context_tokens: 8000
+
+  devops-engineer:
+    always_load:
+      - ".agent-system/agents/devops-engineer/context.json"
+      - "integration/ci-cd/**/*.yaml"
+    conditional_load:
+      when_deploying:
+        - "integration/environments/{environment}/*.yaml"
+    max_context_tokens: 8000
+
+global:
+  max_total_context: 50000
+  compression_enabled: true
+  cache_duration_minutes: 30

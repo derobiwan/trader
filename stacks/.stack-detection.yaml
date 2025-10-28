@@ -1,0 +1,46 @@
+# Stack Detection Rules
+# Automatically detect and configure technology stacks
+
+rules:
+  - pattern: "**/*.py"
+    stack: "python"
+    config: "stacks/python"
+    tools:
+      - pytest
+      - black
+      - pylint
+      
+  - pattern: "**/*.java"
+    stack: "java"
+    config: "stacks/java"
+    tools:
+      - junit
+      - maven
+      - gradle
+      
+  - pattern: "**/*.ts"
+    stack: "typescript"
+    config: "stacks/javascript"
+    tools:
+      - jest
+      - eslint
+      - prettier
+      
+  - pattern: "**/*.js"
+    stack: "javascript"
+    config: "stacks/javascript"
+    tools:
+      - jest
+      - eslint
+      - prettier
+
+features:
+  # Feature-specific stack configurations will be added here
+  example:
+    primary_stack: "python"
+    secondary: ["typescript"]
+    
+defaults:
+  test_coverage_threshold: 80
+  linting_enabled: true
+  auto_format: true

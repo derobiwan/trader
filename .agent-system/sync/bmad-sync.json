@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-10-01T00:00:00Z",
+  "bmad_integration": {
+    "enabled": false,
+    "last_sync": null,
+    "prd_imported": false,
+    "architecture_imported": false,
+    "epics_generated": false,
+    "stories_generated": false
+  },
+  "sync_history": [],
+  "story_to_task_mapping": {},
+  "epic_to_stories_mapping": {}
+}

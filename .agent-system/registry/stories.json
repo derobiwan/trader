@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "updated": "2025-10-01T00:00:00Z",
+  "stories": {
+    "STORY-EXAMPLE": {
+      "title": "Example: Setup authentication system",
+      "description": "This is an example story showing the structure. Real stories will be created through the BMAD integration.",
+      "epic_id": "EPIC-001",
+      "status": "pending",
+      "priority": "high",
+      "estimated_hours": 8,
+      "task_id": "TASK-001",
+      "file": "docs/stories/STORY-EXAMPLE.md",
+      "created_at": "2025-10-01T00:00:00Z",
+      "acceptance_criteria": [
+        "User can authenticate with email/password",
+        "JWT tokens issued on successful login",
+        "Tests coverage >80%"
+      ]
+    }
+  },
+  "statistics": {
+    "total": 1,
+    "completed": 0,
+    "in_progress": 0,
+    "blocked": 0,
+    "pending": 1
+  }
+}
