@@ -19,6 +19,7 @@ from workspace.features.strategy import (
 @dataclass
 class MockSignal:
     """Mock signal for testing"""
+
     symbol: str = "BTC/USDT:USDT"
     decision: str = "BUY"
     confidence: Decimal = Decimal("0.75")
@@ -61,15 +62,15 @@ class TestRiskManagerStrategyIntegration:
         assert len(validation.checks) > 0
 
         # If signal is not HOLD, check validation details
-        if signal.decision != 'HOLD':
+        if signal.decision != "HOLD":
             # Should have performed multiple checks
             assert len(validation.checks) >= 5
 
             # Check names should be present
             check_names = [c.check_name for c in validation.checks]
-            assert 'Circuit Breaker' in check_names
-            assert 'Position Count' in check_names
-            assert 'Confidence' in check_names
+            assert "Circuit Breaker" in check_names
+            assert "Position Count" in check_names
+            assert "Confidence" in check_names
 
     @pytest.mark.asyncio
     async def test_low_confidence_signal_rejected(
@@ -97,7 +98,7 @@ class TestRiskManagerStrategyIntegration:
         # Should be rejected
         assert validation.approved is False
         assert validation.status == ValidationStatus.REJECTED
-        assert any('confidence' in r.lower() for r in validation.rejection_reasons)
+        assert any("confidence" in r.lower() for r in validation.rejection_reasons)
 
     @pytest.mark.asyncio
     async def test_large_position_signal_rejected(
@@ -125,7 +126,7 @@ class TestRiskManagerStrategyIntegration:
         # Should be rejected
         assert validation.approved is False
         assert validation.status == ValidationStatus.REJECTED
-        assert any('position size' in r.lower() for r in validation.rejection_reasons)
+        assert any("position size" in r.lower() for r in validation.rejection_reasons)
 
     @pytest.mark.asyncio
     async def test_invalid_stop_loss_rejected(
@@ -183,7 +184,7 @@ class TestRiskManagerStrategyIntegration:
             validation = await risk_manager.validate_signal(signal)
 
             # All strategy signals should pass validation or be HOLD
-            if signal.decision != 'HOLD':
+            if signal.decision != "HOLD":
                 # If not HOLD, should have validation result
                 assert validation is not None
                 assert len(validation.checks) > 0
@@ -206,25 +207,25 @@ class TestRiskManagerStrategyIntegration:
 
         # Create multiple positions
         mock_position_tracker.positions = [
-            {'symbol': 'BTC/USDT:USDT', 'size_pct': Decimal('0.20')},
-            {'symbol': 'ETH/USDT:USDT', 'size_pct': Decimal('0.20')},
-            {'symbol': 'SOL/USDT:USDT', 'size_pct': Decimal('0.20')},
-            {'symbol': 'BNB/USDT:USDT', 'size_pct': Decimal('0.20')},
+            {"symbol": "BTC/USDT:USDT", "size_pct": Decimal("0.20")},
+            {"symbol": "ETH/USDT:USDT", "size_pct": Decimal("0.20")},
+            {"symbol": "SOL/USDT:USDT", "size_pct": Decimal("0.20")},
+            {"symbol": "BNB/USDT:USDT", "size_pct": Decimal("0.20")},
         ]
 
         # Generate new signal
         signal = await strategy.generate_signal(sample_ohlcv_data)
 
-        if signal.decision != 'HOLD':
+        if signal.decision != "HOLD":
             # Override signal size to test limit
-            signal.size_pct = Decimal('0.15')
+            signal.size_pct = Decimal("0.15")
 
             # Validate signal (should be rejected due to exposure)
             validation = await risk_manager.validate_signal(signal)
 
             # Total exposure would be 95% (80 + 15), exceeds 80% limit
             assert validation.approved is False
-            assert any('exposure' in r.lower() for r in validation.rejection_reasons)
+            assert any("exposure" in r.lower() for r in validation.rejection_reasons)
 
     @pytest.mark.asyncio
     async def test_position_count_limit(
@@ -244,25 +245,27 @@ class TestRiskManagerStrategyIntegration:
 
         # Create 6 positions (at limit)
         mock_position_tracker.positions = [
-            {'symbol': f'BTC/USDT:USDT', 'size_pct': Decimal('0.10')},
-            {'symbol': f'ETH/USDT:USDT', 'size_pct': Decimal('0.10')},
-            {'symbol': f'SOL/USDT:USDT', 'size_pct': Decimal('0.10')},
-            {'symbol': f'BNB/USDT:USDT', 'size_pct': Decimal('0.10')},
-            {'symbol': f'ADA/USDT:USDT', 'size_pct': Decimal('0.10')},
-            {'symbol': f'DOGE/USDT:USDT', 'size_pct': Decimal('0.10')},
+            {"symbol": "BTC/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "ETH/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "SOL/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "BNB/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "ADA/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "DOGE/USDT:USDT", "size_pct": Decimal("0.10")},
         ]
 
         # Generate new signal
         signal = await strategy.generate_signal(sample_ohlcv_data)
 
-        if signal.decision != 'HOLD':
+        if signal.decision != "HOLD":
             # Validate signal (should be rejected due to position count)
             validation = await risk_manager.validate_signal(signal)
 
             # Should be rejected - at max positions
             assert validation.approved is False
-            assert any('position' in r.lower() and 'maximum' in r.lower()
-                      for r in validation.rejection_reasons)
+            assert any(
+                "position" in r.lower() and "maximum" in r.lower()
+                for r in validation.rejection_reasons
+            )
 
     @pytest.mark.asyncio
     async def test_leverage_limits_per_symbol(
@@ -286,7 +289,7 @@ class TestRiskManagerStrategyIntegration:
 
         validation = await risk_manager.validate_signal(signal_btc)
         assert validation.approved is False
-        assert any('leverage' in r.lower() for r in validation.rejection_reasons)
+        assert any("leverage" in r.lower() for r in validation.rejection_reasons)
 
         # Test ADA (max 20x)
         signal_ada = MockSignal(
@@ -296,7 +299,7 @@ class TestRiskManagerStrategyIntegration:
 
         validation = await risk_manager.validate_signal(signal_ada)
         assert validation.approved is False
-        assert any('leverage' in r.lower() for r in validation.rejection_reasons)
+        assert any("leverage" in r.lower() for r in validation.rejection_reasons)
 
     @pytest.mark.asyncio
     async def test_validation_provides_detailed_feedback(
@@ -326,7 +329,7 @@ class TestRiskManagerStrategyIntegration:
             assert check.check_name is not None
             assert check.passed is not None
             assert check.message is not None
-            assert check.severity in ['info', 'warning', 'error']
+            assert check.severity in ["info", "warning", "error"]
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_blocks_signals(
@@ -355,4 +358,4 @@ class TestRiskManagerStrategyIntegration:
         # Should be rejected due to circuit breaker
         assert validation.approved is False
         assert validation.circuit_breaker_active is True
-        assert any('circuit breaker' in r.lower() for r in validation.rejection_reasons)
+        assert any("circuit breaker" in r.lower() for r in validation.rejection_reasons)

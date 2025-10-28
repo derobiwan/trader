@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # Revision identifiers
-revision: str = '001_initial_schema'
+revision: str = "001_initial_schema"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,110 +27,178 @@ def upgrade() -> None:
 
     # Enable extensions
     op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
-    op.execute('CREATE EXTENSION IF NOT EXISTS timescaledb')
+    op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
 
     # ========================================================================
     # TABLE 1: positions
     # ========================================================================
     op.create_table(
-        'positions',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('uuid_generate_v4()')),
-        sa.Column('symbol', sa.String(20), nullable=False),
-        sa.Column('side', sa.String(10), nullable=False),
-        sa.Column('quantity', sa.Numeric(20, 8), nullable=False),
-        sa.Column('entry_price', sa.Numeric(20, 8), nullable=False),
-        sa.Column('current_price', sa.Numeric(20, 8), nullable=True),
-        sa.Column('leverage', sa.Integer, nullable=False),
-        sa.Column('stop_loss', sa.Numeric(20, 8), nullable=True),
-        sa.Column('take_profit', sa.Numeric(20, 8), nullable=True),
-        sa.Column('status', sa.String(20), nullable=False, server_default='OPEN'),
-        sa.Column('pnl_chf', sa.Numeric(20, 8), nullable=True),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('closed_at', sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.CheckConstraint("side IN ('LONG', 'SHORT')", name='valid_side'),
-        sa.CheckConstraint("status IN ('OPEN', 'CLOSED', 'LIQUIDATED')", name='valid_status'),
-        sa.CheckConstraint('quantity > 0', name='valid_quantity'),
-        sa.CheckConstraint('entry_price > 0', name='valid_entry_price'),
-        sa.CheckConstraint('leverage >= 5 AND leverage <= 40', name='valid_leverage')
+        "positions",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("uuid_generate_v4()"),
+        ),
+        sa.Column("symbol", sa.String(20), nullable=False),
+        sa.Column("side", sa.String(10), nullable=False),
+        sa.Column("quantity", sa.Numeric(20, 8), nullable=False),
+        sa.Column("entry_price", sa.Numeric(20, 8), nullable=False),
+        sa.Column("current_price", sa.Numeric(20, 8), nullable=True),
+        sa.Column("leverage", sa.Integer, nullable=False),
+        sa.Column("stop_loss", sa.Numeric(20, 8), nullable=True),
+        sa.Column("take_profit", sa.Numeric(20, 8), nullable=True),
+        sa.Column("status", sa.String(20), nullable=False, server_default="OPEN"),
+        sa.Column("pnl_chf", sa.Numeric(20, 8), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column("closed_at", sa.TIMESTAMP(timezone=True), nullable=True),
+        sa.CheckConstraint("side IN ('LONG', 'SHORT')", name="valid_side"),
+        sa.CheckConstraint(
+            "status IN ('OPEN', 'CLOSED', 'LIQUIDATED')", name="valid_status"
+        ),
+        sa.CheckConstraint("quantity > 0", name="valid_quantity"),
+        sa.CheckConstraint("entry_price > 0", name="valid_entry_price"),
+        sa.CheckConstraint("leverage >= 5 AND leverage <= 40", name="valid_leverage"),
     )
 
-    op.create_index('idx_positions_symbol', 'positions', ['symbol'])
-    op.create_index('idx_positions_status', 'positions', ['status'])
-    op.create_index('idx_positions_created_at', 'positions', [sa.text('created_at DESC')])
-    op.create_index('idx_positions_symbol_status', 'positions', ['symbol', 'status'])
+    op.create_index("idx_positions_symbol", "positions", ["symbol"])
+    op.create_index("idx_positions_status", "positions", ["status"])
+    op.create_index(
+        "idx_positions_created_at", "positions", [sa.text("created_at DESC")]
+    )
+    op.create_index("idx_positions_symbol_status", "positions", ["symbol", "status"])
 
     # ========================================================================
     # TABLE 2: trading_signals
     # ========================================================================
     op.create_table(
-        'trading_signals',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('uuid_generate_v4()')),
-        sa.Column('symbol', sa.String(20), nullable=False),
-        sa.Column('signal_type', sa.String(20), nullable=False),
-        sa.Column('action', sa.String(20), nullable=False),
-        sa.Column('confidence', sa.Numeric(5, 4), nullable=False),
-        sa.Column('risk_usd', sa.Numeric(20, 8), nullable=True),
-        sa.Column('reasoning', sa.Text, nullable=False),
-        sa.Column('llm_model', sa.String(100), nullable=False),
-        sa.Column('llm_tokens', sa.Integer, nullable=True),
-        sa.Column('llm_cost_usd', sa.Numeric(10, 6), nullable=True),
-        sa.Column('executed', sa.Boolean, nullable=False, server_default='false'),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.CheckConstraint("signal_type IN ('ENTRY', 'EXIT', 'HOLD', 'INCREASE', 'DECREASE')", name='valid_signal_type'),
-        sa.CheckConstraint("action IN ('BUY', 'SELL', 'HOLD')", name='valid_action'),
-        sa.CheckConstraint('confidence >= 0 AND confidence <= 1', name='valid_confidence')
+        "trading_signals",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("uuid_generate_v4()"),
+        ),
+        sa.Column("symbol", sa.String(20), nullable=False),
+        sa.Column("signal_type", sa.String(20), nullable=False),
+        sa.Column("action", sa.String(20), nullable=False),
+        sa.Column("confidence", sa.Numeric(5, 4), nullable=False),
+        sa.Column("risk_usd", sa.Numeric(20, 8), nullable=True),
+        sa.Column("reasoning", sa.Text, nullable=False),
+        sa.Column("llm_model", sa.String(100), nullable=False),
+        sa.Column("llm_tokens", sa.Integer, nullable=True),
+        sa.Column("llm_cost_usd", sa.Numeric(10, 6), nullable=True),
+        sa.Column("executed", sa.Boolean, nullable=False, server_default="false"),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.CheckConstraint(
+            "signal_type IN ('ENTRY', 'EXIT', 'HOLD', 'INCREASE', 'DECREASE')",
+            name="valid_signal_type",
+        ),
+        sa.CheckConstraint("action IN ('BUY', 'SELL', 'HOLD')", name="valid_action"),
+        sa.CheckConstraint(
+            "confidence >= 0 AND confidence <= 1", name="valid_confidence"
+        ),
     )
 
-    op.create_index('idx_trading_signals_symbol', 'trading_signals', ['symbol'])
-    op.create_index('idx_trading_signals_created_at', 'trading_signals', [sa.text('created_at DESC')])
-    op.create_index('idx_trading_signals_executed', 'trading_signals', ['executed'])
-    op.create_index('idx_trading_signals_symbol_created', 'trading_signals', ['symbol', sa.text('created_at DESC')])
+    op.create_index("idx_trading_signals_symbol", "trading_signals", ["symbol"])
+    op.create_index(
+        "idx_trading_signals_created_at",
+        "trading_signals",
+        [sa.text("created_at DESC")],
+    )
+    op.create_index("idx_trading_signals_executed", "trading_signals", ["executed"])
+    op.create_index(
+        "idx_trading_signals_symbol_created",
+        "trading_signals",
+        ["symbol", sa.text("created_at DESC")],
+    )
 
     # ========================================================================
     # TABLE 3: orders
     # ========================================================================
     op.create_table(
-        'orders',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('uuid_generate_v4()')),
-        sa.Column('position_id', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('exchange_order_id', sa.String(100), nullable=True, unique=True),
-        sa.Column('symbol', sa.String(20), nullable=False),
-        sa.Column('side', sa.String(10), nullable=False),
-        sa.Column('order_type', sa.String(20), nullable=False),
-        sa.Column('quantity', sa.Numeric(20, 8), nullable=False),
-        sa.Column('price', sa.Numeric(20, 8), nullable=True),
-        sa.Column('filled_quantity', sa.Numeric(20, 8), nullable=False, server_default='0'),
-        sa.Column('status', sa.String(20), nullable=False, server_default='PENDING'),
-        sa.Column('fee_chf', sa.Numeric(20, 8), nullable=True),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.ForeignKeyConstraint(['position_id'], ['positions.id'], ondelete='CASCADE'),
-        sa.CheckConstraint("side IN ('BUY', 'SELL')", name='valid_order_side'),
-        sa.CheckConstraint("order_type IN ('MARKET', 'LIMIT', 'STOP_LOSS', 'TAKE_PROFIT')", name='valid_order_type'),
-        sa.CheckConstraint("status IN ('PENDING', 'FILLED', 'PARTIALLY_FILLED', 'CANCELLED', 'REJECTED')", name='valid_order_status'),
-        sa.CheckConstraint('quantity > 0', name='valid_order_quantity')
+        "orders",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("uuid_generate_v4()"),
+        ),
+        sa.Column("position_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("exchange_order_id", sa.String(100), nullable=True, unique=True),
+        sa.Column("symbol", sa.String(20), nullable=False),
+        sa.Column("side", sa.String(10), nullable=False),
+        sa.Column("order_type", sa.String(20), nullable=False),
+        sa.Column("quantity", sa.Numeric(20, 8), nullable=False),
+        sa.Column("price", sa.Numeric(20, 8), nullable=True),
+        sa.Column(
+            "filled_quantity", sa.Numeric(20, 8), nullable=False, server_default="0"
+        ),
+        sa.Column("status", sa.String(20), nullable=False, server_default="PENDING"),
+        sa.Column("fee_chf", sa.Numeric(20, 8), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.ForeignKeyConstraint(["position_id"], ["positions.id"], ondelete="CASCADE"),
+        sa.CheckConstraint("side IN ('BUY', 'SELL')", name="valid_order_side"),
+        sa.CheckConstraint(
+            "order_type IN ('MARKET', 'LIMIT', 'STOP_LOSS', 'TAKE_PROFIT')",
+            name="valid_order_type",
+        ),
+        sa.CheckConstraint(
+            "status IN ('PENDING', 'FILLED', 'PARTIALLY_FILLED', 'CANCELLED', 'REJECTED')",
+            name="valid_order_status",
+        ),
+        sa.CheckConstraint("quantity > 0", name="valid_order_quantity"),
     )
 
-    op.create_index('idx_orders_position_id', 'orders', ['position_id'])
-    op.create_index('idx_orders_exchange_order_id', 'orders', ['exchange_order_id'])
-    op.create_index('idx_orders_status', 'orders', ['status'])
-    op.create_index('idx_orders_created_at', 'orders', [sa.text('created_at DESC')])
+    op.create_index("idx_orders_position_id", "orders", ["position_id"])
+    op.create_index("idx_orders_exchange_order_id", "orders", ["exchange_order_id"])
+    op.create_index("idx_orders_status", "orders", ["status"])
+    op.create_index("idx_orders_created_at", "orders", [sa.text("created_at DESC")])
 
     # ========================================================================
     # TABLE 4: market_data (TimescaleDB Hypertable)
     # ========================================================================
     op.create_table(
-        'market_data',
-        sa.Column('symbol', sa.String(20), nullable=False),
-        sa.Column('timestamp', sa.BigInteger, nullable=False),
-        sa.Column('open', sa.Numeric(20, 8), nullable=False),
-        sa.Column('high', sa.Numeric(20, 8), nullable=False),
-        sa.Column('low', sa.Numeric(20, 8), nullable=False),
-        sa.Column('close', sa.Numeric(20, 8), nullable=False),
-        sa.Column('volume', sa.Numeric(20, 8), nullable=False),
-        sa.Column('indicators', postgresql.JSONB, nullable=True),
-        sa.CheckConstraint('high >= low AND high >= open AND high >= close AND low <= open AND low <= close', name='valid_ohlc')
+        "market_data",
+        sa.Column("symbol", sa.String(20), nullable=False),
+        sa.Column("timestamp", sa.BigInteger, nullable=False),
+        sa.Column("open", sa.Numeric(20, 8), nullable=False),
+        sa.Column("high", sa.Numeric(20, 8), nullable=False),
+        sa.Column("low", sa.Numeric(20, 8), nullable=False),
+        sa.Column("close", sa.Numeric(20, 8), nullable=False),
+        sa.Column("volume", sa.Numeric(20, 8), nullable=False),
+        sa.Column("indicators", postgresql.JSONB, nullable=True),
+        sa.CheckConstraint(
+            "high >= low AND high >= open AND high >= close AND low <= open AND low <= close",
+            name="valid_ohlc",
+        ),
     )
 
     # Convert to TimescaleDB hypertable
@@ -141,7 +209,11 @@ def upgrade() -> None:
         )
     """)
 
-    op.create_index('idx_market_data_symbol_timestamp', 'market_data', ['symbol', sa.text('timestamp DESC')])
+    op.create_index(
+        "idx_market_data_symbol_timestamp",
+        "market_data",
+        ["symbol", sa.text("timestamp DESC")],
+    )
 
     # Enable compression
     op.execute("""
@@ -166,16 +238,16 @@ def upgrade() -> None:
     # TABLE 5: daily_performance (TimescaleDB Hypertable)
     # ========================================================================
     op.create_table(
-        'daily_performance',
-        sa.Column('date', sa.Date, nullable=False),
-        sa.Column('portfolio_value_chf', sa.Numeric(20, 8), nullable=False),
-        sa.Column('daily_pnl_chf', sa.Numeric(20, 8), nullable=False),
-        sa.Column('daily_pnl_pct', sa.Numeric(10, 4), nullable=False),
-        sa.Column('sharpe_ratio', sa.Numeric(10, 4), nullable=True),
-        sa.Column('win_rate', sa.Numeric(5, 4), nullable=True),
-        sa.Column('total_trades', sa.Integer, nullable=False, server_default='0'),
-        sa.Column('positions_snapshot', postgresql.JSONB, nullable=True),
-        sa.CheckConstraint('win_rate >= 0 AND win_rate <= 1', name='valid_win_rate')
+        "daily_performance",
+        sa.Column("date", sa.Date, nullable=False),
+        sa.Column("portfolio_value_chf", sa.Numeric(20, 8), nullable=False),
+        sa.Column("daily_pnl_chf", sa.Numeric(20, 8), nullable=False),
+        sa.Column("daily_pnl_pct", sa.Numeric(10, 4), nullable=False),
+        sa.Column("sharpe_ratio", sa.Numeric(10, 4), nullable=True),
+        sa.Column("win_rate", sa.Numeric(5, 4), nullable=True),
+        sa.Column("total_trades", sa.Integer, nullable=False, server_default="0"),
+        sa.Column("positions_snapshot", postgresql.JSONB, nullable=True),
+        sa.CheckConstraint("win_rate >= 0 AND win_rate <= 1", name="valid_win_rate"),
     )
 
     # Convert to TimescaleDB hypertable
@@ -186,7 +258,9 @@ def upgrade() -> None:
         )
     """)
 
-    op.create_index('idx_daily_performance_date', 'daily_performance', [sa.text('date DESC')])
+    op.create_index(
+        "idx_daily_performance_date", "daily_performance", [sa.text("date DESC")]
+    )
 
     # Add retention policy (keep 2 years)
     op.execute("""
@@ -197,15 +271,17 @@ def upgrade() -> None:
     # TABLE 6: risk_events (TimescaleDB Hypertable)
     # ========================================================================
     op.create_table(
-        'risk_events',
-        sa.Column('timestamp', sa.BigInteger, nullable=False),
-        sa.Column('event_type', sa.String(50), nullable=False),
-        sa.Column('severity', sa.String(20), nullable=False),
-        sa.Column('description', sa.Text, nullable=False),
-        sa.Column('position_id', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('metadata', postgresql.JSONB, nullable=True),
-        sa.ForeignKeyConstraint(['position_id'], ['positions.id'], ondelete='SET NULL'),
-        sa.CheckConstraint("severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')", name='valid_severity')
+        "risk_events",
+        sa.Column("timestamp", sa.BigInteger, nullable=False),
+        sa.Column("event_type", sa.String(50), nullable=False),
+        sa.Column("severity", sa.String(20), nullable=False),
+        sa.Column("description", sa.Text, nullable=False),
+        sa.Column("position_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("metadata", postgresql.JSONB, nullable=True),
+        sa.ForeignKeyConstraint(["position_id"], ["positions.id"], ondelete="SET NULL"),
+        sa.CheckConstraint(
+            "severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')", name="valid_severity"
+        ),
     )
 
     # Convert to TimescaleDB hypertable
@@ -216,10 +292,12 @@ def upgrade() -> None:
         )
     """)
 
-    op.create_index('idx_risk_events_timestamp', 'risk_events', [sa.text('timestamp DESC')])
-    op.create_index('idx_risk_events_event_type', 'risk_events', ['event_type'])
-    op.create_index('idx_risk_events_severity', 'risk_events', ['severity'])
-    op.create_index('idx_risk_events_position_id', 'risk_events', ['position_id'])
+    op.create_index(
+        "idx_risk_events_timestamp", "risk_events", [sa.text("timestamp DESC")]
+    )
+    op.create_index("idx_risk_events_event_type", "risk_events", ["event_type"])
+    op.create_index("idx_risk_events_severity", "risk_events", ["severity"])
+    op.create_index("idx_risk_events_position_id", "risk_events", ["position_id"])
 
     # Add retention policy (keep 1 year)
     op.execute("""
@@ -230,34 +308,58 @@ def upgrade() -> None:
     # TABLE 7: llm_requests
     # ========================================================================
     op.create_table(
-        'llm_requests',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('uuid_generate_v4()')),
-        sa.Column('timestamp', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('model', sa.String(100), nullable=False),
-        sa.Column('prompt_tokens', sa.Integer, nullable=False),
-        sa.Column('completion_tokens', sa.Integer, nullable=False),
-        sa.Column('cost_usd', sa.Numeric(10, 6), nullable=False),
-        sa.Column('latency_ms', sa.Integer, nullable=False),
-        sa.Column('response', postgresql.JSONB, nullable=False),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.CheckConstraint('prompt_tokens > 0 AND completion_tokens >= 0', name='valid_tokens'),
-        sa.CheckConstraint('cost_usd >= 0', name='valid_cost'),
-        sa.CheckConstraint('latency_ms >= 0', name='valid_latency')
+        "llm_requests",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("uuid_generate_v4()"),
+        ),
+        sa.Column(
+            "timestamp",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column("model", sa.String(100), nullable=False),
+        sa.Column("prompt_tokens", sa.Integer, nullable=False),
+        sa.Column("completion_tokens", sa.Integer, nullable=False),
+        sa.Column("cost_usd", sa.Numeric(10, 6), nullable=False),
+        sa.Column("latency_ms", sa.Integer, nullable=False),
+        sa.Column("response", postgresql.JSONB, nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.CheckConstraint(
+            "prompt_tokens > 0 AND completion_tokens >= 0", name="valid_tokens"
+        ),
+        sa.CheckConstraint("cost_usd >= 0", name="valid_cost"),
+        sa.CheckConstraint("latency_ms >= 0", name="valid_latency"),
     )
 
-    op.create_index('idx_llm_requests_timestamp', 'llm_requests', [sa.text('timestamp DESC')])
-    op.create_index('idx_llm_requests_model', 'llm_requests', ['model'])
-    op.create_index('idx_llm_requests_cost', 'llm_requests', [sa.text('cost_usd DESC')])
+    op.create_index(
+        "idx_llm_requests_timestamp", "llm_requests", [sa.text("timestamp DESC")]
+    )
+    op.create_index("idx_llm_requests_model", "llm_requests", ["model"])
+    op.create_index("idx_llm_requests_cost", "llm_requests", [sa.text("cost_usd DESC")])
 
     # ========================================================================
     # TABLE 8: system_config
     # ========================================================================
     op.create_table(
-        'system_config',
-        sa.Column('key', sa.String(100), primary_key=True),
-        sa.Column('value', postgresql.JSONB, nullable=False),
-        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('updated_by', sa.String(100), nullable=True)
+        "system_config",
+        sa.Column("key", sa.String(100), primary_key=True),
+        sa.Column("value", postgresql.JSONB, nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column("updated_by", sa.String(100), nullable=True),
     )
 
     # Insert default configuration
@@ -283,53 +385,95 @@ def upgrade() -> None:
     # TABLE 9: audit_log
     # ========================================================================
     op.create_table(
-        'audit_log',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('uuid_generate_v4()')),
-        sa.Column('timestamp', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('action', sa.String(50), nullable=False),
-        sa.Column('entity_type', sa.String(50), nullable=False),
-        sa.Column('entity_id', sa.String(100), nullable=True),
-        sa.Column('user', sa.String(100), nullable=False),
-        sa.Column('changes', postgresql.JSONB, nullable=True),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()'))
+        "audit_log",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("uuid_generate_v4()"),
+        ),
+        sa.Column(
+            "timestamp",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column("action", sa.String(50), nullable=False),
+        sa.Column("entity_type", sa.String(50), nullable=False),
+        sa.Column("entity_id", sa.String(100), nullable=True),
+        sa.Column("user", sa.String(100), nullable=False),
+        sa.Column("changes", postgresql.JSONB, nullable=True),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
     )
 
-    op.create_index('idx_audit_log_timestamp', 'audit_log', [sa.text('timestamp DESC')])
-    op.create_index('idx_audit_log_entity_type', 'audit_log', ['entity_type'])
-    op.create_index('idx_audit_log_entity_id', 'audit_log', ['entity_id'])
+    op.create_index("idx_audit_log_timestamp", "audit_log", [sa.text("timestamp DESC")])
+    op.create_index("idx_audit_log_entity_type", "audit_log", ["entity_type"])
+    op.create_index("idx_audit_log_entity_id", "audit_log", ["entity_id"])
 
     # ========================================================================
     # TABLE 10: circuit_breaker_state
     # ========================================================================
     op.create_table(
-        'circuit_breaker_state',
-        sa.Column('date', sa.Date, primary_key=True),
-        sa.Column('current_pnl_chf', sa.Numeric(20, 8), nullable=False, server_default='0'),
-        sa.Column('triggered', sa.Boolean, nullable=False, server_default='false'),
-        sa.Column('trigger_reason', sa.Text, nullable=True),
-        sa.Column('positions_closed', postgresql.JSONB, nullable=True),
-        sa.Column('reset_at', sa.TIMESTAMP(timezone=True), nullable=True)
+        "circuit_breaker_state",
+        sa.Column("date", sa.Date, primary_key=True),
+        sa.Column(
+            "current_pnl_chf", sa.Numeric(20, 8), nullable=False, server_default="0"
+        ),
+        sa.Column("triggered", sa.Boolean, nullable=False, server_default="false"),
+        sa.Column("trigger_reason", sa.Text, nullable=True),
+        sa.Column("positions_closed", postgresql.JSONB, nullable=True),
+        sa.Column("reset_at", sa.TIMESTAMP(timezone=True), nullable=True),
     )
 
     # ========================================================================
     # TABLE 11: position_reconciliation
     # ========================================================================
     op.create_table(
-        'position_reconciliation',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('uuid_generate_v4()')),
-        sa.Column('timestamp', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.Column('position_id', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('system_state', postgresql.JSONB, nullable=False),
-        sa.Column('exchange_state', postgresql.JSONB, nullable=False),
-        sa.Column('discrepancies', postgresql.JSONB, nullable=True),
-        sa.Column('resolved', sa.Boolean, nullable=False, server_default='false'),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
-        sa.ForeignKeyConstraint(['position_id'], ['positions.id'], ondelete='CASCADE')
+        "position_reconciliation",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            primary_key=True,
+            server_default=sa.text("uuid_generate_v4()"),
+        ),
+        sa.Column(
+            "timestamp",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.Column("position_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("system_state", postgresql.JSONB, nullable=False),
+        sa.Column("exchange_state", postgresql.JSONB, nullable=False),
+        sa.Column("discrepancies", postgresql.JSONB, nullable=True),
+        sa.Column("resolved", sa.Boolean, nullable=False, server_default="false"),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.text("NOW()"),
+        ),
+        sa.ForeignKeyConstraint(["position_id"], ["positions.id"], ondelete="CASCADE"),
     )
 
-    op.create_index('idx_position_reconciliation_timestamp', 'position_reconciliation', [sa.text('timestamp DESC')])
-    op.create_index('idx_position_reconciliation_position_id', 'position_reconciliation', ['position_id'])
-    op.create_index('idx_position_reconciliation_resolved', 'position_reconciliation', ['resolved'])
+    op.create_index(
+        "idx_position_reconciliation_timestamp",
+        "position_reconciliation",
+        [sa.text("timestamp DESC")],
+    )
+    op.create_index(
+        "idx_position_reconciliation_position_id",
+        "position_reconciliation",
+        ["position_id"],
+    )
+    op.create_index(
+        "idx_position_reconciliation_resolved", "position_reconciliation", ["resolved"]
+    )
 
     # ========================================================================
     # TRIGGERS
@@ -456,23 +600,23 @@ def downgrade() -> None:
     """
 
     # Drop views
-    op.execute('DROP VIEW IF EXISTS v_open_positions')
-    op.execute('DROP VIEW IF EXISTS v_portfolio_summary')
-    op.execute('DROP VIEW IF EXISTS v_daily_llm_cost')
+    op.execute("DROP VIEW IF EXISTS v_open_positions")
+    op.execute("DROP VIEW IF EXISTS v_portfolio_summary")
+    op.execute("DROP VIEW IF EXISTS v_daily_llm_cost")
 
     # Drop functions
-    op.execute('DROP FUNCTION IF EXISTS get_circuit_breaker_status()')
-    op.execute('DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE')
+    op.execute("DROP FUNCTION IF EXISTS get_circuit_breaker_status()")
+    op.execute("DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE")
 
     # Drop tables (in reverse order of dependencies)
-    op.drop_table('position_reconciliation')
-    op.drop_table('circuit_breaker_state')
-    op.drop_table('audit_log')
-    op.drop_table('system_config')
-    op.drop_table('llm_requests')
-    op.drop_table('risk_events')
-    op.drop_table('daily_performance')
-    op.drop_table('market_data')
-    op.drop_table('orders')
-    op.drop_table('trading_signals')
-    op.drop_table('positions')
+    op.drop_table("position_reconciliation")
+    op.drop_table("circuit_breaker_state")
+    op.drop_table("audit_log")
+    op.drop_table("system_config")
+    op.drop_table("llm_requests")
+    op.drop_table("risk_events")
+    op.drop_table("daily_performance")
+    op.drop_table("market_data")
+    op.drop_table("orders")
+    op.drop_table("trading_signals")
+    op.drop_table("positions")

@@ -9,8 +9,8 @@ Date: 2025-10-28
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock
+from datetime import datetime
+from unittest.mock import AsyncMock
 
 from workspace.features.trading_loop.scheduler import (
     TradingScheduler,
@@ -383,6 +383,7 @@ async def test_scheduler_long_cycle_duration():
 @pytest.mark.asyncio
 async def test_scheduler_graceful_shutdown_timeout():
     """Test scheduler force-stops on graceful shutdown timeout"""
+
     # Create callback that never completes
     async def blocking_callback():
         await asyncio.sleep(100)

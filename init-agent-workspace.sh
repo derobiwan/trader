@@ -198,7 +198,7 @@ rules:
       - pytest
       - black
       - pylint
-      
+
   - pattern: "**/*.java"
     stack: "java"
     config: "stacks/java"
@@ -206,7 +206,7 @@ rules:
       - junit
       - maven
       - gradle
-      
+
   - pattern: "**/*.ts"
     stack: "typescript"
     config: "stacks/javascript"
@@ -214,7 +214,7 @@ rules:
       - jest
       - eslint
       - prettier
-      
+
   - pattern: "**/*.js"
     stack: "javascript"
     config: "stacks/javascript"
@@ -228,7 +228,7 @@ features:
   example:
     primary_stack: "python"
     secondary: ["typescript"]
-    
+
 defaults:
   test_coverage_threshold: 80
   linting_enabled: true

@@ -10,21 +10,22 @@ Date: 2025-10-27
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from enum import Enum
 from pydantic import BaseModel, Field, validator
 
 
 class Timeframe(str, Enum):
     """Supported timeframes for OHLCV data"""
-    M1 = "1m"   # 1 minute
-    M3 = "3m"   # 3 minutes (our trading interval)
-    M5 = "5m"   # 5 minutes
-    M15 = "15m" # 15 minutes
-    M30 = "30m" # 30 minutes
-    H1 = "1h"   # 1 hour
-    H4 = "4h"   # 4 hours
-    D1 = "1d"   # 1 day
+
+    M1 = "1m"  # 1 minute
+    M3 = "3m"  # 3 minutes (our trading interval)
+    M5 = "5m"  # 5 minutes
+    M15 = "15m"  # 15 minutes
+    M30 = "30m"  # 30 minutes
+    H1 = "1h"  # 1 hour
+    H4 = "4h"  # 4 hours
+    D1 = "1d"  # 1 day
 
 
 class OHLCV(BaseModel):
@@ -57,10 +58,7 @@ class OHLCV(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
     @property
     def price_change(self) -> Decimal:
@@ -134,10 +132,7 @@ class Ticker(BaseModel):
     change_24h_pct: Decimal = Field(..., decimal_places=4)
 
     class Config:
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
     @property
     def spread(self) -> Decimal:
@@ -181,10 +176,7 @@ class RSI(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
     @property
     def is_overbought(self) -> bool:
@@ -235,10 +227,7 @@ class MACD(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
     @property
     def is_bullish_crossover(self) -> bool:
@@ -282,10 +271,7 @@ class EMA(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
 
 class BollingerBands(BaseModel):
@@ -316,16 +302,13 @@ class BollingerBands(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
-    @validator('bandwidth', always=True)
+    @validator("bandwidth", always=True)
     def calculate_bandwidth(cls, v, values):
         """Calculate bandwidth if not provided"""
-        if 'upper_band' in values and 'lower_band' in values:
-            return values['upper_band'] - values['lower_band']
+        if "upper_band" in values and "lower_band" in values:
+            return values["upper_band"] - values["lower_band"]
         return v
 
     def get_position_relative_to_bands(self, current_price: Decimal) -> str:
@@ -386,21 +369,20 @@ class MarketDataSnapshot(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
     @property
     def has_all_indicators(self) -> bool:
         """Check if all core indicators are present"""
-        return all([
-            self.rsi is not None,
-            self.macd is not None,
-            self.ema_fast is not None,
-            self.ema_slow is not None,
-            self.bollinger is not None,
-        ])
+        return all(
+            [
+                self.rsi is not None,
+                self.macd is not None,
+                self.ema_fast is not None,
+                self.ema_slow is not None,
+                self.bollinger is not None,
+            ]
+        )
 
     def to_llm_prompt_data(self) -> Dict[str, Any]:
         """
@@ -420,7 +402,7 @@ class MarketDataSnapshot(BaseModel):
                 "low": str(self.ohlcv.low),
                 "close": str(self.ohlcv.close),
                 "is_bullish": self.ohlcv.is_bullish,
-            }
+            },
         }
 
         if self.rsi:
@@ -436,11 +418,15 @@ class MarketDataSnapshot(BaseModel):
             }
 
         if self.ema_fast and self.ema_slow:
-            data["ema_cross"] = "bullish" if self.ema_fast.value > self.ema_slow.value else "bearish"
+            data["ema_cross"] = (
+                "bullish" if self.ema_fast.value > self.ema_slow.value else "bearish"
+            )
 
         if self.bollinger:
             data["bollinger"] = {
-                "position": self.bollinger.get_position_relative_to_bands(self.ticker.last),
+                "position": self.bollinger.get_position_relative_to_bands(
+                    self.ticker.last
+                ),
                 "is_squeeze": self.bollinger.is_squeeze,
             }
 
@@ -464,9 +450,7 @@ class WebSocketMessage(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 # Export all models

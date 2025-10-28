@@ -204,9 +204,9 @@ const userSchema = {
   properties: {
     id: { type: 'string', format: 'uuid' },
     email: { type: 'string', format: 'email' },
-    username: { 
-      type: 'string', 
-      minLength: 3, 
+    username: {
+      type: 'string',
+      minLength: 3,
       maxLength: 20,
       pattern: '^[a-zA-Z0-9_]+$'
     },
@@ -248,7 +248,7 @@ describe('UserService', () => {
 
   it('should return user by id', async () => {
     const user = await userService.getById('123');
-    
+
     assert.equal(user.id, '123');
     assert.equal(mockRepo.findById.mock.calls.length, 1);
   });
@@ -280,14 +280,14 @@ export async function parseHugeJSON(jsonString) {
 // Use setImmediate for CPU-intensive loops
 async function processLargeArray(items) {
   const results = [];
-  
+
   for (let i = 0; i < items.length; i++) {
     if (i % 1000 === 0) {
       await new Promise(resolve => setImmediate(resolve));
     }
     results.push(await processItem(items[i]));
   }
-  
+
   return results;
 }
 ```
@@ -378,7 +378,7 @@ import pino from 'pino';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
-  transport: process.env.NODE_ENV === 'development' 
+  transport: process.env.NODE_ENV === 'development'
     ? { target: 'pino-pretty' }
     : undefined,
   serializers: {
@@ -432,7 +432,7 @@ export class NotFoundError extends AppError {
 // Fastify error handler
 app.setErrorHandler((error, request, reply) => {
   const logger = request.log;
-  
+
   if (error.isOperational) {
     logger.warn({ err: error }, 'Operational error');
     reply.status(error.statusCode).send({

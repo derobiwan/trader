@@ -11,7 +11,6 @@ Date: 2025-10-27
 import logging
 from decimal import Decimal
 from typing import List, Optional
-from datetime import datetime
 
 from .models import (
     OHLCV,
@@ -19,7 +18,6 @@ from .models import (
     MACD,
     EMA,
     BollingerBands,
-    Timeframe,
 )
 
 
@@ -70,7 +68,9 @@ class IndicatorCalculator:
             ```
         """
         if len(ohlcv_data) < period + 1:
-            logger.warning(f"Insufficient data for RSI calculation: {len(ohlcv_data)} < {period + 1}")
+            logger.warning(
+                f"Insufficient data for RSI calculation: {len(ohlcv_data)} < {period + 1}"
+            )
             return None
 
         try:
@@ -90,8 +90,12 @@ class IndicatorCalculator:
 
             # Calculate RSI for subsequent periods (using smoothed averages)
             for i in range(period, len(gains)):
-                avg_gain = ((avg_gain * Decimal(str(period - 1))) + gains[i]) / Decimal(str(period))
-                avg_loss = ((avg_loss * Decimal(str(period - 1))) + losses[i]) / Decimal(str(period))
+                avg_gain = ((avg_gain * Decimal(str(period - 1))) + gains[i]) / Decimal(
+                    str(period)
+                )
+                avg_loss = (
+                    (avg_loss * Decimal(str(period - 1))) + losses[i]
+                ) / Decimal(str(period))
 
             # Calculate RS and RSI
             if avg_loss == 0:
@@ -144,12 +148,16 @@ class IndicatorCalculator:
             ```
         """
         if len(ohlcv_data) < period:
-            logger.warning(f"Insufficient data for EMA calculation: {len(ohlcv_data)} < {period}")
+            logger.warning(
+                f"Insufficient data for EMA calculation: {len(ohlcv_data)} < {period}"
+            )
             return None
 
         try:
             # Calculate SMA for initial EMA value
-            sma = sum(candle.close for candle in ohlcv_data[:period]) / Decimal(str(period))
+            sma = sum(candle.close for candle in ohlcv_data[:period]) / Decimal(
+                str(period)
+            )
             ema = sma
 
             # Calculate multiplier
@@ -207,7 +215,9 @@ class IndicatorCalculator:
         """
         min_data_points = slow_period + signal_period
         if len(ohlcv_data) < min_data_points:
-            logger.warning(f"Insufficient data for MACD calculation: {len(ohlcv_data)} < {min_data_points}")
+            logger.warning(
+                f"Insufficient data for MACD calculation: {len(ohlcv_data)} < {min_data_points}"
+            )
             return None
 
         try:
@@ -224,7 +234,7 @@ class IndicatorCalculator:
             # Calculate MACD line history for signal line calculation
             macd_values = []
             for i in range(slow_period, len(ohlcv_data)):
-                subset = ohlcv_data[:i + 1]
+                subset = ohlcv_data[: i + 1]
                 fast = IndicatorCalculator.calculate_ema(subset, fast_period)
                 slow = IndicatorCalculator.calculate_ema(subset, slow_period)
                 if fast and slow:
@@ -294,7 +304,9 @@ class IndicatorCalculator:
             ```
         """
         if len(ohlcv_data) < period:
-            logger.warning(f"Insufficient data for Bollinger Bands: {len(ohlcv_data)} < {period}")
+            logger.warning(
+                f"Insufficient data for Bollinger Bands: {len(ohlcv_data)} < {period}"
+            )
             return None
 
         try:
@@ -305,7 +317,9 @@ class IndicatorCalculator:
             middle_band = sum(closes) / Decimal(str(period))
 
             # Calculate standard deviation
-            variance = sum((close - middle_band) ** 2 for close in closes) / Decimal(str(period))
+            variance = sum((close - middle_band) ** 2 for close in closes) / Decimal(
+                str(period)
+            )
             std = variance.sqrt()
 
             # Calculate upper and lower bands
@@ -372,13 +386,13 @@ class IndicatorCalculator:
             ```
         """
         return {
-            'rsi': IndicatorCalculator.calculate_rsi(ohlcv_data, rsi_period),
-            'macd': IndicatorCalculator.calculate_macd(
+            "rsi": IndicatorCalculator.calculate_rsi(ohlcv_data, rsi_period),
+            "macd": IndicatorCalculator.calculate_macd(
                 ohlcv_data, macd_fast, macd_slow, macd_signal
             ),
-            'ema_fast': IndicatorCalculator.calculate_ema(ohlcv_data, ema_fast_period),
-            'ema_slow': IndicatorCalculator.calculate_ema(ohlcv_data, ema_slow_period),
-            'bollinger': IndicatorCalculator.calculate_bollinger_bands(
+            "ema_fast": IndicatorCalculator.calculate_ema(ohlcv_data, ema_fast_period),
+            "ema_slow": IndicatorCalculator.calculate_ema(ohlcv_data, ema_slow_period),
+            "bollinger": IndicatorCalculator.calculate_bollinger_bands(
                 ohlcv_data, bb_period, bb_std_dev
             ),
         }

@@ -138,18 +138,24 @@ class MetricsService:
 
         # Trim to max samples
         if len(self._latency_samples) > self._max_latency_samples:
-            self._latency_samples = self._latency_samples[-self._max_latency_samples:]
+            self._latency_samples = self._latency_samples[-self._max_latency_samples :]
 
         # Update metrics
         if self._latency_samples:
-            self.metrics.execution_latency_avg_ms = Decimal(str(statistics.mean(self._latency_samples)))
+            self.metrics.execution_latency_avg_ms = Decimal(
+                str(statistics.mean(self._latency_samples))
+            )
 
             sorted_samples = sorted(self._latency_samples)
             p95_index = int(len(sorted_samples) * 0.95)
             p99_index = int(len(sorted_samples) * 0.99)
 
-            self.metrics.execution_latency_p95_ms = Decimal(str(sorted_samples[p95_index]))
-            self.metrics.execution_latency_p99_ms = Decimal(str(sorted_samples[p99_index]))
+            self.metrics.execution_latency_p95_ms = Decimal(
+                str(sorted_samples[p95_index])
+            )
+            self.metrics.execution_latency_p99_ms = Decimal(
+                str(sorted_samples[p99_index])
+            )
 
     # ========================================================================
     # LLM Metrics
@@ -258,7 +264,7 @@ class MetricsService:
 
         # Trim to max snapshots
         if len(self._snapshots) > self._max_snapshots:
-            self._snapshots = self._snapshots[-self._max_snapshots:]
+            self._snapshots = self._snapshots[-self._max_snapshots :]
 
         return snapshot
 

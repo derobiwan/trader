@@ -10,7 +10,7 @@ Date: 2025-10-28
 
 import logging
 from decimal import Decimal
-from typing import Dict, List, Optional, Any
+from typing import List, Optional, Any
 
 from .models import (
     RiskValidation,
@@ -186,9 +186,7 @@ class RiskManager:
     ):
         """Check if circuit breaker is active"""
         if circuit_status.is_tripped():
-            validation.add_rejection(
-                "Circuit breaker is TRIPPED - all trading halted"
-            )
+            validation.add_rejection("Circuit breaker is TRIPPED - all trading halted")
             validation.checks.append(
                 RiskCheckResult(
                     check_name="Circuit Breaker",

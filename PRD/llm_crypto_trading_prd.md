@@ -22,7 +22,7 @@ Build a Python-based trading system that:
 ```yaml
 research_areas:
   market_analysis:
-    - competitors: 
+    - competitors:
       - TradingView automation systems
       - 3Commas AI trading bots
       - Cryptohopper strategy marketplace
@@ -37,7 +37,7 @@ research_areas:
       - Multi-timeframe technical analysis
       - Risk-adjusted position sizing
       - Real-time market data processing
-  
+
   technical_research:
     - existing_solutions:
       - ccxt library for exchange integration
@@ -54,7 +54,7 @@ research_areas:
       - Circuit breaker for API failures
       - Strategy pattern for LLM providers
       - Observer pattern for position monitoring
-  
+
   internal_context:
     - current_system:
       - Manual LLM invocation process
@@ -175,14 +175,14 @@ graph TB
         UI[Web Dashboard]
         WS[WebSocket Client]
     end
-    
+
     subgraph "Application Layer"
         API[FastAPI Server]
         SCH[Scheduler - Celery]
         DE[Decision Engine]
         TE[Trade Executor]
     end
-    
+
     subgraph "Data Layer"
         MDF[Market Data Fetcher]
         PP[Prompt Processor]
@@ -190,13 +190,13 @@ graph TB
         CACHE[(Redis Cache)]
         DB[(PostgreSQL)]
     end
-    
+
     subgraph "External Services"
         LLM[OpenRouter/LLM APIs]
         EX[Exchange APIs]
         MD[Market Data Feeds]
     end
-    
+
     UI --> API
     WS --> API
     API --> DE
@@ -249,7 +249,7 @@ sequenceDiagram
     participant TE as Trade Executor
     participant EX as Exchange
     participant DB as Database
-    
+
     S->>MD: Trigger Data Fetch
     MD->>EX: Get Latest Prices
     EX-->>MD: Price Data
@@ -323,7 +323,7 @@ graph LR
     B --> C[LLM Integration<br/>Week 5-6]
     C --> D[Risk & Monitoring<br/>Week 7-8]
     D --> E[Testing & Deploy<br/>Week 9-10]
-    
+
     A -.- F[Database Schema<br/>FastAPI Setup<br/>Exchange Connection<br/>Basic Data Fetcher]
     B -.- G[Position Manager<br/>Order Execution<br/>Signal Processing<br/>State Management]
     C -.- H[OpenRouter Integration<br/>Prompt Engineering<br/>Response Parsing<br/>Model Switching]
@@ -374,36 +374,36 @@ challenges:
   technical_risks:
     - risk: "LLM response inconsistency"
       mitigation: "Implement strict JSON schema validation and retry logic"
-    
+
     - risk: "Exchange API rate limits"
       mitigation: "Use WebSocket for data, batch operations, implement backoff"
-    
+
     - risk: "Network latency affecting 3-minute cycles"
       mitigation: "Async processing, parallel API calls, timeout management"
-    
+
     - risk: "Database performance at high frequency"
       mitigation: "Time-series database for market data, indexing strategy"
-  
+
   business_risks:
     - risk: "LLM costs exceeding budget"
       mitigation: "Token usage monitoring, prompt optimization, model selection"
-    
+
     - risk: "Regulatory compliance"
       mitigation: "Audit logging, position limits, user agreements"
-    
+
     - risk: "Capital loss from bad decisions"
       mitigation: "Paper trading mode, position limits, daily loss limits"
-  
+
   edge_cases:
     - scenario: "Market flash crash"
       handling: "Circuit breaker triggers, all positions to safety mode"
-    
+
     - scenario: "LLM returns buy and sell for same asset"
       handling: "Precedence rules, conflict resolution logic"
-    
+
     - scenario: "Exchange maintenance during trading"
       handling: "Fallback to other exchanges, pause trading, alert operator"
-    
+
     - scenario: "Partial order fills"
       handling: "Position reconciliation, adjust or cancel remaining"
 ```
@@ -468,29 +468,29 @@ backend:
   task_queue: Celery with Redis
   database: PostgreSQL + TimescaleDB
   cache: Redis
-  
+
 market_data:
   library: ccxt
   processing: pandas, numpy
   indicators: ta-lib
-  
+
 llm_integration:
   primary: OpenRouter API
   fallback: Direct OpenAI/Anthropic APIs
   prompt_management: Jinja2 templates
-  
+
 frontend:
   framework: React with TypeScript
   state: Redux Toolkit
   charts: TradingView Lightweight Charts
   websocket: socket.io-client
-  
+
 infrastructure:
   container: Docker
   orchestration: Docker Compose (MVP)
   monitoring: Prometheus + Grafana
   logging: ELK stack (optional)
-  
+
 testing:
   unit: pytest
   integration: pytest + testcontainers
@@ -570,7 +570,7 @@ testing:
 
 ```python
 prompt_template = """
-You are an automated cryptocurrency trading agent managing a perpetual futures portfolio. 
+You are an automated cryptocurrency trading agent managing a perpetual futures portfolio.
 Your role is to analyze market data and make trading decisions every 3 minutes.
 
 CURRENT MARKET STATE FOR ALL COINS

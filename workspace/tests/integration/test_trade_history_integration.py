@@ -16,8 +16,6 @@ from unittest.mock import AsyncMock, MagicMock
 from workspace.features.trade_executor import TradeExecutor
 from workspace.features.trade_executor.models import (
     OrderSide,
-    OrderStatus,
-    OrderType,
 )
 from workspace.features.trading_loop import TradingSignal, TradingDecision
 from workspace.features.trade_history import (
@@ -40,18 +38,22 @@ class TestTradeHistoryIntegration:
     async def mock_exchange(self):
         """Create a mocked exchange"""
         exchange = AsyncMock()
-        exchange.fetch_ticker = AsyncMock(return_value={
-            'last': 50000.00,
-            'bid': 49990.00,
-            'ask': 50010.00,
-        })
-        exchange.create_order = AsyncMock(return_value={
-            'id': 'order_123',
-            'status': 'closed',
-            'filled': 0.01,
-            'average': 50000.00,
-            'fee': {'cost': 5.00},
-        })
+        exchange.fetch_ticker = AsyncMock(
+            return_value={
+                "last": 50000.00,
+                "bid": 49990.00,
+                "ask": 50010.00,
+            }
+        )
+        exchange.create_order = AsyncMock(
+            return_value={
+                "id": "order_123",
+                "status": "closed",
+                "filled": 0.01,
+                "average": 50000.00,
+                "fee": {"cost": 5.00},
+            }
+        )
         return exchange
 
     @pytest_asyncio.fixture
@@ -74,11 +76,13 @@ class TestTradeHistoryIntegration:
         return position_service
 
     @pytest_asyncio.fixture
-    async def executor(self, mock_exchange, mock_position_service, trade_history_service):
+    async def executor(
+        self, mock_exchange, mock_position_service, trade_history_service
+    ):
         """Create TradeExecutor with real trade history service"""
         return TradeExecutor(
-            api_key='test_key',
-            api_secret='test_secret',
+            api_key="test_key",
+            api_secret="test_secret",
             testnet=True,
             exchange=mock_exchange,
             position_service=mock_position_service,
@@ -129,7 +133,7 @@ class TestTradeHistoryIntegration:
 
         # Verify trade was logged to history
         stats = trade_history_service.get_stats()
-        assert stats['total_trades_logged'] == 1
+        assert stats["total_trades_logged"] == 1
 
         # Get the logged trade
         trades = await trade_history_service.get_trades(limit=10)
@@ -168,7 +172,7 @@ class TestTradeHistoryIntegration:
 
         # Verify trade was logged to history
         stats = trade_history_service.get_stats()
-        assert stats['total_trades_logged'] == 1
+        assert stats["total_trades_logged"] == 1
 
         # Get the logged trade
         trades = await trade_history_service.get_trades(limit=10)
@@ -212,7 +216,9 @@ class TestTradeHistoryIntegration:
         )
 
         # Calculate statistics
-        start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = datetime.utcnow().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         end_date = datetime.utcnow()
 
         stats = await trade_history_service.calculate_statistics(

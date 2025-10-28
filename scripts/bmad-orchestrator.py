@@ -7,7 +7,6 @@ Coordinates BMAD planning → PRPs development workflow
 import argparse
 import sys
 from pathlib import Path
-from datetime import datetime
 
 # Add parent directory to path for imports
 BASE_DIR = Path(__file__).parent.parent
@@ -55,9 +54,15 @@ class BMADOrchestrator:
         print()
         print("📋 Next Steps:")
         print("1. If PRD not imported: python scripts/bmad-integration.py import-prd")
-        print("2. If Architecture not imported: python scripts/bmad-integration.py import-architecture")
-        print("3. If Stories not synced: python scripts/bmad-integration.py sync-stories")
-        print("4. Start development: python scripts/story-dev.py work-on-story STORY-001")
+        print(
+            "2. If Architecture not imported: python scripts/bmad-integration.py import-architecture"
+        )
+        print(
+            "3. If Stories not synced: python scripts/bmad-integration.py sync-stories"
+        )
+        print(
+            "4. Start development: python scripts/story-dev.py work-on-story STORY-001"
+        )
 
     def _run_standard_workflow(self, project_name: str):
         """Execute standard BMAD-PRPs workflow"""
@@ -270,7 +275,7 @@ python scripts/story-dev.py work-on-story STORY-001
             "docs/qa/assessments",
             "docs/qa/gates",
             "PRPs/.cache/story-views",
-            ".agent-system/registry"
+            ".agent-system/registry",
         ]
 
         for dir_path in required_dirs:
@@ -284,7 +289,7 @@ python scripts/story-dev.py work-on-story STORY-001
         registry_files = [
             ".agent-system/registry/stories.json",
             ".agent-system/registry/epics.json",
-            ".agent-system/sync/bmad-sync.json"
+            ".agent-system/sync/bmad-sync.json",
         ]
 
         for file_path in registry_files:
@@ -295,10 +300,7 @@ python scripts/story-dev.py work-on-story STORY-001
                 print(f"✅ {file_path}")
 
         # Check templates
-        template_files = [
-            "PRPs/templates/bmad_story.md",
-            "PRPs/templates/bmad_epic.md"
-        ]
+        template_files = ["PRPs/templates/bmad_story.md", "PRPs/templates/bmad_epic.md"]
 
         for file_path in template_files:
             full_path = self.base_dir / file_path
@@ -311,7 +313,7 @@ python scripts/story-dev.py work-on-story STORY-001
         script_files = [
             "scripts/bmad-integration.py",
             "scripts/bmad-orchestrator.py",
-            "scripts/story-dev.py"
+            "scripts/story-dev.py",
         ]
 
         for file_path in script_files:
@@ -340,7 +342,7 @@ python scripts/story-dev.py work-on-story STORY-001
 
 def main():
     parser = argparse.ArgumentParser(
-        description='BMAD-PRPs Orchestrator',
+        description="BMAD-PRPs Orchestrator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -364,32 +366,40 @@ Examples:
 
   # Check integration setup
   python scripts/bmad-orchestrator.py check-integration
-        """
+        """,
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Start project
-    start_parser = subparsers.add_parser('start-project', help='Start new BMAD-PRPs project')
-    start_parser.add_argument('project_name', help='Project name')
-    start_parser.add_argument('--workflow', choices=['standard', 'quick'], default='standard',
-                            help='Workflow type (default: standard)')
+    start_parser = subparsers.add_parser(
+        "start-project", help="Start new BMAD-PRPs project"
+    )
+    start_parser.add_argument("project_name", help="Project name")
+    start_parser.add_argument(
+        "--workflow",
+        choices=["standard", "quick"],
+        default="standard",
+        help="Workflow type (default: standard)",
+    )
 
     # Continue project
-    subparsers.add_parser('continue-project', help='Continue existing project')
+    subparsers.add_parser("continue-project", help="Continue existing project")
 
     # Import planning
-    import_parser = subparsers.add_parser('import-planning', help='Import BMAD planning to PRPs')
-    import_parser.add_argument('--project', required=True, help='Project name')
+    import_parser = subparsers.add_parser(
+        "import-planning", help="Import BMAD planning to PRPs"
+    )
+    import_parser.add_argument("--project", required=True, help="Project name")
 
     # Generate stories
-    subparsers.add_parser('generate-stories', help='Guide for story generation')
+    subparsers.add_parser("generate-stories", help="Guide for story generation")
 
     # Show workflow
-    subparsers.add_parser('show-workflow', help='Show workflow diagram')
+    subparsers.add_parser("show-workflow", help="Show workflow diagram")
 
     # Check integration
-    subparsers.add_parser('check-integration', help='Check integration setup')
+    subparsers.add_parser("check-integration", help="Check integration setup")
 
     args = parser.parse_args()
 
@@ -399,20 +409,20 @@ Examples:
 
     orchestrator = BMADOrchestrator()
 
-    if args.command == 'start-project':
+    if args.command == "start-project":
         success = orchestrator.start_project(args.project_name, args.workflow)
-    elif args.command == 'continue-project':
+    elif args.command == "continue-project":
         orchestrator.continue_project()
         success = True
-    elif args.command == 'import-planning':
+    elif args.command == "import-planning":
         success = orchestrator.import_planning(args.project)
-    elif args.command == 'generate-stories':
+    elif args.command == "generate-stories":
         orchestrator.generate_stories()
         success = True
-    elif args.command == 'show-workflow':
+    elif args.command == "show-workflow":
         orchestrator.show_workflow_diagram()
         success = True
-    elif args.command == 'check-integration':
+    elif args.command == "check-integration":
         success = orchestrator.check_integration()
     else:
         parser.print_help()

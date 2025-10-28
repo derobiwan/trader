@@ -18,7 +18,7 @@ User Story: $ARGUMENTS
      - POST /api/v1/{resources} - Create new
      - PUT /api/v1/{resources}/{id} - Update existing
      - DELETE /api/v1/{resources}/{id} - Delete
-   
+
    DTOs:
      Request: {field validations}
      Response: {field types}
@@ -37,7 +37,7 @@ User Story: $ARGUMENTS
    ├── exception/
    └── mapper/
    ```
-   
+
    Implementation order:
    1. Entity with JPA annotations
    2. Repository interface
@@ -59,7 +59,7 @@ User Story: $ARGUMENTS
    ├── __tests__/    # Component tests
    └── index.ts      # Public exports
    ```
-   
+
    Implementation order:
    1. Zod schemas matching backend DTOs
    2. TypeScript types
@@ -81,10 +81,10 @@ User Story: $ARGUMENTS
    ```bash
    # Backend (in Java project)
    ./gradlew clean build test
-   
+
    # Frontend (in React project)
    npm run type-check && npm run lint && npm run test:coverage
-   
+
    # Integration (manual or e2e)
    - Start backend: ./gradlew bootRun
    - Start frontend: npm run dev

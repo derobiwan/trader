@@ -62,14 +62,14 @@ class VolatilityBreakoutStrategy(BaseStrategy):
     """
 
     DEFAULT_CONFIG = {
-        'squeeze_bandwidth_threshold': 0.02,  # 2%
-        'breakout_threshold_pct': 0.5,  # 0.5%
-        'use_volume_confirmation': True,
-        'volume_multiplier': 1.5,
-        'use_rsi': True,
-        'position_size_pct': 0.18,
-        'stop_loss_pct': 0.03,
-        'take_profit_pct': 0.08,
+        "squeeze_bandwidth_threshold": 0.02,  # 2%
+        "breakout_threshold_pct": 0.5,  # 0.5%
+        "use_volume_confirmation": True,
+        "volume_multiplier": 1.5,
+        "use_rsi": True,
+        "position_size_pct": 0.18,
+        "stop_loss_pct": 0.03,
+        "take_profit_pct": 0.08,
     }
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -87,14 +87,18 @@ class VolatilityBreakoutStrategy(BaseStrategy):
         super().__init__(merged_config)
 
         # Extract config values
-        self.squeeze_threshold = Decimal(str(self.config['squeeze_bandwidth_threshold']))
-        self.breakout_threshold_pct = Decimal(str(self.config['breakout_threshold_pct']))
-        self.use_volume_confirmation = self.config['use_volume_confirmation']
-        self.volume_multiplier = Decimal(str(self.config['volume_multiplier']))
-        self.use_rsi = self.config['use_rsi']
-        self.position_size_pct = Decimal(str(self.config['position_size_pct']))
-        self.stop_loss_pct = Decimal(str(self.config['stop_loss_pct']))
-        self.take_profit_pct = Decimal(str(self.config['take_profit_pct']))
+        self.squeeze_threshold = Decimal(
+            str(self.config["squeeze_bandwidth_threshold"])
+        )
+        self.breakout_threshold_pct = Decimal(
+            str(self.config["breakout_threshold_pct"])
+        )
+        self.use_volume_confirmation = self.config["use_volume_confirmation"]
+        self.volume_multiplier = Decimal(str(self.config["volume_multiplier"]))
+        self.use_rsi = self.config["use_rsi"]
+        self.position_size_pct = Decimal(str(self.config["position_size_pct"]))
+        self.stop_loss_pct = Decimal(str(self.config["stop_loss_pct"]))
+        self.take_profit_pct = Decimal(str(self.config["take_profit_pct"]))
 
     def get_name(self) -> str:
         """Get strategy name"""
@@ -120,7 +124,9 @@ class VolatilityBreakoutStrategy(BaseStrategy):
 
         # Check if Bollinger Bands are available
         if not snapshot.bollinger:
-            return self._generate_hold_signal(snapshot.symbol, "Bollinger Bands not available")
+            return self._generate_hold_signal(
+                snapshot.symbol, "Bollinger Bands not available"
+            )
 
         bb = snapshot.bollinger
         current_price = snapshot.ticker.last
@@ -131,12 +137,16 @@ class VolatilityBreakoutStrategy(BaseStrategy):
         if not is_squeeze:
             return self._generate_hold_signal(
                 snapshot.symbol,
-                f"No squeeze detected (bandwidth: {bb.bandwidth:.4f}, threshold: {self.squeeze_threshold})"
+                f"No squeeze detected (bandwidth: {bb.bandwidth:.4f}, threshold: {self.squeeze_threshold})",
             )
 
         # Check for breakout
-        upper_breakout_level = bb.upper_band * (Decimal("1") + self.breakout_threshold_pct / Decimal("100"))
-        lower_breakout_level = bb.lower_band * (Decimal("1") - self.breakout_threshold_pct / Decimal("100"))
+        upper_breakout_level = bb.upper_band * (
+            Decimal("1") + self.breakout_threshold_pct / Decimal("100")
+        )
+        lower_breakout_level = bb.lower_band * (
+            Decimal("1") - self.breakout_threshold_pct / Decimal("100")
+        )
 
         if current_price >= upper_breakout_level:
             # Upper breakout - BUY
@@ -144,7 +154,7 @@ class VolatilityBreakoutStrategy(BaseStrategy):
             confidence = self._calculate_buy_confidence(snapshot)
             reasoning_parts = [
                 f"Upper band breakout (price ${current_price:,.2f} > ${upper_breakout_level:,.2f})",
-                f"After squeeze (bandwidth: {bb.bandwidth:.4f})"
+                f"After squeeze (bandwidth: {bb.bandwidth:.4f})",
             ]
 
         elif current_price <= lower_breakout_level:
@@ -153,14 +163,14 @@ class VolatilityBreakoutStrategy(BaseStrategy):
             confidence = self._calculate_sell_confidence(snapshot)
             reasoning_parts = [
                 f"Lower band breakout (price ${current_price:,.2f} < ${lower_breakout_level:,.2f})",
-                f"After squeeze (bandwidth: {bb.bandwidth:.4f})"
+                f"After squeeze (bandwidth: {bb.bandwidth:.4f})",
             ]
 
         else:
             return self._generate_hold_signal(
                 snapshot.symbol,
                 f"Squeeze detected but no breakout yet (price: ${current_price:,.2f}, "
-                f"upper: ${bb.upper_band:,.2f}, lower: ${bb.lower_band:,.2f})"
+                f"upper: ${bb.upper_band:,.2f}, lower: ${bb.lower_band:,.2f})",
             )
 
         # Check volume confirmation
@@ -169,7 +179,7 @@ class VolatilityBreakoutStrategy(BaseStrategy):
             if not volume_conf:
                 return self._generate_hold_signal(
                     snapshot.symbol,
-                    "Breakout detected but insufficient volume confirmation"
+                    "Breakout detected but insufficient volume confirmation",
                 )
             reasoning_parts.append(volume_conf)
             confidence = min(confidence + Decimal("0.1"), Decimal("1.0"))
@@ -198,13 +208,13 @@ class VolatilityBreakoutStrategy(BaseStrategy):
             reasoning=reasoning,
             strategy_name=self.get_name(),
             metadata={
-                'price': float(current_price),
-                'bb_upper': float(bb.upper_band),
-                'bb_middle': float(bb.middle_band),
-                'bb_lower': float(bb.lower_band),
-                'bb_bandwidth': float(bb.bandwidth),
-                'squeeze': is_squeeze,
-            }
+                "price": float(current_price),
+                "bb_upper": float(bb.upper_band),
+                "bb_middle": float(bb.middle_band),
+                "bb_lower": float(bb.lower_band),
+                "bb_bandwidth": float(bb.bandwidth),
+                "squeeze": is_squeeze,
+            },
         )
 
         self._record_signal(signal)
@@ -217,7 +227,9 @@ class VolatilityBreakoutStrategy(BaseStrategy):
         # Base confidence from squeeze strength
         # Tighter squeeze = higher confidence
         # bandwidth 0.02 -> 0.7, 0.015 -> 0.75, 0.01 -> 0.8
-        squeeze_strength = (self.squeeze_threshold - bb.bandwidth) / self.squeeze_threshold
+        squeeze_strength = (
+            self.squeeze_threshold - bb.bandwidth
+        ) / self.squeeze_threshold
         confidence = Decimal("0.65") + squeeze_strength * Decimal("0.2")
         confidence = max(Decimal("0.65"), min(confidence, Decimal("0.9")))
 
@@ -228,7 +240,9 @@ class VolatilityBreakoutStrategy(BaseStrategy):
         # Same logic as buy (symmetric)
         bb = snapshot.bollinger
 
-        squeeze_strength = (self.squeeze_threshold - bb.bandwidth) / self.squeeze_threshold
+        squeeze_strength = (
+            self.squeeze_threshold - bb.bandwidth
+        ) / self.squeeze_threshold
         confidence = Decimal("0.65") + squeeze_strength * Decimal("0.2")
         confidence = max(Decimal("0.65"), min(confidence, Decimal("0.9")))
 

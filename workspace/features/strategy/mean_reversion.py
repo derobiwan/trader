@@ -58,13 +58,13 @@ class MeanReversionStrategy(BaseStrategy):
     """
 
     DEFAULT_CONFIG = {
-        'rsi_oversold': 30,
-        'rsi_overbought': 70,
-        'use_bollinger': True,
-        'use_macd': True,
-        'position_size_pct': 0.15,
-        'stop_loss_pct': 0.02,
-        'take_profit_pct': 0.04,
+        "rsi_oversold": 30,
+        "rsi_overbought": 70,
+        "use_bollinger": True,
+        "use_macd": True,
+        "position_size_pct": 0.15,
+        "stop_loss_pct": 0.02,
+        "take_profit_pct": 0.04,
     }
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -82,13 +82,13 @@ class MeanReversionStrategy(BaseStrategy):
         super().__init__(merged_config)
 
         # Extract config values
-        self.rsi_oversold = Decimal(str(self.config['rsi_oversold']))
-        self.rsi_overbought = Decimal(str(self.config['rsi_overbought']))
-        self.use_bollinger = self.config['use_bollinger']
-        self.use_macd = self.config['use_macd']
-        self.position_size_pct = Decimal(str(self.config['position_size_pct']))
-        self.stop_loss_pct = Decimal(str(self.config['stop_loss_pct']))
-        self.take_profit_pct = Decimal(str(self.config['take_profit_pct']))
+        self.rsi_oversold = Decimal(str(self.config["rsi_oversold"]))
+        self.rsi_overbought = Decimal(str(self.config["rsi_overbought"]))
+        self.use_bollinger = self.config["use_bollinger"]
+        self.use_macd = self.config["use_macd"]
+        self.position_size_pct = Decimal(str(self.config["position_size_pct"]))
+        self.stop_loss_pct = Decimal(str(self.config["stop_loss_pct"]))
+        self.take_profit_pct = Decimal(str(self.config["take_profit_pct"]))
 
     def get_name(self) -> str:
         """Get strategy name"""
@@ -136,7 +136,7 @@ class MeanReversionStrategy(BaseStrategy):
             # Neutral - HOLD
             return self._generate_hold_signal(
                 snapshot.symbol,
-                f"RSI neutral at {rsi_value:.1f} (not oversold/overbought)"
+                f"RSI neutral at {rsi_value:.1f} (not oversold/overbought)",
             )
 
         # Add Bollinger Band confirmation
@@ -170,9 +170,9 @@ class MeanReversionStrategy(BaseStrategy):
             reasoning=reasoning,
             strategy_name=self.get_name(),
             metadata={
-                'rsi': float(rsi_value),
-                'price': float(current_price),
-            }
+                "rsi": float(rsi_value),
+                "price": float(current_price),
+            },
         )
 
         self._record_signal(signal)
@@ -218,12 +218,16 @@ class MeanReversionStrategy(BaseStrategy):
 
         if decision == TradingDecision.BUY:
             # Confirm if price near or below lower band
-            if current_price <= bb.lower_band * Decimal("1.02"):  # Within 2% of lower band
+            if current_price <= bb.lower_band * Decimal(
+                "1.02"
+            ):  # Within 2% of lower band
                 return "Price near lower Bollinger Band (support)"
 
         elif decision == TradingDecision.SELL:
             # Confirm if price near or above upper band
-            if current_price >= bb.upper_band * Decimal("0.98"):  # Within 2% of upper band
+            if current_price >= bb.upper_band * Decimal(
+                "0.98"
+            ):  # Within 2% of upper band
                 return "Price near upper Bollinger Band (resistance)"
 
         return None

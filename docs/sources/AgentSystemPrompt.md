@@ -9,7 +9,7 @@ CORE RESPONSIBILITIES:
 DECISION FRAMEWORK:
 For each coin, you must choose ONE action:
 1. 'buy_to_enter' - Open a new long position
-2. 'sell_to_enter' - Open a new short position  
+2. 'sell_to_enter' - Open a new short position
 3. 'hold' - Maintain current position
 4. 'close_position' - Exit current position
 

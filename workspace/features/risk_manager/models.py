@@ -16,6 +16,7 @@ from enum import Enum
 
 class ValidationStatus(str, Enum):
     """Risk validation status"""
+
     APPROVED = "approved"
     REJECTED = "rejected"
     WARNING = "warning"
@@ -23,6 +24,7 @@ class ValidationStatus(str, Enum):
 
 class CircuitBreakerState(str, Enum):
     """Circuit breaker operational states"""
+
     ACTIVE = "active"
     TRIPPED = "tripped"
     MANUAL_RESET_REQUIRED = "manual_reset_required"
@@ -31,6 +33,7 @@ class CircuitBreakerState(str, Enum):
 
 class ProtectionLayer(str, Enum):
     """Stop-loss protection layers"""
+
     EXCHANGE_STOP = "exchange_stop"
     APP_MONITOR = "app_monitor"
     EMERGENCY = "emergency"
@@ -39,6 +42,7 @@ class ProtectionLayer(str, Enum):
 @dataclass
 class RiskCheckResult:
     """Individual risk check result"""
+
     check_name: str
     passed: bool
     message: str
@@ -61,6 +65,7 @@ class RiskValidation:
 
     Contains all pre-trade checks and validation results.
     """
+
     status: ValidationStatus
     approved: bool
     checks: List[RiskCheckResult]
@@ -120,6 +125,7 @@ class Protection:
 
     Tracks all three protection layers for a position.
     """
+
     position_id: str
     symbol: str
     entry_price: Decimal
@@ -155,11 +161,13 @@ class Protection:
 
     def layer_count(self) -> int:
         """Count active protection layers"""
-        return sum([
-            self.exchange_stop_active,
-            self.app_monitor_active,
-            self.emergency_monitor_active,
-        ])
+        return sum(
+            [
+                self.exchange_stop_active,
+                self.app_monitor_active,
+                self.emergency_monitor_active,
+            ]
+        )
 
     def status_summary(self) -> str:
         """Generate protection status summary"""
@@ -184,6 +192,7 @@ class CircuitBreakerStatus:
 
     Tracks daily P&L and circuit breaker state.
     """
+
     state: CircuitBreakerState
     daily_pnl_chf: Decimal
     daily_loss_limit_chf: Decimal = Decimal("-183.89")  # -7% of CHF 2,626.96

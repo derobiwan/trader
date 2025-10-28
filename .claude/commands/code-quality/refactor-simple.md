@@ -15,7 +15,7 @@ Scan for:
 Desired architecture:
 - Vertical slice boundaries
 - Single responsibility
-- Type safety with Pydantic v2 
+- Type safety with Pydantic v2
 
 For each issue found, provide:
 - Location

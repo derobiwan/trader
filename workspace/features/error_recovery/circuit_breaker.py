@@ -12,15 +12,16 @@ import logging
 import time
 from enum import Enum
 from typing import Optional, Callable, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 
 class CircuitState(str, Enum):
     """Circuit breaker states"""
-    CLOSED = "closed"        # Normal operation, requests pass through
-    OPEN = "open"            # Circuit open, requests blocked
+
+    CLOSED = "closed"  # Normal operation, requests pass through
+    OPEN = "open"  # Circuit open, requests blocked
     HALF_OPEN = "half_open"  # Testing if system recovered
 
 
@@ -119,7 +120,9 @@ class CircuitBreaker:
         self._failure_count = 0
         self._success_count = 0
         self.stats["state_changes"] += 1
-        logger.info(f"Circuit Breaker '{self.name}': OPEN -> HALF_OPEN (testing recovery)")
+        logger.info(
+            f"Circuit Breaker '{self.name}': OPEN -> HALF_OPEN (testing recovery)"
+        )
 
     def _transition_to_open(self):
         """Transition to OPEN state"""
@@ -205,7 +208,7 @@ class CircuitBreaker:
 
         try:
             # Execute function
-            if callable(func) and hasattr(func, '__code__'):
+            if callable(func) and hasattr(func, "__code__"):
                 # Sync function
                 result = func(*args, **kwargs)
             else:
@@ -217,7 +220,7 @@ class CircuitBreaker:
 
             return result
 
-        except self.expected_exception as e:
+        except self.expected_exception:
             # Record failure
             self._record_failure()
             raise
@@ -252,6 +255,7 @@ class CircuitBreaker:
 
 class CircuitBreakerOpenError(Exception):
     """Raised when circuit breaker is open"""
+
     pass
 
 

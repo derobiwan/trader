@@ -25,7 +25,7 @@ Environment Variables:
 
 from decimal import Decimal
 from typing import List, Optional
-from pydantic import Field, field_validator, ConfigDict
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,178 +40,116 @@ class Settings(BaseSettings):
     # ==================== Application Settings ====================
     app_name: str = Field(
         default="trading-system",
-        description="Application name for logging and identification"
+        description="Application name for logging and identification",
     )
 
     environment: str = Field(
         default="development",
-        description="Environment: development, staging, production"
+        description="Environment: development, staging, production",
     )
 
     debug: bool = Field(
-        default=True,
-        description="Enable debug mode with verbose logging"
+        default=True, description="Enable debug mode with verbose logging"
     )
 
     log_level: str = Field(
         default="INFO",
-        description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL"
+        description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL",
     )
 
     # ==================== API Settings ====================
-    host: str = Field(
-        default="0.0.0.0",
-        description="API host address"
-    )
+    host: str = Field(default="0.0.0.0", description="API host address")
 
-    port: int = Field(
-        default=8000,
-        ge=1024,
-        le=65535,
-        description="API port number"
-    )
+    port: int = Field(default=8000, ge=1024, le=65535, description="API port number")
 
-    api_version: str = Field(
-        default="v1",
-        description="API version prefix"
-    )
+    api_version: str = Field(default="v1", description="API version prefix")
 
     # ==================== Database Settings ====================
-    db_host: str = Field(
-        default="localhost",
-        description="PostgreSQL host address"
-    )
+    db_host: str = Field(default="localhost", description="PostgreSQL host address")
 
-    db_port: int = Field(
-        default=5432,
-        ge=1,
-        le=65535,
-        description="PostgreSQL port"
-    )
+    db_port: int = Field(default=5432, ge=1, le=65535, description="PostgreSQL port")
 
     db_name: str = Field(
-        default="trading_system",
-        description="PostgreSQL database name"
+        default="trading_system", description="PostgreSQL database name"
     )
 
-    db_user: str = Field(
-        default="postgres",
-        description="PostgreSQL username"
-    )
+    db_user: str = Field(default="postgres", description="PostgreSQL username")
 
-    db_password: str = Field(
-        default="",
-        description="PostgreSQL password"
-    )
+    db_password: str = Field(default="", description="PostgreSQL password")
 
     db_pool_size: int = Field(
-        default=10,
-        ge=1,
-        le=100,
-        description="Database connection pool size"
+        default=10, ge=1, le=100, description="Database connection pool size"
     )
 
     db_max_overflow: int = Field(
-        default=20,
-        ge=0,
-        le=100,
-        description="Database connection pool overflow"
+        default=20, ge=0, le=100, description="Database connection pool overflow"
     )
 
     # ==================== Redis Settings ====================
-    redis_host: str = Field(
-        default="localhost",
-        description="Redis host address"
-    )
+    redis_host: str = Field(default="localhost", description="Redis host address")
 
-    redis_port: int = Field(
-        default=6379,
-        ge=1,
-        le=65535,
-        description="Redis port"
-    )
+    redis_port: int = Field(default=6379, ge=1, le=65535, description="Redis port")
 
-    redis_db: int = Field(
-        default=0,
-        ge=0,
-        le=15,
-        description="Redis database number"
-    )
+    redis_db: int = Field(default=0, ge=0, le=15, description="Redis database number")
 
     redis_password: Optional[str] = Field(
-        default=None,
-        description="Redis password (if required)"
+        default=None, description="Redis password (if required)"
     )
 
     # ==================== Trading Settings ====================
     capital_chf: Decimal = Field(
-        default=Decimal("2626.96"),
-        description="Initial trading capital in CHF"
+        default=Decimal("2626.96"), description="Initial trading capital in CHF"
     )
 
     circuit_breaker_chf: Decimal = Field(
         default=Decimal("-183.89"),
-        description="Circuit breaker loss limit in CHF (negative value)"
+        description="Circuit breaker loss limit in CHF (negative value)",
     )
 
     max_position_size_pct: Decimal = Field(
         default=Decimal("0.1"),
         ge=Decimal("0.01"),
         le=Decimal("1.0"),
-        description="Maximum position size as percentage of capital"
+        description="Maximum position size as percentage of capital",
     )
 
     # ==================== CORS Settings ====================
     cors_origins: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000"],
-        description="Allowed CORS origins"
+        description="Allowed CORS origins",
     )
 
     cors_allow_credentials: bool = Field(
-        default=True,
-        description="Allow credentials in CORS requests"
+        default=True, description="Allow credentials in CORS requests"
     )
 
     cors_allow_methods: List[str] = Field(
-        default=["*"],
-        description="Allowed HTTP methods for CORS"
+        default=["*"], description="Allowed HTTP methods for CORS"
     )
 
     cors_allow_headers: List[str] = Field(
-        default=["*"],
-        description="Allowed headers for CORS"
+        default=["*"], description="Allowed headers for CORS"
     )
 
     # ==================== Rate Limiting ====================
     rate_limit_requests: int = Field(
-        default=100,
-        ge=1,
-        description="Maximum requests per window"
+        default=100, ge=1, description="Maximum requests per window"
     )
 
     rate_limit_window_seconds: int = Field(
-        default=60,
-        ge=1,
-        description="Rate limit window in seconds"
+        default=60, ge=1, description="Rate limit window in seconds"
     )
 
     # ==================== Monitoring ====================
-    enable_metrics: bool = Field(
-        default=True,
-        description="Enable metrics collection"
-    )
+    enable_metrics: bool = Field(default=True, description="Enable metrics collection")
 
     enable_request_logging: bool = Field(
-        default=True,
-        description="Enable request/response logging"
+        default=True, description="Enable request/response logging"
     )
 
     # ==================== Pydantic Config ====================
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
     # ==================== Validators ====================

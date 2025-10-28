@@ -10,7 +10,6 @@ Date: 2025-10-27
 
 import asyncio
 import logging
-from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Optional
 
@@ -78,8 +77,7 @@ class ReconciliationService:
             return
 
         logger.info(
-            f"Starting periodic reconciliation "
-            f"(interval: {self.periodic_interval}s)"
+            f"Starting periodic reconciliation (interval: {self.periodic_interval}s)"
         )
 
         self.reconciliation_task = asyncio.create_task(
@@ -118,7 +116,7 @@ class ReconciliationService:
 
             # Create position maps
             system_map = {pos.symbol: pos for pos in system_positions}
-            exchange_map = {pos['symbol']: pos for pos in exchange_positions}
+            exchange_map = {pos["symbol"]: pos for pos in exchange_positions}
 
             results = []
 
@@ -178,7 +176,9 @@ class ReconciliationService:
             logger.error(f"Error during reconciliation: {e}", exc_info=True)
             return []
 
-    async def reconcile_position(self, position_id: str) -> Optional[ReconciliationResult]:
+    async def reconcile_position(
+        self, position_id: str
+    ) -> Optional[ReconciliationResult]:
         """
         Reconcile a specific position
 
@@ -198,8 +198,7 @@ class ReconciliationService:
             # Get exchange position
             exchange_positions = await self._fetch_exchange_positions()
             exch_pos = next(
-                (p for p in exchange_positions if p['symbol'] == sys_pos.symbol),
-                None
+                (p for p in exchange_positions if p["symbol"] == sys_pos.symbol), None
             )
 
             if not exch_pos:
@@ -219,7 +218,9 @@ class ReconciliationService:
             return result
 
         except Exception as e:
-            logger.error(f"Error reconciling position {position_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error reconciling position {position_id}: {e}", exc_info=True
+            )
             return None
 
     async def _reconcile_position(
@@ -239,7 +240,7 @@ class ReconciliationService:
         """
         # Extract quantities
         system_quantity = sys_pos.quantity
-        exchange_quantity = Decimal(str(exch_pos['contracts']))
+        exchange_quantity = Decimal(str(exch_pos["contracts"]))
 
         # Calculate discrepancy
         discrepancy = system_quantity - exchange_quantity
@@ -311,10 +312,7 @@ class ReconciliationService:
             positions = await self.exchange.fetch_positions()
 
             # Filter to only open positions
-            open_positions = [
-                p for p in positions
-                if float(p.get('contracts', 0)) != 0
-            ]
+            open_positions = [p for p in positions if float(p.get("contracts", 0)) != 0]
 
             logger.debug(f"Fetched {len(open_positions)} open positions from exchange")
 
@@ -393,7 +391,9 @@ class ReconciliationService:
         except Exception as e:
             logger.error(f"Error storing reconciliation result: {e}", exc_info=True)
 
-    async def create_position_snapshot(self, position_id: str) -> Optional[PositionSnapshot]:
+    async def create_position_snapshot(
+        self, position_id: str
+    ) -> Optional[PositionSnapshot]:
         """
         Create a position snapshot for audit trail
 

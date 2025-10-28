@@ -12,8 +12,6 @@ from decimal import Decimal
 from datetime import datetime, timezone
 
 from workspace.features.strategy import (
-    BaseStrategy,
-    StrategySignal,
     StrategyType,
     MeanReversionStrategy,
     TrendFollowingStrategy,
@@ -35,6 +33,7 @@ from workspace.features.market_data import (
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 def create_ticker(last_price: Decimal = Decimal("50000.00")) -> Ticker:
     """Create a ticker with required fields"""
@@ -101,7 +100,9 @@ def create_ema(value: Decimal, period: int) -> EMA:
     )
 
 
-def create_bollinger_bands(upper: Decimal, middle: Decimal, lower: Decimal) -> BollingerBands:
+def create_bollinger_bands(
+    upper: Decimal, middle: Decimal, lower: Decimal
+) -> BollingerBands:
     """Create Bollinger Bands with required fields"""
     return BollingerBands(
         symbol="BTC/USDT:USDT",
@@ -140,6 +141,7 @@ def create_snapshot(
 # ============================================================================
 # Tests
 # ============================================================================
+
 
 class TestMeanReversionStrategy:
     """Tests for Mean Reversion Strategy"""
