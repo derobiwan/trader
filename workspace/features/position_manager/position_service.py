@@ -64,7 +64,7 @@ import logging
 from datetime import datetime
 from datetime import date as Date
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from uuid import UUID, uuid4
 
 import asyncpg
@@ -74,12 +74,10 @@ from workspace.shared.database.models import (
     Position,
     PositionSide,
     PositionStatus,
-    usd_to_chf
+    usd_to_chf,
 )
 from workspace.features.position_manager.models import (
     PositionCreateRequest,
-    PositionUpdateRequest,
-    PositionCloseRequest,
     PositionWithPnL,
     DailyPnLSummary,
     PositionStatistics,
@@ -87,12 +85,8 @@ from workspace.features.position_manager.models import (
     ValidationError,
     RiskLimitError,
     PositionNotFoundError,
-    InsufficientCapitalError,
-    CAPITAL_CHF,
     CIRCUIT_BREAKER_LOSS_CHF,
-    MAX_POSITION_SIZE_CHF,
-    MAX_TOTAL_EXPOSURE_CHF,
-    USD_CHF_RATE
+    USD_CHF_RATE,
 )
 
 logger = logging.getLogger(__name__)
@@ -136,7 +130,7 @@ class PositionService:
         stop_loss: Decimal,
         take_profit: Optional[Decimal] = None,
         signal_id: Optional[UUID] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> PositionWithPnL:
         """
         Create a new trading position with full validation.
@@ -184,7 +178,7 @@ class PositionService:
                 stop_loss=stop_loss,
                 take_profit=take_profit,
                 signal_id=signal_id,
-                notes=notes
+                notes=notes,
             )
         except ValueError as e:
             raise ValidationError(f"Invalid position parameters: {e}") from e
@@ -216,10 +210,18 @@ class PositionService:
                             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                             RETURNING *
                             """,
-                            position_id, request.symbol, request.side.value, request.quantity,
-                            request.entry_price, request.entry_price, request.leverage,
-                            request.stop_loss, request.take_profit, PositionStatus.OPEN.value,
-                            now, now
+                            position_id,
+                            request.symbol,
+                            request.side.value,
+                            request.quantity,
+                            request.entry_price,
+                            request.entry_price,
+                            request.leverage,
+                            request.stop_loss,
+                            request.take_profit,
+                            PositionStatus.OPEN.value,
+                            now,
+                            now,
                         )
 
                         # Log to audit_log
@@ -229,7 +231,10 @@ class PositionService:
                                 timestamp, event_type, entity_type, entity_id, details
                             ) VALUES ($1, $2, $3, $4, $5)
                             """,
-                            now, "POSITION_CREATED", "position", position_id,
+                            now,
+                            "POSITION_CREATED",
+                            "position",
+                            position_id,
                             {
                                 "symbol": request.symbol,
                                 "side": request.side.value,
@@ -237,10 +242,12 @@ class PositionService:
                                 "entry_price": str(request.entry_price),
                                 "leverage": request.leverage,
                                 "stop_loss": str(request.stop_loss),
-                                "take_profit": str(request.take_profit) if request.take_profit else None,
+                                "take_profit": str(request.take_profit)
+                                if request.take_profit
+                                else None,
                                 "signal_id": str(signal_id) if signal_id else None,
-                                "notes": notes
-                            }
+                                "notes": notes,
+                            },
                         )
 
                 # Convert to Position model
@@ -258,7 +265,7 @@ class PositionService:
                     pnl_chf=row["pnl_chf"],
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
-                    closed_at=row["closed_at"]
+                    closed_at=row["closed_at"],
                 )
 
                 position_with_pnl = PositionWithPnL.from_position(position)
@@ -271,9 +278,13 @@ class PositionService:
                 return position_with_pnl
 
             except asyncpg.PostgresError as e:
-                logger.warning(f"Database error on attempt {attempt + 1}/{self._max_retries}: {e}")
+                logger.warning(
+                    f"Database error on attempt {attempt + 1}/{self._max_retries}: {e}"
+                )
                 if attempt == self._max_retries - 1:
-                    raise ConnectionError(f"Failed to create position after {self._max_retries} attempts") from e
+                    raise ConnectionError(
+                        f"Failed to create position after {self._max_retries} attempts"
+                    ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))  # Exponential backoff
 
     # ========================================================================
@@ -281,9 +292,7 @@ class PositionService:
     # ========================================================================
 
     async def update_position_price(
-        self,
-        position_id: UUID,
-        current_price: Decimal
+        self, position_id: UUID, current_price: Decimal
     ) -> PositionWithPnL:
         """
         Update position with current market price and recalculate P&L.
@@ -320,11 +329,16 @@ class PositionService:
                             WHERE id = $3 AND status = $4
                             RETURNING *
                             """,
-                            current_price, datetime.utcnow(), position_id, PositionStatus.OPEN.value
+                            current_price,
+                            datetime.utcnow(),
+                            position_id,
+                            PositionStatus.OPEN.value,
                         )
 
                         if not row:
-                            raise PositionNotFoundError(f"Position {position_id} not found or not open")
+                            raise PositionNotFoundError(
+                                f"Position {position_id} not found or not open"
+                            )
 
                 # Convert to Position model
                 position = Position(
@@ -341,7 +355,7 @@ class PositionService:
                     pnl_chf=row["pnl_chf"],
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
-                    closed_at=row["closed_at"]
+                    closed_at=row["closed_at"],
                 )
 
                 position_with_pnl = PositionWithPnL.from_position(position)
@@ -355,9 +369,13 @@ class PositionService:
                 return position_with_pnl
 
             except asyncpg.PostgresError as e:
-                logger.warning(f"Database error on attempt {attempt + 1}/{self._max_retries}: {e}")
+                logger.warning(
+                    f"Database error on attempt {attempt + 1}/{self._max_retries}: {e}"
+                )
                 if attempt == self._max_retries - 1:
-                    raise ConnectionError(f"Failed to update position after {self._max_retries} attempts") from e
+                    raise ConnectionError(
+                        f"Failed to update position after {self._max_retries} attempts"
+                    ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))
 
     # ========================================================================
@@ -369,7 +387,7 @@ class PositionService:
         position_id: UUID,
         close_price: Decimal,
         reason: str,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> PositionWithPnL:
         """
         Close a position and calculate final P&L.
@@ -390,7 +408,9 @@ class PositionService:
             PositionNotFoundError: If position not found
             ConnectionError: If database operation fails
         """
-        logger.info(f"Closing position {position_id}: price={close_price} reason={reason}")
+        logger.info(
+            f"Closing position {position_id}: price={close_price} reason={reason}"
+        )
 
         # Validate close reason
         try:
@@ -412,11 +432,14 @@ class PositionService:
                             WHERE id = $1 AND status = $2
                             FOR UPDATE
                             """,
-                            position_id, PositionStatus.OPEN.value
+                            position_id,
+                            PositionStatus.OPEN.value,
                         )
 
                         if not row:
-                            raise PositionNotFoundError(f"Position {position_id} not found or not open")
+                            raise PositionNotFoundError(
+                                f"Position {position_id} not found or not open"
+                            )
 
                         # Calculate final P&L
                         entry_price = row["entry_price"]
@@ -433,7 +456,11 @@ class PositionService:
 
                         # Update position to closed
                         now = datetime.utcnow()
-                        status = PositionStatus.LIQUIDATED if close_reason == CloseReason.LIQUIDATION else PositionStatus.CLOSED
+                        status = (
+                            PositionStatus.LIQUIDATED
+                            if close_reason == CloseReason.LIQUIDATION
+                            else PositionStatus.CLOSED
+                        )
 
                         updated_row = await conn.fetchrow(
                             """
@@ -446,7 +473,12 @@ class PositionService:
                             WHERE id = $6
                             RETURNING *
                             """,
-                            status.value, close_price, pnl_chf, now, now, position_id
+                            status.value,
+                            close_price,
+                            pnl_chf,
+                            now,
+                            now,
+                            position_id,
                         )
 
                         # Log to audit_log
@@ -456,7 +488,10 @@ class PositionService:
                                 timestamp, event_type, entity_type, entity_id, details
                             ) VALUES ($1, $2, $3, $4, $5)
                             """,
-                            now, "POSITION_CLOSED", "position", position_id,
+                            now,
+                            "POSITION_CLOSED",
+                            "position",
+                            position_id,
                             {
                                 "symbol": row["symbol"],
                                 "side": side,
@@ -464,8 +499,8 @@ class PositionService:
                                 "pnl_chf": str(pnl_chf),
                                 "pnl_usd": str(pnl_usd),
                                 "reason": close_reason.value,
-                                "notes": notes
-                            }
+                                "notes": notes,
+                            },
                         )
 
                         # Update daily P&L tracking
@@ -477,7 +512,8 @@ class PositionService:
                             ON CONFLICT (date) DO UPDATE
                             SET current_pnl_chf = circuit_breaker_state.current_pnl_chf + EXCLUDED.current_pnl_chf
                             """,
-                            today, pnl_chf
+                            today,
+                            pnl_chf,
                         )
 
                 # Convert to Position model
@@ -495,7 +531,7 @@ class PositionService:
                     pnl_chf=updated_row["pnl_chf"],
                     created_at=updated_row["created_at"],
                     updated_at=updated_row["updated_at"],
-                    closed_at=updated_row["closed_at"]
+                    closed_at=updated_row["closed_at"],
                 )
 
                 position_with_pnl = PositionWithPnL.from_position(position)
@@ -508,9 +544,13 @@ class PositionService:
                 return position_with_pnl
 
             except asyncpg.PostgresError as e:
-                logger.warning(f"Database error on attempt {attempt + 1}/{self._max_retries}: {e}")
+                logger.warning(
+                    f"Database error on attempt {attempt + 1}/{self._max_retries}: {e}"
+                )
                 if attempt == self._max_retries - 1:
-                    raise ConnectionError(f"Failed to close position after {self._max_retries} attempts") from e
+                    raise ConnectionError(
+                        f"Failed to close position after {self._max_retries} attempts"
+                    ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))
 
     # ========================================================================
@@ -529,8 +569,7 @@ class PositionService:
         """
         try:
             row = await self.pool.fetchrow(
-                "SELECT * FROM positions WHERE id = $1",
-                position_id
+                "SELECT * FROM positions WHERE id = $1", position_id
             )
 
             if not row:
@@ -550,7 +589,7 @@ class PositionService:
                 pnl_chf=row["pnl_chf"],
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
-                closed_at=row["closed_at"]
+                closed_at=row["closed_at"],
             )
 
             return PositionWithPnL.from_position(position)
@@ -559,7 +598,9 @@ class PositionService:
             logger.error(f"Failed to fetch position {position_id}: {e}")
             raise ConnectionError(f"Database query failed: {e}") from e
 
-    async def get_active_positions(self, symbol: Optional[str] = None) -> List[PositionWithPnL]:
+    async def get_active_positions(
+        self, symbol: Optional[str] = None
+    ) -> List[PositionWithPnL]:
         """
         Get all active (open) positions.
 
@@ -573,12 +614,13 @@ class PositionService:
             if symbol:
                 rows = await self.pool.fetch(
                     "SELECT * FROM positions WHERE status = $1 AND symbol = $2 ORDER BY created_at DESC",
-                    PositionStatus.OPEN.value, symbol
+                    PositionStatus.OPEN.value,
+                    symbol,
                 )
             else:
                 rows = await self.pool.fetch(
                     "SELECT * FROM positions WHERE status = $1 ORDER BY created_at DESC",
-                    PositionStatus.OPEN.value
+                    PositionStatus.OPEN.value,
                 )
 
             positions = []
@@ -597,7 +639,7 @@ class PositionService:
                     pnl_chf=row["pnl_chf"],
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
-                    closed_at=row["closed_at"]
+                    closed_at=row["closed_at"],
                 )
                 positions.append(PositionWithPnL.from_position(position))
 
@@ -668,7 +710,9 @@ class PositionService:
                     )
 
             if triggered_positions:
-                logger.info(f"Found {len(triggered_positions)} positions at take-profit")
+                logger.info(
+                    f"Found {len(triggered_positions)} positions at take-profit"
+                )
 
             return triggered_positions
 
@@ -704,7 +748,9 @@ class PositionService:
             logger.error(f"Failed to calculate total exposure: {e}")
             raise
 
-    async def get_daily_pnl(self, target_date: Optional[Date] = None) -> DailyPnLSummary:
+    async def get_daily_pnl(
+        self, target_date: Optional[Date] = None
+    ) -> DailyPnLSummary:
         """
         Calculate total P&L for a specific date (defaults to today).
 
@@ -731,7 +777,9 @@ class PositionService:
                     WHERE DATE(closed_at) = $1
                     AND status IN ($2, $3)
                     """,
-                    target_date, PositionStatus.CLOSED.value, PositionStatus.LIQUIDATED.value
+                    target_date,
+                    PositionStatus.CLOSED.value,
+                    PositionStatus.LIQUIDATED.value,
                 )
 
                 realized_pnl_chf = realized_row["realized_pnl"]
@@ -759,7 +807,7 @@ class PositionService:
                 open_positions_count=len(open_positions),
                 closed_positions_count=closed_count,
                 total_exposure_chf=total_exposure_chf,
-                is_circuit_breaker_triggered=total_pnl_chf <= CIRCUIT_BREAKER_LOSS_CHF
+                is_circuit_breaker_triggered=total_pnl_chf <= CIRCUIT_BREAKER_LOSS_CHF,
             )
 
             logger.info(
@@ -794,7 +842,7 @@ class PositionService:
                     """,
                     PositionStatus.OPEN.value,
                     PositionStatus.CLOSED.value,
-                    PositionStatus.LIQUIDATED.value
+                    PositionStatus.LIQUIDATED.value,
                 )
 
                 # Get realized P&L
@@ -805,7 +853,7 @@ class PositionService:
                     WHERE status IN ($1, $2) AND pnl_chf IS NOT NULL
                     """,
                     PositionStatus.CLOSED.value,
-                    PositionStatus.LIQUIDATED.value
+                    PositionStatus.LIQUIDATED.value,
                 )
 
             # Get open positions for unrealized P&L and exposure
@@ -833,7 +881,7 @@ class PositionService:
                 total_unrealized_pnl_chf=total_unrealized_pnl_chf,
                 total_realized_pnl_chf=realized_pnl or Decimal("0"),
                 positions_at_stop_loss=positions_at_stop_loss,
-                positions_at_take_profit=positions_at_take_profit
+                positions_at_take_profit=positions_at_take_profit,
             )
 
             logger.debug(f"Position statistics: {statistics.model_dump()}")
@@ -850,8 +898,7 @@ class PositionService:
 
 
 async def bulk_update_prices(
-    service: PositionService,
-    price_updates: Dict[str, Decimal]
+    service: PositionService, price_updates: Dict[str, Decimal]
 ) -> Dict[UUID, PositionWithPnL]:
     """
     Update prices for multiple positions efficiently.

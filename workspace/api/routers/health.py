@@ -39,6 +39,7 @@ SERVER_START_TIME = time.time()
 # ==================== Response Models ====================
 class HealthResponse(BaseModel):
     """Basic health check response."""
+
     status: str
     timestamp: str
     uptime_seconds: float
@@ -46,6 +47,7 @@ class HealthResponse(BaseModel):
 
 class ReadinessCheck(BaseModel):
     """Individual dependency readiness check."""
+
     name: str
     status: str  # "healthy", "degraded", "unhealthy"
     latency_ms: Optional[float] = None
@@ -54,6 +56,7 @@ class ReadinessCheck(BaseModel):
 
 class ReadinessResponse(BaseModel):
     """Readiness check response with dependency status."""
+
     status: str  # "ready", "not_ready"
     timestamp: str
     checks: list[ReadinessCheck]
@@ -62,6 +65,7 @@ class ReadinessResponse(BaseModel):
 
 class MetricsResponse(BaseModel):
     """Application metrics response."""
+
     timestamp: str
     uptime_seconds: float
     cpu_percent: float
@@ -76,7 +80,7 @@ class MetricsResponse(BaseModel):
     response_model=HealthResponse,
     summary="Basic health check",
     description="Returns 200 if server is running. No dependency checks.",
-    tags=["health"]
+    tags=["health"],
 )
 async def health_check() -> HealthResponse:
     """
@@ -94,7 +98,7 @@ async def health_check() -> HealthResponse:
     return HealthResponse(
         status="healthy",
         timestamp=datetime.utcnow().isoformat(),
-        uptime_seconds=round(uptime, 2)
+        uptime_seconds=round(uptime, 2),
     )
 
 
@@ -103,11 +107,10 @@ async def health_check() -> HealthResponse:
     response_model=ReadinessResponse,
     summary="Readiness check",
     description="Checks if server can handle requests (includes dependency checks)",
-    tags=["health"]
+    tags=["health"],
 )
 async def readiness_check(
-    response: Response,
-    settings: Settings = Depends(get_settings)
+    response: Response, settings: Settings = Depends(get_settings)
 ) -> ReadinessResponse:
     """
     Readiness check with dependency validation.
@@ -153,7 +156,7 @@ async def readiness_check(
         status=status_str,
         timestamp=datetime.utcnow().isoformat(),
         checks=checks,
-        ready=all_ready
+        ready=all_ready,
     )
 
 
@@ -161,7 +164,7 @@ async def readiness_check(
     "/live",
     summary="Liveness check",
     description="Quick check that server is responsive (for load balancers)",
-    tags=["health"]
+    tags=["health"],
 )
 async def liveness_check() -> Dict[str, Any]:
     """
@@ -178,10 +181,7 @@ async def liveness_check() -> Dict[str, Any]:
 
     If this endpoint times out or returns errors, the process should be restarted.
     """
-    return {
-        "alive": True,
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    return {"alive": True, "timestamp": datetime.utcnow().isoformat()}
 
 
 @router.get(
@@ -189,11 +189,9 @@ async def liveness_check() -> Dict[str, Any]:
     response_model=MetricsResponse,
     summary="Application metrics",
     description="Returns basic application metrics (CPU, memory, disk)",
-    tags=["health"]
+    tags=["health"],
 )
-async def metrics(
-    settings: Settings = Depends(get_settings)
-) -> MetricsResponse:
+async def metrics(settings: Settings = Depends(get_settings)) -> MetricsResponse:
     """
     Application metrics endpoint.
 
@@ -220,7 +218,7 @@ async def metrics(
             cpu_percent=0.0,
             memory_mb=0.0,
             memory_percent=0.0,
-            disk_usage_percent=0.0
+            disk_usage_percent=0.0,
         )
 
     # Collect system metrics
@@ -231,7 +229,7 @@ async def metrics(
     memory_mb = memory.used / (1024 * 1024)
     memory_percent = memory.percent
 
-    disk = psutil.disk_usage('/')
+    disk = psutil.disk_usage("/")
     disk_percent = disk.percent
 
     return MetricsResponse(
@@ -240,7 +238,7 @@ async def metrics(
         cpu_percent=round(cpu_percent, 2),
         memory_mb=round(memory_mb, 2),
         memory_percent=round(memory_percent, 2),
-        disk_usage_percent=round(disk_percent, 2)
+        disk_usage_percent=round(disk_percent, 2),
     )
 
 
@@ -270,6 +268,7 @@ async def _check_database(settings: Settings) -> ReadinessCheck:
 
         # Simulated latency
         import asyncio
+
         await asyncio.sleep(0.01)  # Simulate database query
 
         latency = (time.time() - start_time) * 1000
@@ -280,7 +279,7 @@ async def _check_database(settings: Settings) -> ReadinessCheck:
             name="database",
             status="healthy",
             latency_ms=round(latency, 2),
-            message="PostgreSQL connection successful"
+            message="PostgreSQL connection successful",
         )
 
     except Exception as e:
@@ -292,7 +291,7 @@ async def _check_database(settings: Settings) -> ReadinessCheck:
             name="database",
             status="unhealthy",
             latency_ms=round(latency, 2),
-            message=f"Database check failed: {str(e)}"
+            message=f"Database check failed: {str(e)}",
         )
 
 
@@ -320,6 +319,7 @@ async def _check_redis(settings: Settings) -> ReadinessCheck:
 
         # Simulated latency
         import asyncio
+
         await asyncio.sleep(0.005)  # Simulate Redis ping
 
         latency = (time.time() - start_time) * 1000
@@ -330,7 +330,7 @@ async def _check_redis(settings: Settings) -> ReadinessCheck:
             name="redis",
             status="healthy",
             latency_ms=round(latency, 2),
-            message="Redis connection successful"
+            message="Redis connection successful",
         )
 
     except Exception as e:
@@ -342,5 +342,5 @@ async def _check_redis(settings: Settings) -> ReadinessCheck:
             name="redis",
             status="unhealthy",
             latency_ms=round(latency, 2),
-            message=f"Redis check failed: {str(e)}"
+            message=f"Redis check failed: {str(e)}",
         )

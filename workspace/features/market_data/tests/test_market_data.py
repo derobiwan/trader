@@ -11,14 +11,13 @@ import pytest
 import asyncio
 from decimal import Decimal
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 from workspace.features.market_data.models import (
     OHLCV,
     Ticker,
     RSI,
     MACD,
-    EMA,
     BollingerBands,
     Timeframe,
     MarketDataSnapshot,
@@ -30,6 +29,7 @@ from workspace.features.market_data.market_data_service import MarketDataService
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def sample_ohlcv_data():
@@ -43,7 +43,7 @@ def sample_ohlcv_data():
         base_price = Decimal("90000") + Decimal(str(i * 10))
 
         candle = OHLCV(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             timeframe=Timeframe.M3,
             timestamp=timestamp,
             open=base_price,
@@ -61,7 +61,7 @@ def sample_ohlcv_data():
 def sample_ticker():
     """Create sample ticker data"""
     return Ticker(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timestamp=datetime.utcnow(),
         bid=Decimal("89999.50"),
         ask=Decimal("90000.50"),
@@ -78,10 +78,11 @@ def sample_ticker():
 # Model Tests
 # ============================================================================
 
+
 def test_ohlcv_properties():
     """Test OHLCV calculated properties"""
     candle = OHLCV(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         open=Decimal("90000"),
@@ -110,7 +111,7 @@ def test_rsi_signal():
     """Test RSI signal generation"""
     # Oversold RSI
     rsi_oversold = RSI(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         value=Decimal("25"),
@@ -120,7 +121,7 @@ def test_rsi_signal():
 
     # Overbought RSI
     rsi_overbought = RSI(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         value=Decimal("75"),
@@ -130,7 +131,7 @@ def test_rsi_signal():
 
     # Neutral RSI
     rsi_neutral = RSI(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         value=Decimal("50"),
@@ -142,7 +143,7 @@ def test_macd_signal():
     """Test MACD signal generation"""
     # Bullish MACD
     macd_bullish = MACD(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         macd_line=Decimal("100"),
@@ -153,7 +154,7 @@ def test_macd_signal():
 
     # Bearish MACD
     macd_bearish = MACD(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         macd_line=Decimal("-100"),
@@ -166,7 +167,7 @@ def test_macd_signal():
 def test_bollinger_bands_position():
     """Test Bollinger Bands position detection"""
     bb = BollingerBands(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         upper_band=Decimal("91000"),
@@ -184,14 +185,14 @@ def test_bollinger_bands_position():
 def test_market_data_snapshot_llm_format(sample_ohlcv_data, sample_ticker):
     """Test MarketDataSnapshot LLM prompt data formatting"""
     rsi = RSI(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         value=Decimal("65"),
     )
 
     snapshot = MarketDataSnapshot(
-        symbol='BTC/USDT:USDT',
+        symbol="BTC/USDT:USDT",
         timeframe=Timeframe.M3,
         timestamp=datetime.utcnow(),
         ohlcv=sample_ohlcv_data[-1],
@@ -201,16 +202,17 @@ def test_market_data_snapshot_llm_format(sample_ohlcv_data, sample_ticker):
 
     llm_data = snapshot.to_llm_prompt_data()
 
-    assert 'symbol' in llm_data
-    assert 'price' in llm_data
-    assert 'candle' in llm_data
-    assert 'rsi' in llm_data
-    assert llm_data['rsi']['signal'] == 'neutral'
+    assert "symbol" in llm_data
+    assert "price" in llm_data
+    assert "candle" in llm_data
+    assert "rsi" in llm_data
+    assert llm_data["rsi"]["signal"] == "neutral"
 
 
 # ============================================================================
 # Indicator Tests
 # ============================================================================
+
 
 def test_calculate_rsi(sample_ohlcv_data):
     """Test RSI calculation"""
@@ -226,7 +228,7 @@ def test_calculate_rsi_insufficient_data():
     # Only 10 candles, need 15 for period=14
     short_data = [
         OHLCV(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             timeframe=Timeframe.M3,
             timestamp=datetime.utcnow(),
             open=Decimal("90000"),
@@ -276,28 +278,31 @@ def test_calculate_all_indicators(sample_ohlcv_data):
     """Test calculating all indicators at once"""
     indicators = IndicatorCalculator.calculate_all_indicators(sample_ohlcv_data)
 
-    assert 'rsi' in indicators
-    assert 'macd' in indicators
-    assert 'ema_fast' in indicators
-    assert 'ema_slow' in indicators
-    assert 'bollinger' in indicators
+    assert "rsi" in indicators
+    assert "macd" in indicators
+    assert "ema_fast" in indicators
+    assert "ema_slow" in indicators
+    assert "bollinger" in indicators
 
     # All should be calculated successfully
-    assert indicators['rsi'] is not None
-    assert indicators['macd'] is not None
-    assert indicators['ema_fast'] is not None
-    assert indicators['ema_slow'] is not None
-    assert indicators['bollinger'] is not None
+    assert indicators["rsi"] is not None
+    assert indicators["macd"] is not None
+    assert indicators["ema_fast"] is not None
+    assert indicators["ema_slow"] is not None
+    assert indicators["bollinger"] is not None
 
 
 # ============================================================================
 # Market Data Service Tests
 # ============================================================================
 
+
 @pytest.fixture
 def mock_db_pool():
     """Mock database connection pool"""
-    with patch('workspace.features.market_data.market_data_service.DatabasePool') as mock_pool:
+    with patch(
+        "workspace.features.market_data.market_data_service.DatabasePool"
+    ) as mock_pool:
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
         mock_conn.fetch = AsyncMock(return_value=[])
@@ -309,7 +314,7 @@ def mock_db_pool():
 async def test_market_data_service_initialization(mock_db_pool):
     """Test MarketDataService initialization"""
     service = MarketDataService(
-        symbols=['BTCUSDT', 'ETHUSDT'],
+        symbols=["BTCUSDT", "ETHUSDT"],
         timeframe=Timeframe.M3,
         testnet=True,
     )
@@ -324,7 +329,7 @@ async def test_market_data_service_initialization(mock_db_pool):
 async def test_market_data_service_ticker_update(mock_db_pool, sample_ticker):
     """Test handling ticker updates"""
     service = MarketDataService(
-        symbols=['BTCUSDT'],
+        symbols=["BTCUSDT"],
         testnet=True,
     )
 
@@ -341,7 +346,7 @@ async def test_market_data_service_ticker_update(mock_db_pool, sample_ticker):
 async def test_market_data_service_kline_update(mock_db_pool, sample_ohlcv_data):
     """Test handling kline updates"""
     service = MarketDataService(
-        symbols=['BTCUSDT'],
+        symbols=["BTCUSDT"],
         testnet=True,
     )
 
@@ -357,15 +362,17 @@ async def test_market_data_service_kline_update(mock_db_pool, sample_ohlcv_data)
 
 
 @pytest.mark.asyncio
-async def test_market_data_service_indicator_calculation(mock_db_pool, sample_ohlcv_data, sample_ticker):
+async def test_market_data_service_indicator_calculation(
+    mock_db_pool, sample_ohlcv_data, sample_ticker
+):
     """Test indicator calculation"""
     service = MarketDataService(
-        symbols=['BTCUSDT'],
+        symbols=["BTCUSDT"],
         testnet=True,
     )
 
     # Add historical data and ticker
-    symbol = 'BTC/USDT:USDT'
+    symbol = "BTC/USDT:USDT"
     service.ohlcv_data[symbol] = sample_ohlcv_data
     service.latest_tickers[symbol] = sample_ticker
 
@@ -387,18 +394,18 @@ async def test_market_data_service_indicator_calculation(mock_db_pool, sample_oh
 async def test_get_snapshot(mock_db_pool, sample_ohlcv_data, sample_ticker):
     """Test retrieving market data snapshot"""
     service = MarketDataService(
-        symbols=['BTCUSDT'],
+        symbols=["BTCUSDT"],
         testnet=True,
     )
 
     # Setup data
-    symbol = 'BTC/USDT:USDT'
+    symbol = "BTC/USDT:USDT"
     service.ohlcv_data[symbol] = sample_ohlcv_data
     service.latest_tickers[symbol] = sample_ticker
     await service._update_indicators(symbol)
 
     # Get snapshot
-    snapshot = await service.get_snapshot('BTCUSDT')
+    snapshot = await service.get_snapshot("BTCUSDT")
 
     assert snapshot is not None
     assert snapshot.symbol == symbol
@@ -409,16 +416,16 @@ async def test_get_snapshot(mock_db_pool, sample_ohlcv_data, sample_ticker):
 async def test_get_ohlcv_history(mock_db_pool, sample_ohlcv_data):
     """Test retrieving OHLCV history"""
     service = MarketDataService(
-        symbols=['BTCUSDT'],
+        symbols=["BTCUSDT"],
         testnet=True,
     )
 
     # Add data
-    symbol = 'BTC/USDT:USDT'
+    symbol = "BTC/USDT:USDT"
     service.ohlcv_data[symbol] = sample_ohlcv_data
 
     # Get history
-    history = await service.get_ohlcv_history('BTCUSDT', limit=10)
+    history = await service.get_ohlcv_history("BTCUSDT", limit=10)
 
     assert len(history) == 10
     assert all(isinstance(candle, OHLCV) for candle in history)
@@ -427,27 +434,28 @@ async def test_get_ohlcv_history(mock_db_pool, sample_ohlcv_data):
 @pytest.mark.asyncio
 async def test_format_symbol():
     """Test symbol formatting"""
-    service = MarketDataService(symbols=['BTCUSDT'], testnet=True)
+    service = MarketDataService(symbols=["BTCUSDT"], testnet=True)
 
     # Test various formats
-    assert service._format_symbol('BTCUSDT') == 'BTC/USDT:USDT'
-    assert service._format_symbol('BTC/USDT:USDT') == 'BTC/USDT:USDT'
+    assert service._format_symbol("BTCUSDT") == "BTC/USDT:USDT"
+    assert service._format_symbol("BTC/USDT:USDT") == "BTC/USDT:USDT"
 
 
 # ============================================================================
 # Integration Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_full_data_pipeline(mock_db_pool, sample_ohlcv_data, sample_ticker):
     """Test complete data pipeline from WebSocket to snapshot"""
     service = MarketDataService(
-        symbols=['BTCUSDT'],
+        symbols=["BTCUSDT"],
         timeframe=Timeframe.M3,
         testnet=True,
     )
 
-    symbol = 'BTC/USDT:USDT'
+    symbol = "BTC/USDT:USDT"
 
     # 1. Receive ticker update
     await service._handle_ticker_update(sample_ticker)
@@ -463,7 +471,7 @@ async def test_full_data_pipeline(mock_db_pool, sample_ohlcv_data, sample_ticker
     await service._update_indicators(symbol)
 
     # 4. Get snapshot
-    snapshot = await service.get_snapshot('BTCUSDT')
+    snapshot = await service.get_snapshot("BTCUSDT")
 
     assert snapshot is not None
     assert snapshot.ticker.last == sample_ticker.last
@@ -472,15 +480,16 @@ async def test_full_data_pipeline(mock_db_pool, sample_ohlcv_data, sample_ticker
 
     # 5. Format for LLM
     llm_data = snapshot.to_llm_prompt_data()
-    assert 'symbol' in llm_data
-    assert 'price' in llm_data
-    assert 'rsi' in llm_data
-    assert 'macd' in llm_data
+    assert "symbol" in llm_data
+    assert "price" in llm_data
+    assert "rsi" in llm_data
+    assert "macd" in llm_data
 
 
 # ============================================================================
 # Performance Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_indicator_calculation_performance(sample_ohlcv_data):
@@ -505,13 +514,13 @@ async def test_indicator_calculation_performance(sample_ohlcv_data):
 async def test_concurrent_symbol_updates(mock_db_pool):
     """Test handling concurrent updates for multiple symbols"""
     service = MarketDataService(
-        symbols=['BTCUSDT', 'ETHUSDT', 'SOLUSDT'],
+        symbols=["BTCUSDT", "ETHUSDT", "SOLUSDT"],
         testnet=True,
     )
 
     # Create sample data for each symbol
     tickers = []
-    for symbol in ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT']:
+    for symbol in ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"]:
         ticker = Ticker(
             symbol=symbol,
             timestamp=datetime.utcnow(),
@@ -527,10 +536,7 @@ async def test_concurrent_symbol_updates(mock_db_pool):
         tickers.append(ticker)
 
     # Update all tickers concurrently
-    await asyncio.gather(*[
-        service._handle_ticker_update(ticker)
-        for ticker in tickers
-    ])
+    await asyncio.gather(*[service._handle_ticker_update(ticker) for ticker in tickers])
 
     # All should be stored
     assert len(service.latest_tickers) == 3
@@ -540,5 +546,5 @@ async def test_concurrent_symbol_updates(mock_db_pool):
 # Run Tests
 # ============================================================================
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '--asyncio-mode=auto'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--asyncio-mode=auto"])

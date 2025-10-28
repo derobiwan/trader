@@ -349,7 +349,7 @@ import { UserProfile } from '../UserProfile';
 
 /**
  * Test suite for UserProfile component.
- * 
+ *
  * Tests user interactions, state management, and error handling.
  * Mocks external dependencies to ensure isolated unit tests.
  */
@@ -360,13 +360,13 @@ describe('UserProfile', () => {
   it('should update user name on form submission', async () => {
     const user = userEvent.setup();
     const onUpdate = vi.fn();
-    
+
     render(<UserProfile onUpdate={onUpdate} />);
-    
+
     const input = screen.getByLabelText(/name/i);
     await user.type(input, 'John Doe');
     await user.click(screen.getByRole('button', { name: /save/i }));
-    
+
     expect(onUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'John Doe' })
     );
@@ -381,16 +381,16 @@ describe('UserProfile', () => {
 ```typescript
 /**
  * Button component with multiple variants and sizes.
- * 
+ *
  * Provides a reusable button with consistent styling and behavior
  * across the application. Supports keyboard navigation and screen readers.
- * 
+ *
  * @component
  * @example
  * ```tsx
- * <Button 
- *   variant="primary" 
- *   size="medium" 
+ * <Button
+ *   variant="primary"
+ *   size="medium"
  *   onClick={handleSubmit}
  * >
  *   Submit Form
@@ -400,16 +400,16 @@ describe('UserProfile', () => {
 interface ButtonProps {
   /** Visual style variant of the button */
   variant: 'primary' | 'secondary';
-  
+
   /** Size of the button @default 'medium' */
   size?: 'small' | 'medium' | 'large';
-  
+
   /** Click handler for the button */
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  
+
   /** Content to be rendered inside the button */
   children: React.ReactNode;
-  
+
   /** Whether the button is disabled @default false */
   disabled?: boolean;
 }
@@ -505,11 +505,11 @@ function useUser(id: UserId) {
     queryKey: ['user', id],
     queryFn: async () => {
       const response = await fetch(`/api/users/${id}`);
-      
+
       if (!response.ok) {
         throw new ApiError('Failed to fetch user', response.status);
       }
-      
+
       const data = await response.json();
       return userSchema.parse(data);
     },
@@ -520,7 +520,7 @@ function useUser(id: UserId) {
 
 function useUpdateUser() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (userData: UpdateUserData) => {
       const response = await fetch('/api/users', {
@@ -528,11 +528,11 @@ function useUpdateUser() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       });
-      
+
       if (!response.ok) {
         throw new ApiError('Failed to update user', response.status);
       }
-      
+
       return response.json();
     },
     onSuccess: (data) => {

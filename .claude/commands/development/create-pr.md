@@ -11,7 +11,7 @@ $ARGUMENTS
    ```bash
    # Check current branch
    git branch --show-current
-   
+
    # Ensure we're not on main
    # If on main, create a feature branch
    ```
@@ -43,31 +43,31 @@ $ARGUMENTS
    gh pr create --title "$ARGUMENTS" --body "$(cat <<'EOF'
    ## Summary
    [Brief description of what this PR does]
-   
+
    ## Changes
    - [List key changes]
    - [Be specific]
-   
+
    ## Type of Change
    - [ ] Bug fix
    - [ ] New feature
    - [ ] Breaking change
    - [ ] Documentation update
-   
+
    ## Testing
    - [ ] Tests pass locally
    - [ ] Added new tests
    - [ ] Manual testing completed
-   
+
    ## Checklist
    - [ ] Code follows project style
    - [ ] Self-reviewed
    - [ ] Updated documentation
    - [ ] No console.logs or debug code
-   
+
    ## Screenshots (if applicable)
    [Add screenshots for UI changes]
-   
+
    ## Additional Context
    [Any extra information reviewers should know]
    EOF

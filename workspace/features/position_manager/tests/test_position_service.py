@@ -18,13 +18,13 @@ Run with:
 
 import pytest
 import asyncio
-from datetime import datetime
 from datetime import date as Date
 from decimal import Decimal
 from uuid import uuid4
 
 # Test database setup
 import os
+
 os.environ["DB_HOST"] = os.getenv("TEST_DB_HOST", "localhost")
 os.environ["DB_PORT"] = os.getenv("TEST_DB_PORT", "5432")
 os.environ["DB_NAME"] = os.getenv("TEST_DB_NAME", "trading_system_test")
@@ -32,21 +32,23 @@ os.environ["DB_USER"] = os.getenv("TEST_DB_USER", "postgres")
 os.environ["DB_PASSWORD"] = os.getenv("TEST_DB_PASSWORD", "")
 
 from workspace.shared.database.connection import DatabasePool
-from workspace.features.position_manager.position_service import PositionService, bulk_update_prices
+from workspace.features.position_manager.position_service import (
+    PositionService,
+    bulk_update_prices,
+)
 from workspace.features.position_manager.models import (
     ValidationError,
     RiskLimitError,
     PositionNotFoundError,
-    CAPITAL_CHF,
     CIRCUIT_BREAKER_LOSS_CHF,
-    MAX_POSITION_SIZE_CHF,
-    MAX_TOTAL_EXPOSURE_CHF
+    MAX_TOTAL_EXPOSURE_CHF,
 )
 
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -66,7 +68,7 @@ async def db_pool():
         user=os.getenv("DB_USER", "postgres"),
         password=os.getenv("DB_PASSWORD", ""),
         min_size=2,
-        max_size=5
+        max_size=5,
     )
 
     await pool.initialize()
@@ -96,6 +98,7 @@ async def position_service(db_pool, clean_database):
 # Position Creation Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_create_position_success(position_service):
     """Test successful position creation with valid parameters."""
@@ -106,7 +109,7 @@ async def test_create_position_success(position_service):
         entry_price=Decimal("45000.00"),
         leverage=10,
         stop_loss=Decimal("44000.00"),
-        take_profit=Decimal("46000.00")
+        take_profit=Decimal("46000.00"),
     )
 
     assert position is not None
@@ -136,7 +139,7 @@ async def test_create_position_no_stop_loss(position_service):
             quantity=Decimal("0.01"),
             entry_price=Decimal("45000.00"),
             leverage=10,
-            stop_loss=None  # Missing required stop loss
+            stop_loss=None,  # Missing required stop loss
         )
 
 
@@ -151,7 +154,7 @@ async def test_create_position_invalid_leverage(position_service):
             quantity=Decimal("0.01"),
             entry_price=Decimal("45000.00"),
             leverage=3,  # Below minimum 5
-            stop_loss=Decimal("44000.00")
+            stop_loss=Decimal("44000.00"),
         )
 
     # Leverage too high
@@ -162,7 +165,7 @@ async def test_create_position_invalid_leverage(position_service):
             quantity=Decimal("0.01"),
             entry_price=Decimal("45000.00"),
             leverage=50,  # Above maximum 40
-            stop_loss=Decimal("44000.00")
+            stop_loss=Decimal("44000.00"),
         )
 
 
@@ -176,7 +179,7 @@ async def test_create_position_invalid_symbol(position_service):
             quantity=Decimal("0.01"),
             entry_price=Decimal("45000.00"),
             leverage=10,
-            stop_loss=Decimal("44000.00")
+            stop_loss=Decimal("44000.00"),
         )
 
 
@@ -191,7 +194,7 @@ async def test_create_position_wrong_side_stop_loss(position_service):
             quantity=Decimal("0.01"),
             entry_price=Decimal("45000.00"),
             leverage=10,
-            stop_loss=Decimal("46000.00")  # Above entry (wrong)
+            stop_loss=Decimal("46000.00"),  # Above entry (wrong)
         )
 
     # SHORT position with stop loss below entry (wrong side)
@@ -202,7 +205,7 @@ async def test_create_position_wrong_side_stop_loss(position_service):
             quantity=Decimal("0.01"),
             entry_price=Decimal("45000.00"),
             leverage=10,
-            stop_loss=Decimal("44000.00")  # Below entry (wrong)
+            stop_loss=Decimal("44000.00"),  # Below entry (wrong)
         )
 
 
@@ -217,7 +220,7 @@ async def test_create_position_exceeds_size_limit(position_service):
             quantity=Decimal("1.0"),  # Large quantity
             entry_price=Decimal("45000.00"),
             leverage=40,  # Max leverage to maximize position size
-            stop_loss=Decimal("44000.00")
+            stop_loss=Decimal("44000.00"),
         )
 
 
@@ -232,7 +235,7 @@ async def test_create_position_exceeds_exposure_limit(position_service):
         quantity=Decimal("0.008"),
         entry_price=Decimal("45000.00"),
         leverage=20,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
     assert position1 is not None
 
@@ -243,7 +246,7 @@ async def test_create_position_exceeds_exposure_limit(position_service):
         quantity=Decimal("0.15"),
         entry_price=Decimal("2500.00"),
         leverage=20,
-        stop_loss=Decimal("2400.00")
+        stop_loss=Decimal("2400.00"),
     )
     assert position2 is not None
 
@@ -254,7 +257,7 @@ async def test_create_position_exceeds_exposure_limit(position_service):
         quantity=Decimal("1.5"),
         entry_price=Decimal("100.00"),
         leverage=20,
-        stop_loss=Decimal("95.00")
+        stop_loss=Decimal("95.00"),
     )
     assert position3 is not None
 
@@ -265,7 +268,7 @@ async def test_create_position_exceeds_exposure_limit(position_service):
         quantity=Decimal("0.3"),
         entry_price=Decimal("300.00"),
         leverage=20,
-        stop_loss=Decimal("290.00")
+        stop_loss=Decimal("290.00"),
     )
     assert position4 is not None
 
@@ -278,13 +281,14 @@ async def test_create_position_exceeds_exposure_limit(position_service):
             quantity=Decimal("10.0"),
             entry_price=Decimal("0.50"),
             leverage=30,
-            stop_loss=Decimal("0.48")
+            stop_loss=Decimal("0.48"),
         )
 
 
 # ============================================================================
 # Position Update Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_update_position_price(position_service):
@@ -296,13 +300,12 @@ async def test_update_position_price(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Update price (profit)
     updated = await position_service.update_position_price(
-        position_id=position.id,
-        current_price=Decimal("45500.00")
+        position_id=position.id, current_price=Decimal("45500.00")
     )
 
     assert updated.current_price == Decimal("45500.00")
@@ -325,13 +328,12 @@ async def test_update_position_price_loss(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Update price (loss)
     updated = await position_service.update_position_price(
-        position_id=position.id,
-        current_price=Decimal("44500.00")
+        position_id=position.id, current_price=Decimal("44500.00")
     )
 
     assert updated.current_price == Decimal("44500.00")
@@ -354,13 +356,12 @@ async def test_update_position_short_profit(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("46000.00")  # Above entry for SHORT
+        stop_loss=Decimal("46000.00"),  # Above entry for SHORT
     )
 
     # Update price (price goes down = profit for SHORT)
     updated = await position_service.update_position_price(
-        position_id=position.id,
-        current_price=Decimal("44500.00")
+        position_id=position.id, current_price=Decimal("44500.00")
     )
 
     assert updated.current_price == Decimal("44500.00")
@@ -378,14 +379,14 @@ async def test_update_nonexistent_position(position_service):
     fake_id = uuid4()
     with pytest.raises(PositionNotFoundError):
         await position_service.update_position_price(
-            position_id=fake_id,
-            current_price=Decimal("45000.00")
+            position_id=fake_id, current_price=Decimal("45000.00")
         )
 
 
 # ============================================================================
 # Position Closure Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_close_position_profit(position_service):
@@ -397,14 +398,12 @@ async def test_close_position_profit(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Close with profit
     closed = await position_service.close_position(
-        position_id=position.id,
-        close_price=Decimal("46000.00"),
-        reason="take_profit"
+        position_id=position.id, close_price=Decimal("46000.00"), reason="take_profit"
     )
 
     assert closed.status.value == "CLOSED"
@@ -429,14 +428,12 @@ async def test_close_position_loss(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Close with loss
     closed = await position_service.close_position(
-        position_id=position.id,
-        close_price=Decimal("44000.00"),
-        reason="stop_loss"
+        position_id=position.id, close_price=Decimal("44000.00"), reason="stop_loss"
     )
 
     assert closed.status.value == "CLOSED"
@@ -461,14 +458,12 @@ async def test_close_position_short_profit(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("46000.00")
+        stop_loss=Decimal("46000.00"),
     )
 
     # Close with profit (price went down)
     closed = await position_service.close_position(
-        position_id=position.id,
-        close_price=Decimal("44000.00"),
-        reason="take_profit"
+        position_id=position.id, close_price=Decimal("44000.00"), reason="take_profit"
     )
 
     assert closed.status.value == "CLOSED"
@@ -486,15 +481,14 @@ async def test_close_nonexistent_position(position_service):
     fake_id = uuid4()
     with pytest.raises(PositionNotFoundError):
         await position_service.close_position(
-            position_id=fake_id,
-            close_price=Decimal("45000.00"),
-            reason="manual"
+            position_id=fake_id, close_price=Decimal("45000.00"), reason="manual"
         )
 
 
 # ============================================================================
 # Stop-Loss Detection Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_check_stop_loss_triggers_long(position_service):
@@ -506,7 +500,7 @@ async def test_check_stop_loss_triggers_long(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Update price above stop loss (not triggered)
@@ -532,7 +526,7 @@ async def test_check_stop_loss_triggers_short(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("46000.00")  # Above entry for SHORT
+        stop_loss=Decimal("46000.00"),  # Above entry for SHORT
     )
 
     # Update price below stop loss (not triggered)
@@ -559,7 +553,7 @@ async def test_check_take_profit_triggers(position_service):
         entry_price=Decimal("45000.00"),
         leverage=10,
         stop_loss=Decimal("44000.00"),
-        take_profit=Decimal("46000.00")
+        take_profit=Decimal("46000.00"),
     )
 
     # Update price below take profit (not triggered)
@@ -579,6 +573,7 @@ async def test_check_take_profit_triggers(position_service):
 # Daily P&L Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_daily_pnl_with_open_positions(position_service):
     """Test daily P&L calculation with open positions."""
@@ -589,7 +584,7 @@ async def test_daily_pnl_with_open_positions(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Update price to generate unrealized P&L
@@ -616,13 +611,11 @@ async def test_daily_pnl_with_closed_positions(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     await position_service.close_position(
-        position_id=position.id,
-        close_price=Decimal("46000.00"),
-        reason="take_profit"
+        position_id=position.id, close_price=Decimal("46000.00"), reason="take_profit"
     )
 
     # Get daily P&L
@@ -646,14 +639,12 @@ async def test_circuit_breaker_detection(position_service):
         quantity=Decimal("0.1"),  # Larger position
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("40000.00")
+        stop_loss=Decimal("40000.00"),
     )
 
     # Close with large loss (simulating circuit breaker scenario)
     await position_service.close_position(
-        position_id=position.id,
-        close_price=Decimal("40000.00"),
-        reason="stop_loss"
+        position_id=position.id, close_price=Decimal("40000.00"), reason="stop_loss"
     )
 
     # Get daily P&L
@@ -670,6 +661,7 @@ async def test_circuit_breaker_detection(position_service):
 # Query Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_position_by_id(position_service):
     """Test retrieving position by ID."""
@@ -680,7 +672,7 @@ async def test_get_position_by_id(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Retrieve position
@@ -710,7 +702,7 @@ async def test_get_active_positions(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     position2 = await position_service.create_position(
@@ -719,7 +711,7 @@ async def test_get_active_positions(position_service):
         quantity=Decimal("0.1"),
         entry_price=Decimal("2500.00"),
         leverage=10,
-        stop_loss=Decimal("2600.00")
+        stop_loss=Decimal("2600.00"),
     )
 
     # Close one position
@@ -743,7 +735,7 @@ async def test_get_active_positions_by_symbol(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     await position_service.create_position(
@@ -752,7 +744,7 @@ async def test_get_active_positions_by_symbol(position_service):
         quantity=Decimal("0.1"),
         entry_price=Decimal("2500.00"),
         leverage=10,
-        stop_loss=Decimal("2400.00")
+        stop_loss=Decimal("2400.00"),
     )
 
     # Get active positions for BTC
@@ -770,6 +762,7 @@ async def test_get_active_positions_by_symbol(position_service):
 # Statistics Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_get_total_exposure(position_service):
     """Test calculating total exposure across positions."""
@@ -780,7 +773,7 @@ async def test_get_total_exposure(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     await position_service.create_position(
@@ -789,7 +782,7 @@ async def test_get_total_exposure(position_service):
         quantity=Decimal("0.1"),
         entry_price=Decimal("2500.00"),
         leverage=10,
-        stop_loss=Decimal("2400.00")
+        stop_loss=Decimal("2400.00"),
     )
 
     # Get total exposure
@@ -809,7 +802,7 @@ async def test_get_statistics(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     position2 = await position_service.create_position(
@@ -818,11 +811,13 @@ async def test_get_statistics(position_service):
         quantity=Decimal("0.1"),
         entry_price=Decimal("2500.00"),
         leverage=10,
-        stop_loss=Decimal("2400.00")
+        stop_loss=Decimal("2400.00"),
     )
 
     # Close one with profit
-    await position_service.close_position(position1.id, Decimal("46000.00"), "take_profit")
+    await position_service.close_position(
+        position1.id, Decimal("46000.00"), "take_profit"
+    )
 
     # Get statistics
     stats = await position_service.get_statistics()
@@ -838,6 +833,7 @@ async def test_get_statistics(position_service):
 # Concurrent Operations Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_concurrent_price_updates(position_service):
     """Test concurrent price updates on multiple positions."""
@@ -850,7 +846,7 @@ async def test_concurrent_price_updates(position_service):
             quantity=Decimal("0.001"),
             entry_price=Decimal("45000.00"),
             leverage=5,
-            stop_loss=Decimal("44000.00")
+            stop_loss=Decimal("44000.00"),
         )
         positions.append(position)
 
@@ -877,7 +873,7 @@ async def test_bulk_update_prices(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     await position_service.create_position(
@@ -886,14 +882,11 @@ async def test_bulk_update_prices(position_service):
         quantity=Decimal("0.1"),
         entry_price=Decimal("2500.00"),
         leverage=10,
-        stop_loss=Decimal("2400.00")
+        stop_loss=Decimal("2400.00"),
     )
 
     # Bulk update prices
-    price_updates = {
-        "BTCUSDT": Decimal("45500.00"),
-        "ETHUSDT": Decimal("2550.00")
-    }
+    price_updates = {"BTCUSDT": Decimal("45500.00"), "ETHUSDT": Decimal("2550.00")}
     updated = await bulk_update_prices(position_service, price_updates)
 
     assert len(updated) == 2
@@ -905,6 +898,7 @@ async def test_bulk_update_prices(position_service):
 # Edge Cases
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_zero_pnl(position_service):
     """Test position with zero P&L (entry price = current price)."""
@@ -914,7 +908,7 @@ async def test_zero_pnl(position_service):
         quantity=Decimal("0.01"),
         entry_price=Decimal("45000.00"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Price hasn't changed yet
@@ -931,11 +925,13 @@ async def test_very_high_leverage(position_service):
         quantity=Decimal("0.001"),
         entry_price=Decimal("45000.00"),
         leverage=40,  # Maximum
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Update price
-    updated = await position_service.update_position_price(position.id, Decimal("45100.00"))
+    updated = await position_service.update_position_price(
+        position.id, Decimal("45100.00")
+    )
 
     # With 40x leverage, small price change should result in large % P&L
     # (45100 - 45000) / 45000 * 40 * 100 = 8.89%
@@ -951,7 +947,7 @@ async def test_decimal_precision(position_service):
         quantity=Decimal("0.01234567"),
         entry_price=Decimal("45123.45678901"),
         leverage=10,
-        stop_loss=Decimal("44000.00")
+        stop_loss=Decimal("44000.00"),
     )
 
     # Verify precision maintained

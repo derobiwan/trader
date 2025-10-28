@@ -45,17 +45,10 @@ def register_routers(app) -> None:
     - They don't contain business logic
     """
     # Health endpoints - no version prefix
-    app.include_router(
-        health.router,
-        prefix="/health",
-        tags=["health"]
-    )
+    app.include_router(health.router, prefix="/health", tags=["health"])
 
     # Version 1 API - with /v1 prefix
-    app.include_router(
-        api_v1_router,
-        tags=["v1"]
-    )
+    app.include_router(api_v1_router, tags=["v1"])
 
 
 # Export routers for testing

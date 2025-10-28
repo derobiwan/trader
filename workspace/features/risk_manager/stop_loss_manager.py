@@ -11,7 +11,7 @@ import logging
 import asyncio
 from decimal import Decimal
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 from .models import Protection, ProtectionLayer
 
@@ -191,17 +191,13 @@ class StopLossManager:
 
         Monitors price every 2 seconds and triggers if exchange stop fails.
         """
-        task = asyncio.create_task(
-            self._app_monitor_loop(protection, side)
-        )
+        task = asyncio.create_task(self._app_monitor_loop(protection, side))
 
         protection.app_monitor_active = True
         protection.app_monitor_task_id = str(id(task))
         self.monitor_tasks[protection.position_id] = task
 
-        logger.info(
-            f"Layer 2 (App Monitor) started for {protection.symbol}"
-        )
+        logger.info(f"Layer 2 (App Monitor) started for {protection.symbol}")
 
     async def _app_monitor_loop(self, protection: Protection, side: str):
         """Application-level monitoring loop"""
@@ -212,9 +208,7 @@ class StopLossManager:
 
                 # Check if stop should trigger
                 if self._should_trigger_stop(
-                    current_price,
-                    protection.stop_loss_price,
-                    side
+                    current_price, protection.stop_loss_price, side
                 ):
                     logger.warning(
                         f"⚠️ Layer 2 (App Monitor) triggered for {protection.symbol}: "
@@ -250,9 +244,7 @@ class StopLossManager:
 
         Monitors for >15% loss and triggers emergency close.
         """
-        task = asyncio.create_task(
-            self._emergency_monitor_loop(protection, side)
-        )
+        task = asyncio.create_task(self._emergency_monitor_loop(protection, side))
 
         protection.emergency_monitor_active = True
         protection.emergency_monitor_task_id = str(id(task))
@@ -271,9 +263,7 @@ class StopLossManager:
 
                 # Calculate loss percentage
                 loss_pct = await self._calculate_loss_pct(
-                    protection.entry_price,
-                    current_price,
-                    side
+                    protection.entry_price, current_price, side
                 )
 
                 # Check if emergency threshold exceeded
@@ -328,8 +318,7 @@ class StopLossManager:
         if protection.exchange_stop_active and protection.exchange_stop_order_id:
             try:
                 await self.exchange.cancel_order(
-                    protection.exchange_stop_order_id,
-                    protection.symbol
+                    protection.exchange_stop_order_id, protection.symbol
                 )
                 protection.exchange_stop_active = False
             except Exception as e:
@@ -360,10 +349,7 @@ class StopLossManager:
         return Decimal(str(ticker["last"]))
 
     def _should_trigger_stop(
-        self,
-        current_price: Decimal,
-        stop_price: Decimal,
-        side: str
+        self, current_price: Decimal, stop_price: Decimal, side: str
     ) -> bool:
         """Check if stop-loss should trigger"""
         if side == "long":
@@ -372,10 +358,7 @@ class StopLossManager:
             return current_price >= stop_price
 
     async def _calculate_loss_pct(
-        self,
-        entry_price: Decimal,
-        current_price: Decimal,
-        side: str
+        self, entry_price: Decimal, current_price: Decimal, side: str
     ) -> Decimal:
         """Calculate loss percentage"""
         if side == "long":
@@ -422,9 +405,7 @@ class StopLossManager:
                 force=True,  # Force immediate closure
             )
 
-            logger.critical(
-                f"Emergency close completed for {protection.symbol}"
-            )
+            logger.critical(f"Emergency close completed for {protection.symbol}")
 
         except Exception as e:
             logger.critical(f"EMERGENCY CLOSE FAILED: {e}")

@@ -3,7 +3,6 @@
 Quick setup script to create all necessary directories and files
 """
 
-import os
 import json
 from pathlib import Path
 from datetime import datetime
@@ -70,49 +69,52 @@ json_files = {
             "completed": 0,
             "in_progress": 0,
             "blocked": 0,
-            "pending": 0
-        }
+            "pending": 0,
+        },
     },
     ".agent-system/registry/dependencies.json": {
         "version": "1.0.0",
         "task_dependencies": {},
         "feature_dependencies": {},
-        "agent_dependencies": {}
+        "agent_dependencies": {},
     },
-    ".agent-system/sync/broadcasts.json": {
-        "broadcasts": [],
-        "last_broadcast_id": 0
-    },
+    ".agent-system/sync/broadcasts.json": {"broadcasts": [], "last_broadcast_id": 0},
     ".agent-system/sync/handoffs.json": {
         "handoffs": [],
         "pending": [],
-        "completed": []
+        "completed": [],
     },
     ".agent-system/sync/conflicts.json": {
         "active_conflicts": [],
-        "resolved_conflicts": []
+        "resolved_conflicts": [],
     },
     "workspace/features/.index.json": {
         "features": {},
         "total_features": 0,
         "active_features": 0,
-        "completed_features": 0
-    }
+        "completed_features": 0,
+    },
 }
 
 # Create JSON files
 for file_path, content in json_files.items():
     full_path = base_dir / file_path
-    with open(full_path, 'w') as f:
+    with open(full_path, "w") as f:
         json.dump(content, f, indent=2, default=str)
     print(f"Created JSON: {file_path}")
 
 # Create agent-specific files
 agents = [
-    "orchestrator", "business-analyst", "context-researcher",
-    "implementation-specialist", "validation-engineer", "integration-architect",
-    "documentation-curator", "security-auditor", "performance-optimizer",
-    "devops-engineer"
+    "orchestrator",
+    "business-analyst",
+    "context-researcher",
+    "implementation-specialist",
+    "validation-engineer",
+    "integration-architect",
+    "documentation-curator",
+    "security-auditor",
+    "performance-optimizer",
+    "devops-engineer",
 ]
 
 for agent in agents:
@@ -125,32 +127,31 @@ for agent in agents:
         "current_tasks": [],
         "completed_tasks": [],
         "preferences": {},
-        "knowledge_base": []
+        "knowledge_base": [],
     }
-    with open(context_file, 'w') as f:
+    with open(context_file, "w") as f:
         json.dump(context_data, f, indent=2)
-    
+
     # Tasks file
     tasks_file = base_dir / f".agent-system/agents/{agent}/tasks.json"
-    tasks_data = {
-        "assigned": [],
-        "in_progress": [],
-        "completed": [],
-        "blocked": []
-    }
-    with open(tasks_file, 'w') as f:
+    tasks_data = {"assigned": [], "in_progress": [], "completed": [], "blocked": []}
+    with open(tasks_file, "w") as f:
         json.dump(tasks_data, f, indent=2)
-    
+
     # Changelog file
     changelog_file = base_dir / f".agent-system/agents/{agent}/changelog.md"
-    with open(changelog_file, 'w') as f:
+    with open(changelog_file, "w") as f:
         f.write(f"# {agent} Changelog\n\n")
-        f.write(f"## Active Session\n\n")
+        f.write("## Active Session\n\n")
         f.write(f"### Date: {datetime.now().strftime('%Y-%m-%d')}\n\n")
         f.write("#### Tasks\n<!-- Task changes will be logged here -->\n\n")
-        f.write("#### Files Modified\n<!-- File modifications will be logged here -->\n\n")
-        f.write("---\n\n## Previous Sessions\n<!-- Previous session logs will be archived here -->\n")
-    
+        f.write(
+            "#### Files Modified\n<!-- File modifications will be logged here -->\n\n"
+        )
+        f.write(
+            "---\n\n## Previous Sessions\n<!-- Previous session logs will be archived here -->\n"
+        )
+
     print(f"Created agent files for: {agent}")
 
 print("\n✅ All directories and files created successfully!")

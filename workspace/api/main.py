@@ -39,10 +39,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 
 from .config import settings
-from .middleware import setup_middleware, validation_exception_handler, not_found_handler
+from .middleware import (
+    setup_middleware,
+    validation_exception_handler,
+    not_found_handler,
+)
 from .routers import register_routers
 
 
@@ -66,9 +69,7 @@ def setup_logging() -> None:
     logging.basicConfig(
         level=getattr(logging, settings.log_level),
         format=log_format,
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[logging.StreamHandler(sys.stdout)],
     )
 
     # Set specific logger levels
@@ -210,7 +211,9 @@ def create_application() -> FastAPI:
         version="0.1.0",
         docs_url="/docs" if not settings.is_production else None,  # Disable in prod
         redoc_url="/redoc" if not settings.is_production else None,  # Disable in prod
-        openapi_url="/openapi.json" if not settings.is_production else None,  # Disable in prod
+        openapi_url="/openapi.json"
+        if not settings.is_production
+        else None,  # Disable in prod
         lifespan=lifespan,
     )
 
@@ -224,7 +227,6 @@ def create_application() -> FastAPI:
 
     # Register exception handlers
     from fastapi.exceptions import RequestValidationError
-    from starlette.exceptions import HTTPException as StarletteHTTPException
 
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(404, not_found_handler)
@@ -234,7 +236,7 @@ def create_application() -> FastAPI:
         "/",
         summary="Root endpoint",
         description="API information and links to documentation",
-        tags=["root"]
+        tags=["root"],
     )
     async def root():
         """

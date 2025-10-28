@@ -120,12 +120,12 @@ Task N:
 export default async function NewFeature({ params }: { params: { id: string } }) {
     // PATTERN: Always validate params first (see lib/validation.ts)
     const validated = validateParams(params)  // throws ValidationError
-    
+
     // GOTCHA: This library requires proper error boundaries
     try {
         // PATTERN: Use existing data fetching pattern
         const data = await fetchData(validated.id)  // see lib/data.ts
-        
+
         // CRITICAL: Server Components can fetch data directly
         return (
             <div>
@@ -193,7 +193,7 @@ describe('NewFeature', () => {
   test('calls API with correct parameters', async () => {
     const mockFetch = jest.fn()
     global.fetch = mockFetch
-    
+
     render(<NewFeature />)
     // ... test API interaction
   })

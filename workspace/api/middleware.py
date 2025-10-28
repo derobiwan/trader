@@ -81,14 +81,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Log request
         logger.info(
-            f"Request started",
+            "Request started",
             extra={
                 "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "query": str(request.query_params),
                 "client_ip": client_ip,
-            }
+            },
         )
 
         # Time the request
@@ -100,14 +100,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # Log response
             logger.info(
-                f"Request completed",
+                "Request completed",
                 extra={
                     "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "status_code": response.status_code,
                     "duration_ms": round(duration * 1000, 2),
-                }
+                },
             )
 
             return response
@@ -117,7 +117,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # Log error
             logger.error(
-                f"Request failed",
+                "Request failed",
                 extra={
                     "request_id": request_id,
                     "method": request.method,
@@ -125,7 +125,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     "duration_ms": round(duration * 1000, 2),
                     "error": str(exc),
                 },
-                exc_info=True
+                exc_info=True,
             )
 
             raise
@@ -161,13 +161,15 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                     "error_type": type(exc).__name__,
                     "error": str(exc),
                 },
-                exc_info=True
+                exc_info=True,
             )
 
             # Build error response
             error_response = {
                 "error": "Internal server error",
-                "message": str(exc) if settings.debug else "An unexpected error occurred",
+                "message": str(exc)
+                if settings.debug
+                else "An unexpected error occurred",
                 "request_id": request_id,
                 "timestamp": datetime.utcnow().isoformat(),
             }
@@ -176,10 +178,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             if settings.debug:
                 error_response["error_type"] = type(exc).__name__
 
-            return JSONResponse(
-                status_code=500,
-                content=error_response
-            )
+            return JSONResponse(status_code=500, content=error_response)
 
 
 # ==================== Rate Limiting ====================
@@ -230,13 +229,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             request_id = getattr(request.state, "request_id", "unknown")
 
             logger.warning(
-                f"Rate limit exceeded",
+                "Rate limit exceeded",
                 extra={
                     "request_id": request_id,
                     "client_ip": client_ip,
                     "requests": len(history),
                     "window_seconds": settings.rate_limit_window_seconds,
-                }
+                },
             )
 
             return JSONResponse(
@@ -247,9 +246,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "retry_after": int(self.window.total_seconds()),
                     "request_id": request_id,
                 },
-                headers={
-                    "Retry-After": str(int(self.window.total_seconds()))
-                }
+                headers={"Retry-After": str(int(self.window.total_seconds()))},
             )
 
         # Add current request timestamp
@@ -286,10 +283,7 @@ def setup_middleware(app) -> None:
     5. Error Handling (catch exceptions)
     """
     # CORS - must be first to handle preflight requests
-    app.add_middleware(
-        CORSMiddleware,
-        **settings.get_cors_config()
-    )
+    app.add_middleware(CORSMiddleware, **settings.get_cors_config())
 
     # Error handling - catch all exceptions
     app.add_middleware(ErrorHandlingMiddleware)
@@ -308,7 +302,9 @@ def setup_middleware(app) -> None:
 
 
 # ==================== Exception Handlers ====================
-async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def validation_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
     """
     Handle validation errors with detailed messages.
 
@@ -317,12 +313,12 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
     request_id = getattr(request.state, "request_id", "unknown")
 
     logger.warning(
-        f"Validation error",
+        "Validation error",
         extra={
             "request_id": request_id,
             "path": request.url.path,
             "error": str(exc),
-        }
+        },
     )
 
     return JSONResponse(
@@ -331,7 +327,7 @@ async def validation_exception_handler(request: Request, exc: Exception) -> JSON
             "error": "Validation error",
             "message": str(exc),
             "request_id": request_id,
-        }
+        },
     )
 
 
@@ -345,5 +341,5 @@ async def not_found_handler(request: Request, exc: Exception) -> JSONResponse:
             "error": "Not found",
             "message": f"Endpoint {request.url.path} not found",
             "request_id": request_id,
-        }
+        },
     )

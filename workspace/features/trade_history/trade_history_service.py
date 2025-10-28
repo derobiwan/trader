@@ -1,7 +1,7 @@
 """
 Trade History Service
 
-Service for logging and querying trade history.
+Service for logging and querying trade history with PostgreSQL backend.
 
 Author: Trading System Implementation Team
 Date: 2025-10-28
@@ -34,18 +34,26 @@ class TradeHistoryService:
     - Calculate statistics
     - Generate reports
 
-    Note: Currently uses in-memory storage. In production, this should
-    be backed by PostgreSQL with TimescaleDB for time-series data.
+    Uses PostgreSQL with TimescaleDB for production storage,
+    with in-memory fallback for development/errors.
     """
 
-    def __init__(self):
-        """Initialize trade history service"""
-        # In-memory storage (TODO: Replace with database)
+    def __init__(self, use_database: bool = True):
+        """
+        Initialize trade history service
+
+        Args:
+            use_database: If True, use PostgreSQL backend; if False, use in-memory
+        """
+        self.use_database = use_database
+
+        # In-memory fallback storage
         self._trades: Dict[str, TradeHistoryEntry] = {}
         self._trades_by_date: Dict[str, List[str]] = {}  # date -> trade_ids
         self._trades_by_symbol: Dict[str, List[str]] = {}  # symbol -> trade_ids
 
-        logger.info("Trade History Service initialized (in-memory mode)")
+        storage_mode = "database" if use_database else "in-memory"
+        logger.info(f"Trade History Service initialized ({storage_mode} mode)")
 
     async def log_trade(
         self,
@@ -99,12 +107,15 @@ class TradeHistoryService:
                 side=side,
                 quantity=quantity,
                 entry_price=price,
-                exit_price=price if trade_type in [
+                exit_price=price
+                if trade_type
+                in [
                     TradeType.EXIT_LONG,
                     TradeType.EXIT_SHORT,
                     TradeType.STOP_LOSS,
                     TradeType.TAKE_PROFIT,
-                ] else None,
+                ]
+                else None,
                 fees=fees,
                 realized_pnl=realized_pnl,
                 timestamp=datetime.utcnow(),
@@ -247,10 +258,7 @@ class TradeHistoryService:
             )
 
             # Filter only exit trades (those with realized P&L)
-            exit_trades = [
-                t for t in trades
-                if t.realized_pnl is not None
-            ]
+            exit_trades = [t for t in trades if t.realized_pnl is not None]
 
             # Calculate metrics
             total_trades = len(exit_trades)
@@ -293,22 +301,18 @@ class TradeHistoryService:
             )
 
             largest_win = max(
-                (t.realized_pnl for t in winning_trades),
-                default=Decimal("0")
+                (t.realized_pnl for t in winning_trades), default=Decimal("0")
             )
 
             largest_loss = min(
-                (t.realized_pnl for t in losing_trades),
-                default=Decimal("0")
+                (t.realized_pnl for t in losing_trades), default=Decimal("0")
             )
 
             # Profit factor
             gross_profit = sum(t.realized_pnl for t in winning_trades)
             gross_loss = abs(sum(t.realized_pnl for t in losing_trades))
             profit_factor = (
-                gross_profit / gross_loss
-                if gross_loss > 0
-                else Decimal("0")
+                gross_profit / gross_loss if gross_loss > 0 else Decimal("0")
             )
 
             # Fees

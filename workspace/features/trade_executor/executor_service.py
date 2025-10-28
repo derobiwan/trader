@@ -12,7 +12,7 @@ import asyncio
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 import time
 
 import ccxt.async_support as ccxt
@@ -36,7 +36,11 @@ from workspace.shared.database.connection import DatabasePool
 from workspace.features.position_manager import PositionService
 from workspace.features.trade_history import TradeHistoryService, TradeType
 from workspace.features.monitoring.metrics import MetricsService
-from workspace.features.error_recovery import CircuitBreaker, RetryManager, RetryStrategy
+from workspace.features.error_recovery import (
+    CircuitBreaker,
+    RetryManager,
+    RetryStrategy,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -99,16 +103,18 @@ class TradeExecutor:
         if exchange is not None:
             self.exchange = exchange
         else:
-            self.exchange = ccxt.bybit({
-                'apiKey': self.api_key,
-                'secret': self.api_secret,
-                'enableRateLimit': True,
-                'rateLimit': 120,  # 600 requests per 5 seconds = 120ms per request
-                'options': {
-                    'defaultType': 'swap',  # Perpetual futures
-                    'recvWindow': 10000,
+            self.exchange = ccxt.bybit(
+                {
+                    "apiKey": self.api_key,
+                    "secret": self.api_secret,
+                    "enableRateLimit": True,
+                    "rateLimit": 120,  # 600 requests per 5 seconds = 120ms per request
+                    "options": {
+                        "defaultType": "swap",  # Perpetual futures
+                        "recvWindow": 10000,
+                    },
                 }
-            })
+            )
 
             if self.testnet:
                 self.exchange.set_sandbox_mode(True)
@@ -158,15 +164,23 @@ class TradeExecutor:
         # Track active orders
         self.active_orders: Dict[str, Order] = {}
 
+        # Balance caching
+        self._balance_cache: Optional[Decimal] = None
+        self._balance_cache_time: float = 0
+
     async def initialize(self):
         """Initialize exchange and load markets"""
         try:
             await self.exchange.load_markets()
-            logger.info(f"Exchange markets loaded: {len(self.exchange.markets)} symbols")
+            logger.info(
+                f"Exchange markets loaded: {len(self.exchange.markets)} symbols"
+            )
 
             # Verify account balance
             balance = await self.exchange.fetch_balance()
-            logger.info(f"Account balance loaded: {balance.get('USDT', {}).get('free', 0)} USDT")
+            logger.info(
+                f"Account balance loaded: {balance.get('USDT', {}).get('free', 0)} USDT"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize exchange: {e}", exc_info=True)
@@ -176,6 +190,103 @@ class TradeExecutor:
         """Close exchange connection"""
         await self.exchange.close()
         logger.info("Trade Executor closed")
+
+    async def get_account_balance(self, cache_ttl_seconds: int = 60) -> Decimal:
+        """
+        Fetch account balance from exchange with caching
+
+        Fetches the total balance from the exchange and caches it for the
+        specified TTL to avoid excessive API calls. The balance is returned
+        in CHF (approximate conversion from USDT).
+
+        Args:
+            cache_ttl_seconds: Cache time-to-live in seconds (default: 60)
+
+        Returns:
+            Account balance in CHF
+
+        Raises:
+            Exception: If balance fetch fails after retries
+
+        Example:
+            ```python
+            balance = await executor.get_account_balance()
+            print(f"Available: {balance:.2f} CHF")
+            ```
+        """
+        # Check cache validity
+        if (
+            self._balance_cache is not None
+            and time.time() - self._balance_cache_time < cache_ttl_seconds
+        ):
+            logger.debug(
+                f"Using cached balance: {self._balance_cache:.2f} CHF "
+                f"(age: {time.time() - self._balance_cache_time:.1f}s)"
+            )
+            return self._balance_cache
+
+        # Fetch fresh balance from exchange
+        try:
+            balance = await self._fetch_balance_from_exchange()
+
+            # Update cache
+            self._balance_cache = balance
+            self._balance_cache_time = time.time()
+
+            logger.info(f"Balance fetched and cached: {balance:.2f} CHF")
+            return balance
+
+        except Exception as e:
+            logger.error(f"Failed to fetch account balance: {e}", exc_info=True)
+            # If we have a cached value, return it even if expired
+            if self._balance_cache is not None:
+                logger.warning(
+                    f"Returning stale cached balance due to fetch failure: {self._balance_cache:.2f} CHF"
+                )
+                return self._balance_cache
+            raise
+
+    async def _fetch_balance_from_exchange(self) -> Decimal:
+        """
+        Internal method to fetch balance from exchange
+
+        Returns:
+            Balance in CHF (converted from USDT)
+
+        Raises:
+            Exception: If exchange API call fails
+        """
+        try:
+            # Fetch balance from exchange
+            balance_response = await self.exchange.fetch_balance()
+
+            # Get USDT total balance (includes free + used)
+            usdt_balance = Decimal(str(balance_response["USDT"]["total"]))
+
+            logger.debug(f"Raw USDT balance: {usdt_balance:.2f} USDT")
+
+            # Convert USDT to CHF (approximate rate)
+            # TODO: In production, fetch real-time CHF/USDT rate from forex API
+            chf_to_usdt_rate = Decimal("1.10")  # CHF is stronger than USD
+            chf_balance = usdt_balance / chf_to_usdt_rate
+
+            logger.info(
+                f"Account balance: {chf_balance:.2f} CHF "
+                f"(~{usdt_balance:.2f} USDT @ rate {chf_to_usdt_rate})"
+            )
+
+            return chf_balance
+
+        except KeyError as e:
+            # Handle missing USDT balance
+            logger.error(
+                f"USDT balance not found in response: {e}. "
+                f"Available balances: {list(balance_response.keys())}"
+            )
+            raise ValueError(f"USDT balance not available: {e}")
+        except Exception as e:
+            logger.error(f"Error fetching balance from exchange: {e}", exc_info=True)
+            raise
 
     async def execute_signal(
         self,
@@ -232,7 +343,9 @@ class TradeExecutor:
                         f"Signal rejected by Risk Manager for {signal.symbol}: "
                         f"{', '.join(validation.rejection_reasons)}"
                     )
-                    latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                    latency_ms = Decimal(
+                        str((time.time() - start_time) * 1000)
+                    ).quantize(Decimal("0.01"))
                     return ExecutionResult(
                         success=False,
                         error_code="RISK_VALIDATION_FAILED",
@@ -244,7 +357,7 @@ class TradeExecutor:
 
             # Step 2: Get current market price
             ticker = await self.exchange.fetch_ticker(signal.symbol)
-            current_price = Decimal(str(ticker['last']))
+            current_price = Decimal(str(ticker["last"]))
 
             # Step 3: Calculate position size
             # Convert available capital to USD
@@ -257,7 +370,7 @@ class TradeExecutor:
             quantity = position_value_usd / current_price
 
             # Round to exchange's lot size (8 decimals for crypto)
-            quantity = quantity.quantize(Decimal('0.00000001'))
+            quantity = quantity.quantize(Decimal("0.00000001"))
 
             logger.info(
                 f"Position size calculated: {quantity} {signal.symbol} "
@@ -269,7 +382,9 @@ class TradeExecutor:
 
             if signal.decision == TradingDecision.HOLD:
                 logger.info(f"HOLD signal for {signal.symbol}, no action taken")
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
                 return ExecutionResult(
                     success=True,
                     error_message="HOLD signal - no action taken",
@@ -283,7 +398,9 @@ class TradeExecutor:
                 # Calculate stop-loss price
                 stop_loss_price = None
                 if signal.stop_loss_pct:
-                    stop_loss_price = current_price * (Decimal("1") - signal.stop_loss_pct)
+                    stop_loss_price = current_price * (
+                        Decimal("1") - signal.stop_loss_pct
+                    )
                     logger.info(f"Stop-loss price calculated: ${stop_loss_price:.2f}")
 
                 # Place market buy order
@@ -293,9 +410,9 @@ class TradeExecutor:
                     quantity=quantity,
                     reduce_only=False,
                     metadata={
-                        'signal_decision': signal.decision.value,
-                        'signal_confidence': str(signal.confidence),
-                        'signal_reasoning': signal.reasoning or '',
+                        "signal_decision": signal.decision.value,
+                        "signal_confidence": str(signal.confidence),
+                        "signal_reasoning": signal.reasoning or "",
                     },
                 )
 
@@ -311,8 +428,10 @@ class TradeExecutor:
                         quantity=quantity,
                         stop_price=stop_loss_price,
                         reduce_only=True,
-                        position_id=order_result.order.position_id if order_result.order else None,
-                        metadata={'protection_layer': 'layer1'},
+                        position_id=order_result.order.position_id
+                        if order_result.order
+                        else None,
+                        metadata={"protection_layer": "layer1"},
                     )
 
                     if not stop_result.success:
@@ -329,7 +448,9 @@ class TradeExecutor:
                 # Calculate stop-loss price (above entry for shorts)
                 stop_loss_price = None
                 if signal.stop_loss_pct:
-                    stop_loss_price = current_price * (Decimal("1") + signal.stop_loss_pct)
+                    stop_loss_price = current_price * (
+                        Decimal("1") + signal.stop_loss_pct
+                    )
                     logger.info(f"Stop-loss price calculated: ${stop_loss_price:.2f}")
 
                 # Place market sell order
@@ -339,9 +460,9 @@ class TradeExecutor:
                     quantity=quantity,
                     reduce_only=False,
                     metadata={
-                        'signal_decision': signal.decision.value,
-                        'signal_confidence': str(signal.confidence),
-                        'signal_reasoning': signal.reasoning or '',
+                        "signal_decision": signal.decision.value,
+                        "signal_confidence": str(signal.confidence),
+                        "signal_reasoning": signal.reasoning or "",
                     },
                 )
 
@@ -357,8 +478,10 @@ class TradeExecutor:
                         quantity=quantity,
                         stop_price=stop_loss_price,
                         reduce_only=True,
-                        position_id=order_result.order.position_id if order_result.order else None,
-                        metadata={'protection_layer': 'layer1'},
+                        position_id=order_result.order.position_id
+                        if order_result.order
+                        else None,
+                        metadata={"protection_layer": "layer1"},
                     )
 
                     if not stop_result.success:
@@ -375,13 +498,14 @@ class TradeExecutor:
                 # Get current position
                 positions = await self.position_service.get_open_positions()
                 position = next(
-                    (p for p in positions if p.symbol == signal.symbol),
-                    None
+                    (p for p in positions if p.symbol == signal.symbol), None
                 )
 
                 if not position:
                     logger.warning(f"No open position found for {signal.symbol}")
-                    latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                    latency_ms = Decimal(
+                        str((time.time() - start_time) * 1000)
+                    ).quantize(Decimal("0.01"))
                     return ExecutionResult(
                         success=False,
                         error_code="POSITION_NOT_FOUND",
@@ -397,7 +521,9 @@ class TradeExecutor:
 
             else:
                 logger.error(f"Unknown trading decision: {signal.decision}")
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
                 return ExecutionResult(
                     success=False,
                     error_code="INVALID_DECISION",
@@ -406,8 +532,12 @@ class TradeExecutor:
                 )
 
         except Exception as e:
-            logger.error(f"Error executing signal for {signal.symbol}: {e}", exc_info=True)
-            latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+            logger.error(
+                f"Error executing signal for {signal.symbol}: {e}", exc_info=True
+            )
+            latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                Decimal("0.01")
+            )
             return ExecutionResult(
                 success=False,
                 error_code="EXECUTION_ERROR",
@@ -464,7 +594,7 @@ class TradeExecutor:
         )
 
         # Validate symbol format (critical for Bybit perpetuals)
-        if ':' not in symbol:
+        if ":" not in symbol:
             error_msg = f"Invalid symbol format: {symbol}. Must be 'BASE/QUOTE:SETTLE' (e.g., 'BTC/USDT:USDT')"
             logger.error(error_msg)
             return ExecutionResult(
@@ -479,7 +609,7 @@ class TradeExecutor:
             try:
                 # Prepare ccxt order parameters
                 params = {
-                    'reduceOnly': reduce_only,
+                    "reduceOnly": reduce_only,
                 }
 
                 # Submit order to exchange
@@ -490,19 +620,25 @@ class TradeExecutor:
 
                 exchange_order = await self.exchange.create_order(
                     symbol=symbol,
-                    type='market',
+                    type="market",
                     side=side.value,
                     amount=float(quantity),
                     params=params,
                 )
 
                 # Update order with exchange response
-                order.exchange_order_id = exchange_order.get('id')
-                order.status = self._map_exchange_status(exchange_order.get('status'))
+                order.exchange_order_id = exchange_order.get("id")
+                order.status = self._map_exchange_status(exchange_order.get("status"))
                 order.submitted_at = datetime.utcnow()
-                order.filled_quantity = Decimal(str(exchange_order.get('filled', 0)))
-                order.average_fill_price = Decimal(str(exchange_order.get('average', 0))) if exchange_order.get('average') else None
-                order.fees_paid = Decimal(str(exchange_order.get('fee', {}).get('cost', 0)))
+                order.filled_quantity = Decimal(str(exchange_order.get("filled", 0)))
+                order.average_fill_price = (
+                    Decimal(str(exchange_order.get("average", 0)))
+                    if exchange_order.get("average")
+                    else None
+                )
+                order.fees_paid = Decimal(
+                    str(exchange_order.get("fee", {}).get("cost", 0))
+                )
 
                 # Check if fully filled (market orders usually fill immediately)
                 if order.is_fully_filled:
@@ -516,7 +652,9 @@ class TradeExecutor:
                 self.active_orders[order.id] = order
 
                 # Calculate latency
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
 
                 logger.info(
                     f"Market order executed successfully: {order.exchange_order_id} "
@@ -537,33 +675,51 @@ class TradeExecutor:
                         # Determine trade type based on side and reduce_only
                         if not reduce_only:
                             # Opening position
-                            trade_type = TradeType.ENTRY_LONG if side == OrderSide.BUY else TradeType.ENTRY_SHORT
+                            trade_type = (
+                                TradeType.ENTRY_LONG
+                                if side == OrderSide.BUY
+                                else TradeType.ENTRY_SHORT
+                            )
                         else:
                             # Closing position
                             # Check metadata for specific close reason
-                            close_reason = metadata.get('reason', '') if metadata else ''
-                            if 'stop_loss' in close_reason or 'stop-loss' in close_reason:
+                            close_reason = (
+                                metadata.get("reason", "") if metadata else ""
+                            )
+                            if (
+                                "stop_loss" in close_reason
+                                or "stop-loss" in close_reason
+                            ):
                                 trade_type = TradeType.STOP_LOSS
-                            elif 'take_profit' in close_reason or 'take-profit' in close_reason:
+                            elif (
+                                "take_profit" in close_reason
+                                or "take-profit" in close_reason
+                            ):
                                 trade_type = TradeType.TAKE_PROFIT
-                            elif 'liquidation' in close_reason:
+                            elif "liquidation" in close_reason:
                                 trade_type = TradeType.LIQUIDATION
                             else:
-                                trade_type = TradeType.EXIT_LONG if side == OrderSide.SELL else TradeType.EXIT_SHORT
+                                trade_type = (
+                                    TradeType.EXIT_LONG
+                                    if side == OrderSide.SELL
+                                    else TradeType.EXIT_SHORT
+                                )
 
                         # Extract signal metadata if available
                         signal_confidence = None
                         signal_reasoning = None
                         realized_pnl = None
                         if metadata:
-                            confidence_str = metadata.get('signal_confidence')
+                            confidence_str = metadata.get("signal_confidence")
                             if confidence_str:
                                 signal_confidence = Decimal(str(confidence_str))
-                            signal_reasoning = metadata.get('signal_reasoning')
+                            signal_reasoning = metadata.get("signal_reasoning")
 
                             # Extract realized P&L for closing trades
-                            if reduce_only and 'realized_pnl_before_fees' in metadata:
-                                pnl_before_fees = Decimal(str(metadata['realized_pnl_before_fees']))
+                            if reduce_only and "realized_pnl_before_fees" in metadata:
+                                pnl_before_fees = Decimal(
+                                    str(metadata["realized_pnl_before_fees"])
+                                )
                                 # Subtract fees to get net realized P&L
                                 realized_pnl = pnl_before_fees - order.fees_paid
 
@@ -585,12 +741,19 @@ class TradeExecutor:
                         )
 
                         if realized_pnl is not None:
-                            logger.info(f"Trade logged to history: {order.exchange_order_id} (P&L: {realized_pnl:+.2f})")
+                            logger.info(
+                                f"Trade logged to history: {order.exchange_order_id} (P&L: {realized_pnl:+.2f})"
+                            )
                         else:
-                            logger.debug(f"Trade logged to history: {order.exchange_order_id}")
+                            logger.debug(
+                                f"Trade logged to history: {order.exchange_order_id}"
+                            )
                     except Exception as log_error:
                         # Don't fail the trade if logging fails
-                        logger.error(f"Failed to log trade to history: {log_error}", exc_info=True)
+                        logger.error(
+                            f"Failed to log trade to history: {log_error}",
+                            exc_info=True,
+                        )
 
                 return ExecutionResult(
                     success=True,
@@ -602,11 +765,13 @@ class TradeExecutor:
             except RateLimitExceeded as e:
                 logger.warning(f"Rate limit exceeded (attempt {attempt + 1}): {e}")
                 if attempt < self.max_retries - 1:
-                    delay = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    delay = self.retry_delay * (2**attempt)  # Exponential backoff
                     logger.info(f"Retrying in {delay}s...")
                     await asyncio.sleep(delay)
                 else:
-                    latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                    latency_ms = Decimal(
+                        str((time.time() - start_time) * 1000)
+                    ).quantize(Decimal("0.01"))
                     return ExecutionResult(
                         success=False,
                         error_code="RATE_LIMIT_EXCEEDED",
@@ -616,7 +781,9 @@ class TradeExecutor:
 
             except InvalidOrder as e:
                 logger.error(f"Invalid order: {e}")
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
                 return ExecutionResult(
                     success=False,
                     error_code="INVALID_ORDER",
@@ -626,7 +793,9 @@ class TradeExecutor:
 
             except InsufficientFunds as e:
                 logger.error(f"Insufficient funds: {e}")
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
                 return ExecutionResult(
                     success=False,
                     error_code="INSUFFICIENT_FUNDS",
@@ -637,10 +806,12 @@ class TradeExecutor:
             except NetworkError as e:
                 logger.warning(f"Network error (attempt {attempt + 1}): {e}")
                 if attempt < self.max_retries - 1:
-                    delay = self.retry_delay * (2 ** attempt)
+                    delay = self.retry_delay * (2**attempt)
                     await asyncio.sleep(delay)
                 else:
-                    latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                    latency_ms = Decimal(
+                        str((time.time() - start_time) * 1000)
+                    ).quantize(Decimal("0.01"))
                     return ExecutionResult(
                         success=False,
                         error_code="NETWORK_ERROR",
@@ -649,8 +820,12 @@ class TradeExecutor:
                     )
 
             except Exception as e:
-                logger.error(f"Unexpected error executing market order: {e}", exc_info=True)
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                logger.error(
+                    f"Unexpected error executing market order: {e}", exc_info=True
+                )
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
 
                 # Record failure metrics
                 self.metrics_service.record_trade(success=False)
@@ -664,7 +839,9 @@ class TradeExecutor:
                 )
 
         # Should not reach here
-        latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+        latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+            Decimal("0.01")
+        )
         return ExecutionResult(
             success=False,
             error_code="MAX_RETRIES_EXCEEDED",
@@ -715,7 +892,7 @@ class TradeExecutor:
         )
 
         # Validate symbol format
-        if ':' not in symbol:
+        if ":" not in symbol:
             error_msg = f"Invalid symbol format: {symbol}"
             logger.error(error_msg)
             return ExecutionResult(
@@ -729,8 +906,8 @@ class TradeExecutor:
         for attempt in range(self.max_retries):
             try:
                 params = {
-                    'reduceOnly': reduce_only,
-                    'timeInForce': time_in_force.value,
+                    "reduceOnly": reduce_only,
+                    "timeInForce": time_in_force.value,
                 }
 
                 logger.info(
@@ -740,7 +917,7 @@ class TradeExecutor:
 
                 exchange_order = await self.exchange.create_order(
                     symbol=symbol,
-                    type='limit',
+                    type="limit",
                     side=side.value,
                     amount=float(quantity),
                     price=float(price),
@@ -748,17 +925,23 @@ class TradeExecutor:
                 )
 
                 # Update order
-                order.exchange_order_id = exchange_order.get('id')
-                order.status = self._map_exchange_status(exchange_order.get('status'))
+                order.exchange_order_id = exchange_order.get("id")
+                order.status = self._map_exchange_status(exchange_order.get("status"))
                 order.submitted_at = datetime.utcnow()
-                order.filled_quantity = Decimal(str(exchange_order.get('filled', 0)))
-                order.average_fill_price = Decimal(str(exchange_order.get('average', 0))) if exchange_order.get('average') else None
+                order.filled_quantity = Decimal(str(exchange_order.get("filled", 0)))
+                order.average_fill_price = (
+                    Decimal(str(exchange_order.get("average", 0)))
+                    if exchange_order.get("average")
+                    else None
+                )
 
                 # Store order
                 await self._store_order(order)
                 self.active_orders[order.id] = order
 
-                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                    Decimal("0.01")
+                )
 
                 logger.info(
                     f"Limit order placed successfully: {order.exchange_order_id} "
@@ -775,9 +958,11 @@ class TradeExecutor:
             except Exception as e:
                 logger.error(f"Error creating limit order: {e}", exc_info=True)
                 if attempt < self.max_retries - 1:
-                    await asyncio.sleep(self.retry_delay * (2 ** attempt))
+                    await asyncio.sleep(self.retry_delay * (2**attempt))
                 else:
-                    latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+                    latency_ms = Decimal(
+                        str((time.time() - start_time) * 1000)
+                    ).quantize(Decimal("0.01"))
                     return ExecutionResult(
                         success=False,
                         error_code="EXECUTION_ERROR",
@@ -830,8 +1015,8 @@ class TradeExecutor:
 
         try:
             params = {
-                'stopPrice': float(stop_price),
-                'reduceOnly': reduce_only,
+                "stopPrice": float(stop_price),
+                "reduceOnly": reduce_only,
             }
 
             logger.info(
@@ -841,14 +1026,14 @@ class TradeExecutor:
 
             exchange_order = await self.exchange.create_order(
                 symbol=symbol,
-                type='stop_market',
+                type="stop_market",
                 side=side.value,
                 amount=float(quantity),
                 params=params,
             )
 
             # Update order
-            order.exchange_order_id = exchange_order.get('id')
+            order.exchange_order_id = exchange_order.get("id")
             order.status = OrderStatus.OPEN  # Stop orders are "open" until triggered
             order.submitted_at = datetime.utcnow()
 
@@ -856,7 +1041,9 @@ class TradeExecutor:
             await self._store_order(order)
             self.active_orders[order.id] = order
 
-            latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+            latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                Decimal("0.01")
+            )
 
             logger.info(
                 f"Stop-market order placed: {order.exchange_order_id} "
@@ -872,7 +1059,9 @@ class TradeExecutor:
 
         except Exception as e:
             logger.error(f"Error creating stop-market order: {e}", exc_info=True)
-            latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(Decimal("0.01"))
+            latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+                Decimal("0.01")
+            )
             return ExecutionResult(
                 success=False,
                 error_code="STOP_ORDER_ERROR",
@@ -918,7 +1107,7 @@ class TradeExecutor:
 
             # Get current market price
             ticker = await self.exchange.fetch_ticker(symbol)
-            entry_price = Decimal(str(ticker['last']))
+            entry_price = Decimal(str(ticker["last"]))
 
             # Create position in Position Manager (validates risk limits)
             position = await self.position_service.create_position(
@@ -935,7 +1124,7 @@ class TradeExecutor:
             logger.info(f"Position created in database: {position.id}")
 
             # Determine order side (buy for long, sell for short)
-            order_side = OrderSide.BUY if side == 'long' else OrderSide.SELL
+            order_side = OrderSide.BUY if side == "long" else OrderSide.SELL
 
             # Execute market order to open position
             order_result = await self.create_market_order(
@@ -944,11 +1133,13 @@ class TradeExecutor:
                 quantity=quantity,
                 reduce_only=False,  # Opening position
                 position_id=position.id,
-                metadata={'action': 'open_position', 'signal_id': signal_id},
+                metadata={"action": "open_position", "signal_id": signal_id},
             )
 
             if not order_result.success:
-                logger.error(f"Failed to execute order for position {position.id}: {order_result.error_message}")
+                logger.error(
+                    f"Failed to execute order for position {position.id}: {order_result.error_message}"
+                )
                 # Mark position as failed
                 await self.position_service.close_position(
                     position_id=position.id,
@@ -957,7 +1148,9 @@ class TradeExecutor:
                 )
                 return order_result
 
-            logger.info(f"Position opened successfully: {position.id} (Order: {order_result.order.exchange_order_id})")
+            logger.info(
+                f"Position opened successfully: {position.id} (Order: {order_result.order.exchange_order_id})"
+            )
 
             return order_result
 
@@ -998,18 +1191,22 @@ class TradeExecutor:
 
             # Get current market price
             ticker = await self.exchange.fetch_ticker(position.symbol)
-            close_price = Decimal(str(ticker['last']))
+            close_price = Decimal(str(ticker["last"]))
 
             # Calculate realized P&L (before fees)
             # For long: (close_price - entry_price) * quantity
             # For short: (entry_price - close_price) * quantity
-            if position.side == 'long':
-                realized_pnl_before_fees = (close_price - position.entry_price) * position.quantity
+            if position.side == "long":
+                realized_pnl_before_fees = (
+                    close_price - position.entry_price
+                ) * position.quantity
             else:
-                realized_pnl_before_fees = (position.entry_price - close_price) * position.quantity
+                realized_pnl_before_fees = (
+                    position.entry_price - close_price
+                ) * position.quantity
 
             # Determine order side (opposite of position side)
-            order_side = OrderSide.SELL if position.side == 'long' else OrderSide.BUY
+            order_side = OrderSide.SELL if position.side == "long" else OrderSide.BUY
 
             # Execute market order to close position (reduceOnly=True is CRITICAL)
             order_result = await self.create_market_order(
@@ -1019,15 +1216,17 @@ class TradeExecutor:
                 reduce_only=True,  # CRITICAL: Only reduce position, don't open opposite
                 position_id=position_id,
                 metadata={
-                    'action': 'close_position',
-                    'reason': reason,
-                    'realized_pnl_before_fees': str(realized_pnl_before_fees),
-                    'entry_price': str(position.entry_price),
+                    "action": "close_position",
+                    "reason": reason,
+                    "realized_pnl_before_fees": str(realized_pnl_before_fees),
+                    "entry_price": str(position.entry_price),
                 },
             )
 
             if not order_result.success:
-                logger.error(f"Failed to close position {position_id}: {order_result.error_message}")
+                logger.error(
+                    f"Failed to close position {position_id}: {order_result.error_message}"
+                )
                 return order_result
 
             # Update position in database
@@ -1037,7 +1236,9 @@ class TradeExecutor:
                 reason=reason,
             )
 
-            logger.info(f"Position closed successfully: {position_id} (Order: {order_result.order.exchange_order_id})")
+            logger.info(
+                f"Position closed successfully: {position_id} (Order: {order_result.order.exchange_order_id})"
+            )
 
             return order_result
 
@@ -1065,16 +1266,24 @@ class TradeExecutor:
 
             # Find order in active orders
             order = next(
-                (o for o in self.active_orders.values() if o.exchange_order_id == order_id),
-                None
+                (
+                    o
+                    for o in self.active_orders.values()
+                    if o.exchange_order_id == order_id
+                ),
+                None,
             )
 
             if order:
                 # Update order status
-                order.status = self._map_exchange_status(exchange_order.get('status'))
-                order.filled_quantity = Decimal(str(exchange_order.get('filled', 0)))
+                order.status = self._map_exchange_status(exchange_order.get("status"))
+                order.filled_quantity = Decimal(str(exchange_order.get("filled", 0)))
                 order.remaining_quantity = order.quantity - order.filled_quantity
-                order.average_fill_price = Decimal(str(exchange_order.get('average', 0))) if exchange_order.get('average') else None
+                order.average_fill_price = (
+                    Decimal(str(exchange_order.get("average", 0)))
+                    if exchange_order.get("average")
+                    else None
+                )
                 order.updated_at = datetime.utcnow()
 
                 if order.is_fully_filled:
@@ -1092,10 +1301,10 @@ class TradeExecutor:
     def _map_exchange_status(self, exchange_status: str) -> OrderStatus:
         """Map exchange order status to our OrderStatus enum"""
         status_map = {
-            'open': OrderStatus.OPEN,
-            'closed': OrderStatus.FILLED,
-            'canceled': OrderStatus.CANCELED,
-            'expired': OrderStatus.EXPIRED,
+            "open": OrderStatus.OPEN,
+            "closed": OrderStatus.FILLED,
+            "canceled": OrderStatus.CANCELED,
+            "expired": OrderStatus.EXPIRED,
         }
         return status_map.get(exchange_status, OrderStatus.OPEN)
 
@@ -1115,12 +1324,27 @@ class TradeExecutor:
                         $16, $17, $18, $19, $20, $21
                     )
                     """,
-                    order.id, order.exchange_order_id, order.symbol, order.type.value,
-                    order.side.value, order.quantity, order.price, order.stop_price,
-                    order.filled_quantity, order.remaining_quantity, order.average_fill_price,
-                    order.status.value, order.time_in_force.value, order.reduce_only,
-                    order.position_id, order.created_at, order.submitted_at,
-                    order.updated_at, order.filled_at, order.fees_paid, order.metadata,
+                    order.id,
+                    order.exchange_order_id,
+                    order.symbol,
+                    order.type.value,
+                    order.side.value,
+                    order.quantity,
+                    order.price,
+                    order.stop_price,
+                    order.filled_quantity,
+                    order.remaining_quantity,
+                    order.average_fill_price,
+                    order.status.value,
+                    order.time_in_force.value,
+                    order.reduce_only,
+                    order.position_id,
+                    order.created_at,
+                    order.submitted_at,
+                    order.updated_at,
+                    order.filled_at,
+                    order.fees_paid,
+                    order.metadata,
                 )
             logger.debug(f"Order stored in database: {order.id}")
 
@@ -1143,8 +1367,13 @@ class TradeExecutor:
                         fees_paid = $7
                     WHERE id = $8
                     """,
-                    order.filled_quantity, order.remaining_quantity, order.average_fill_price,
-                    order.status.value, order.updated_at, order.filled_at, order.fees_paid,
+                    order.filled_quantity,
+                    order.remaining_quantity,
+                    order.average_fill_price,
+                    order.status.value,
+                    order.updated_at,
+                    order.filled_at,
+                    order.fees_paid,
                     order.id,
                 )
             logger.debug(f"Order updated in database: {order.id}")

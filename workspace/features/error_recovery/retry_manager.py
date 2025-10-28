@@ -9,7 +9,6 @@ Date: 2025-10-28
 
 import logging
 import asyncio
-import time
 from typing import Callable, Any, Optional, Type
 from enum import Enum
 
@@ -18,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 class RetryStrategy(str, Enum):
     """Retry strategies"""
+
     EXPONENTIAL = "exponential"  # Exponential backoff (2^attempt * base_delay)
-    LINEAR = "linear"            # Linear increase (attempt * base_delay)
-    FIXED = "fixed"              # Fixed delay (base_delay)
-    FIBONACCI = "fibonacci"      # Fibonacci backoff
+    LINEAR = "linear"  # Linear increase (attempt * base_delay)
+    FIXED = "fixed"  # Fixed delay (base_delay)
+    FIBONACCI = "fibonacci"  # Fibonacci backoff
 
 
 class RetryManager:
@@ -89,7 +89,7 @@ class RetryManager:
         """
         if self.strategy == RetryStrategy.EXPONENTIAL:
             # Exponential backoff: 2^attempt * base_delay
-            delay = self.base_delay_seconds * (2 ** attempt)
+            delay = self.base_delay_seconds * (2**attempt)
 
         elif self.strategy == RetryStrategy.LINEAR:
             # Linear backoff: attempt * base_delay
@@ -113,6 +113,7 @@ class RetryManager:
         # Add jitter if enabled
         if self.jitter:
             import random
+
             jitter_amount = delay * 0.1 * random.random()
             delay += jitter_amount
 
@@ -132,12 +133,7 @@ class RetryManager:
         """Check if exception is retryable"""
         return isinstance(exception, self.retryable_exceptions)
 
-    async def execute(
-        self,
-        func: Callable,
-        *args,
-        **kwargs
-    ) -> Any:
+    async def execute(self, func: Callable, *args, **kwargs) -> Any:
         """
         Execute function with retry logic
 
@@ -245,6 +241,7 @@ def retry(
             # Your code here
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         retry_manager = RetryManager(
             max_retries=max_retries,

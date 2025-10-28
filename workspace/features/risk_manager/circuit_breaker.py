@@ -12,7 +12,7 @@ import asyncio
 import secrets
 from decimal import Decimal
 from datetime import datetime, time, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from .models import CircuitBreakerStatus, CircuitBreakerState
 
@@ -106,7 +106,9 @@ class CircuitBreaker:
         # Update daily P&L
         if current_daily_pnl_chf is not None:
             self.status.daily_pnl_chf = current_daily_pnl_chf
-            self.status.current_balance_chf = self.starting_balance_chf + current_daily_pnl_chf
+            self.status.current_balance_chf = (
+                self.starting_balance_chf + current_daily_pnl_chf
+            )
 
         # Check if already tripped
         if self.status.is_tripped() or self.status.is_manual_reset_required():
@@ -190,15 +192,15 @@ class CircuitBreaker:
             # Close each position
             for position in positions:
                 try:
-                    logger.info(f"Closing position {position.symbol} (ID: {position.id})")
+                    logger.info(
+                        f"Closing position {position.symbol} (ID: {position.id})"
+                    )
                     await self.trade_executor.close_position(
                         position_id=position.id,
                         reason="circuit_breaker_triggered",
                     )
                 except Exception as e:
-                    logger.error(
-                        f"Failed to close position {position.symbol}: {e}"
-                    )
+                    logger.error(f"Failed to close position {position.symbol}: {e}")
 
             logger.info("All positions closed")
 

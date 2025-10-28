@@ -12,7 +12,6 @@ from decimal import Decimal
 from datetime import datetime, timezone
 
 from workspace.features.strategy import (
-    BaseStrategy,
     StrategySignal,
     StrategyType,
     MeanReversionStrategy,
@@ -35,6 +34,7 @@ from workspace.features.market_data import (
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def base_snapshot():
@@ -268,6 +268,7 @@ def lower_breakout_snapshot(base_snapshot):
 # StrategySignal Tests
 # ============================================================================
 
+
 class TestStrategySignal:
     """Tests for StrategySignal dataclass"""
 
@@ -314,6 +315,7 @@ class TestStrategySignal:
 # MeanReversionStrategy Tests
 # ============================================================================
 
+
 class TestMeanReversionStrategy:
     """Tests for Mean Reversion Strategy"""
 
@@ -328,11 +330,13 @@ class TestMeanReversionStrategy:
 
     def test_custom_config(self):
         """Test strategy with custom configuration"""
-        strategy = MeanReversionStrategy(config={
-            'rsi_oversold': 25,
-            'rsi_overbought': 75,
-            'position_size_pct': 0.20,
-        })
+        strategy = MeanReversionStrategy(
+            config={
+                "rsi_oversold": 25,
+                "rsi_overbought": 75,
+                "position_size_pct": 0.20,
+            }
+        )
 
         assert strategy.rsi_oversold == Decimal("25")
         assert strategy.rsi_overbought == Decimal("75")
@@ -415,6 +419,7 @@ class TestMeanReversionStrategy:
 # TrendFollowingStrategy Tests
 # ============================================================================
 
+
 class TestTrendFollowingStrategy:
     """Tests for Trend Following Strategy"""
 
@@ -429,11 +434,13 @@ class TestTrendFollowingStrategy:
 
     def test_custom_config(self):
         """Test strategy with custom configuration"""
-        strategy = TrendFollowingStrategy(config={
-            'ema_fast_period': 9,
-            'ema_slow_period': 21,
-            'min_ema_distance_pct': 0.8,
-        })
+        strategy = TrendFollowingStrategy(
+            config={
+                "ema_fast_period": 9,
+                "ema_slow_period": 21,
+                "min_ema_distance_pct": 0.8,
+            }
+        )
 
         assert strategy.ema_fast_period == 9
         assert strategy.ema_slow_period == 21
@@ -513,6 +520,7 @@ class TestTrendFollowingStrategy:
 # VolatilityBreakoutStrategy Tests
 # ============================================================================
 
+
 class TestVolatilityBreakoutStrategy:
     """Tests for Volatility Breakout Strategy"""
 
@@ -527,11 +535,13 @@ class TestVolatilityBreakoutStrategy:
 
     def test_custom_config(self):
         """Test strategy with custom configuration"""
-        strategy = VolatilityBreakoutStrategy(config={
-            'squeeze_bandwidth_threshold': 0.015,
-            'breakout_threshold_pct': 0.8,
-            'position_size_pct': 0.20,
-        })
+        strategy = VolatilityBreakoutStrategy(
+            config={
+                "squeeze_bandwidth_threshold": 0.015,
+                "breakout_threshold_pct": 0.8,
+                "position_size_pct": 0.20,
+            }
+        )
 
         assert strategy.squeeze_threshold == Decimal("0.015")
         assert strategy.breakout_threshold_pct == Decimal("0.8")
@@ -631,6 +641,7 @@ class TestVolatilityBreakoutStrategy:
 # BaseStrategy Tests
 # ============================================================================
 
+
 class TestBaseStrategy:
     """Tests for BaseStrategy abstract class"""
 
@@ -658,13 +669,13 @@ class TestBaseStrategy:
 
     def test_get_config(self):
         """Test get_config returns configuration copy"""
-        strategy = MeanReversionStrategy(config={'rsi_oversold': 25})
+        strategy = MeanReversionStrategy(config={"rsi_oversold": 25})
         config = strategy.get_config()
 
-        assert config['rsi_oversold'] == 25
+        assert config["rsi_oversold"] == 25
         # Modify returned config shouldn't affect strategy
-        config['rsi_oversold'] = 40
-        assert strategy.config['rsi_oversold'] == 25
+        config["rsi_oversold"] = 40
+        assert strategy.config["rsi_oversold"] == 25
 
     def test_get_stats(self, oversold_snapshot):
         """Test get_stats returns strategy statistics"""
@@ -674,10 +685,10 @@ class TestBaseStrategy:
         strategy.analyze(oversold_snapshot)
 
         stats = strategy.get_stats()
-        assert stats['name'] == "Mean Reversion (RSI-based)"
-        assert stats['type'] == "mean_reversion"
-        assert stats['signal_count'] == 1
-        assert stats['last_signal_time'] is not None
+        assert stats["name"] == "Mean Reversion (RSI-based)"
+        assert stats["type"] == "mean_reversion"
+        assert stats["signal_count"] == 1
+        assert stats["last_signal_time"] is not None
 
     def test_signal_count_increments(self, oversold_snapshot, overbought_snapshot):
         """Test signal count increments correctly"""
@@ -695,6 +706,7 @@ class TestBaseStrategy:
 # ============================================================================
 # Integration Tests
 # ============================================================================
+
 
 class TestStrategyIntegration:
     """Integration tests for multiple strategies"""
@@ -750,9 +762,9 @@ class TestStrategyIntegration:
 
         # Create snapshots that should trigger signals
         snapshots = {
-            'mean_reversion': pytest.lazy_fixture('oversold_snapshot'),
-            'trend_following': pytest.lazy_fixture('bullish_trend_snapshot'),
-            'volatility_breakout': pytest.lazy_fixture('upper_breakout_snapshot'),
+            "mean_reversion": pytest.lazy_fixture("oversold_snapshot"),
+            "trend_following": pytest.lazy_fixture("bullish_trend_snapshot"),
+            "volatility_breakout": pytest.lazy_fixture("upper_breakout_snapshot"),
         }
 
         for strategy in strategies:

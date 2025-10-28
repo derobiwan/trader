@@ -23,12 +23,12 @@ activation_sequence:
   1. ALWAYS_FIRST:
      command: "/prime-core"
      purpose: "Load project context from CLAUDE.md"
-     
+
   2. ORCHESTRATOR_ACTIVATION:
      prompt: |
        "PRP Orchestrator, we have a new [project/feature/fix]: [description].
        Initialize the standard orchestration process and coordinate all agents."
-     
+
   3. CONTEXT_GATHERING:
      prompt: |
        "Context Researcher, investigate existing codebase for relevant patterns,
@@ -58,7 +58,7 @@ workflow:
        - requirements.md
        - user-stories.md
        - success-metrics.md
-  
+
   2. DEEP_CONTEXT_RESEARCH:
      agent: "Context Researcher"
      prompt: |
@@ -71,7 +71,7 @@ workflow:
        - context-report.md
        - gotchas.md
        - reusable-components.md
-  
+
   3. PRP_PLANNING_CREATION:
      command: "/prp-planning-create"
      inputs: "[business requirements + context research]"
@@ -104,7 +104,7 @@ workflow:
        - architecture.md
        - PRPs/contracts/[project]-api-contract.md
        - integration-map.md
-  
+
   2. SECURITY_ASSESSMENT:
      agent: "Security & Compliance Auditor"
      prompt: |
@@ -117,7 +117,7 @@ workflow:
        - security-requirements.md
        - compliance-checklist.md
        - threat-model.md
-  
+
   3. PERFORMANCE_PLANNING:
      agent: "Performance Optimizer"
      prompt: |
@@ -153,7 +153,7 @@ workflow:
        - Security requirements
        - Performance targets"
      outputs: "PRPs/[project]-implementation.md"
-  
+
   2. TASK_BREAKDOWN:
      command: "/prp-task-create"
      parallel_agents:
@@ -164,7 +164,7 @@ workflow:
        - implementation-tasks.md
        - test-strategy.md
        - deployment-plan.md
-  
+
   3. DOCUMENTATION_PLANNING:
      agent: "Documentation Curator"
      prompt: |
@@ -201,7 +201,7 @@ workflow:
        - Source code
        - Unit tests
        - Integration tests
-  
+
   2. CONTINUOUS_VALIDATION:
      agent: "Validation Engineer"
      parallel: true
@@ -216,7 +216,7 @@ workflow:
        - Level 2: "Unit test coverage >80%"
        - Level 3: "Integration tests passing"
        - Level 4: "E2E tests passing"
-  
+
   3. SECURITY_VALIDATION:
      agent: "Security Auditor"
      trigger: "Each commit"
@@ -226,7 +226,7 @@ workflow:
        - Compliance violations
        - Data leaks
        - Authentication issues"
-  
+
   4. PERFORMANCE_MONITORING:
      agent: "Performance Optimizer"
      trigger: "Feature complete"
@@ -268,7 +268,7 @@ workflow:
        - monitoring-config.yaml
        - deployment-pipeline.yaml
        - rollback-plan.md
-  
+
   2. DOCUMENTATION_FINALIZATION:
      agent: "Documentation Curator"
      prompt: |
@@ -283,7 +283,7 @@ workflow:
        - docs/user-guide/
        - docs/deployment/
        - TROUBLESHOOTING.md
-  
+
   3. FINAL_INTEGRATION_CHECK:
      agent: "Integration Architect"
      prompt: |
@@ -292,7 +292,7 @@ workflow:
        - Error handling complete
        - Retry logic implemented
        - Monitoring hooks in place"
-  
+
   4. PULL_REQUEST_CREATION:
      command: "/create-pr"
      includes:
@@ -326,7 +326,7 @@ workflow:
        - Validation Engineer: "Run staging tests"
        - Security Auditor: "Security scan staging"
        - Performance Optimizer: "Load test staging"
-  
+
   2. PRODUCTION_DEPLOYMENT:
      agent: "DevOps Engineer"
      strategy: "Blue-green with canary"
@@ -337,14 +337,14 @@ workflow:
        - If healthy, proceed to 50%
        - If healthy, proceed to 100%"
      rollback_trigger: "Error rate >1% or latency >SLA"
-  
+
   3. POST_DEPLOYMENT_VALIDATION:
      parallel_agents:
        - Validation Engineer: "Run production smoke tests"
        - Performance Optimizer: "Monitor performance metrics"
        - Security Auditor: "Check security alerts"
        - Integration Architect: "Verify all integrations"
-  
+
   4. BUSINESS_VALIDATION:
      agent: "Business Analyst"
      prompt: |
@@ -376,7 +376,7 @@ workflow:
        - Optimization opportunities
        - Capacity planning updates
        - Cost optimization potential"
-  
+
   2. BUSINESS_METRICS_REVIEW:
      agent: "Business Analyst"
      schedule: "Daily for first week, then weekly"
@@ -386,7 +386,7 @@ workflow:
        - User adoption rates
        - ROI tracking
        - Stakeholder feedback"
-  
+
   3. CONTINUOUS_IMPROVEMENT:
      agent: "PRP Orchestrator"
      prompt: |
@@ -740,7 +740,7 @@ markdown# In Claude Code, type:
 
 /prime-core
 
-"Load AGENT-ORCHESTRATION.md and initialize all specialist agents for a comprehensive salon automation project. 
+"Load AGENT-ORCHESTRATION.md and initialize all specialist agents for a comprehensive salon automation project.
 
 Project: Swiss salon booking automation with WhatsApp, Google Calendar, payment processing, and n8n orchestration.
 

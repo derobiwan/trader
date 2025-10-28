@@ -21,7 +21,7 @@ A PRP (Product Requirement Prompt) is a structured prompt that supplies AI codin
 graph LR
     PRD[Traditional PRD] --> PRP[Enhanced PRP]
     PRP --> APRP[Agent-Orchestrated PRP]
-    
+
     PRD -.->|What & Why| APRP
     PRP -.->|+ Context & How| APRP
     APRP -.->|+ Distributed Execution| Success[Production Code]
@@ -35,7 +35,7 @@ Instead of loading everything for every agent:
 ```yaml
 traditional:
   all_agents_load: "50KB full PRP"
-  
+
 optimized:
   business_analyst: "2KB requirements section"
   implementation: "3KB technical context"
@@ -271,10 +271,10 @@ python scripts/generate-agent-views.py --all
 
 ✅ **Do:** Explicit dependency chain
 ```markdown
-1. Design system architecture → 
-2. Define API contracts → 
-3. Implement API → 
-4. Write tests → 
+1. Design system architecture →
+2. Define API contracts →
+3. Implement API →
+4. Write tests →
 5. Deploy
 ```
 

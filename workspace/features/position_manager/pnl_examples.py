@@ -11,7 +11,9 @@ Run:
 from decimal import Decimal
 
 
-def calculate_long_pnl(entry_price: Decimal, current_price: Decimal, quantity: Decimal, leverage: int) -> dict:
+def calculate_long_pnl(
+    entry_price: Decimal, current_price: Decimal, quantity: Decimal, leverage: int
+) -> dict:
     """Calculate P&L for LONG position."""
     pnl_usd = (current_price - entry_price) * quantity * leverage
     pnl_chf = pnl_usd * Decimal("0.85")  # USD/CHF rate
@@ -20,11 +22,13 @@ def calculate_long_pnl(entry_price: Decimal, current_price: Decimal, quantity: D
     return {
         "pnl_usd": round(pnl_usd, 2),
         "pnl_chf": round(pnl_chf, 2),
-        "pnl_pct": round(pnl_pct, 2)
+        "pnl_pct": round(pnl_pct, 2),
     }
 
 
-def calculate_short_pnl(entry_price: Decimal, current_price: Decimal, quantity: Decimal, leverage: int) -> dict:
+def calculate_short_pnl(
+    entry_price: Decimal, current_price: Decimal, quantity: Decimal, leverage: int
+) -> dict:
     """Calculate P&L for SHORT position."""
     pnl_usd = (entry_price - current_price) * quantity * leverage
     pnl_chf = pnl_usd * Decimal("0.85")  # USD/CHF rate
@@ -33,7 +37,7 @@ def calculate_short_pnl(entry_price: Decimal, current_price: Decimal, quantity: 
     return {
         "pnl_usd": round(pnl_usd, 2),
         "pnl_chf": round(pnl_chf, 2),
-        "pnl_pct": round(pnl_pct, 2)
+        "pnl_pct": round(pnl_pct, 2),
     }
 
 
@@ -57,7 +61,7 @@ def main():
     print(f"Current Price:  ${current:,.2f}")
     print(f"Quantity:       {quantity} BTC")
     print(f"Leverage:       {leverage}x")
-    print(f"")
+    print("")
     print(f"P&L (USD):      ${result['pnl_usd']:+,.2f}")
     print(f"P&L (CHF):      CHF {result['pnl_chf']:+,.2f}")
     print(f"P&L (%):        {result['pnl_pct']:+.2f}%")
@@ -72,7 +76,7 @@ def main():
     print(f"Current Price:  ${current:,.2f}")
     print(f"Quantity:       {quantity} BTC")
     print(f"Leverage:       {leverage}x")
-    print(f"")
+    print("")
     print(f"P&L (USD):      ${result['pnl_usd']:+,.2f}")
     print(f"P&L (CHF):      CHF {result['pnl_chf']:+,.2f}")
     print(f"P&L (%):        {result['pnl_pct']:+.2f}%")
@@ -88,7 +92,7 @@ def main():
     print(f"Current Price:  ${current:,.2f}")
     print(f"Quantity:       {quantity} BTC")
     print(f"Leverage:       {leverage}x")
-    print(f"")
+    print("")
     print(f"P&L (USD):      ${result['pnl_usd']:+,.2f}")
     print(f"P&L (CHF):      CHF {result['pnl_chf']:+,.2f}")
     print(f"P&L (%):        {result['pnl_pct']:+.2f}%")
@@ -105,11 +109,11 @@ def main():
     print(f"Current Price:  ${current:,.2f}")
     print(f"Quantity:       {quantity} BTC")
     print(f"Leverage:       {leverage}x")
-    print(f"")
+    print("")
     print(f"P&L (USD):      ${result['pnl_usd']:+,.2f}")
     print(f"P&L (CHF):      CHF {result['pnl_chf']:+,.2f}")
     print(f"P&L (%):        {result['pnl_pct']:+.2f}%")
-    print(f"Note: Small price move (0.22%) = large P&L (8.89%) due to 40x leverage")
+    print("Note: Small price move (0.22%) = large P&L (8.89%) due to 40x leverage")
 
     # Example 5: STOP-LOSS scenario
     print("\n5. LONG BTC - Stop-Loss Hit (-7% target)")
@@ -122,7 +126,7 @@ def main():
     print(f"Stop-Loss:      ${stop_loss:,.2f}")
     print(f"Quantity:       {quantity} BTC")
     print(f"Leverage:       {leverage}x")
-    print(f"")
+    print("")
     print(f"P&L (USD):      ${result['pnl_usd']:+,.2f}")
     print(f"P&L (CHF):      CHF {result['pnl_chf']:+,.2f}")
     print(f"P&L (%):        {result['pnl_pct']:+.2f}%")
@@ -135,7 +139,7 @@ def main():
 
     print(f"Total Capital:        CHF {capital_chf:,.2f}")
     print(f"Circuit Breaker:      CHF {circuit_breaker_threshold:+,.2f} (-7%)")
-    print(f"")
+    print("")
 
     # Simulate position that triggers circuit breaker
     entry = Decimal("45000.00")
@@ -144,18 +148,20 @@ def main():
     leverage = 10
     result = calculate_long_pnl(entry, close, quantity, leverage)
 
-    print(f"Single Position Loss:")
+    print("Single Position Loss:")
     print(f"  Entry:         ${entry:,.2f}")
     print(f"  Close:         ${close:,.2f}")
     print(f"  Quantity:      {quantity} BTC")
     print(f"  Leverage:      {leverage}x")
     print(f"  Loss (CHF):    CHF {result['pnl_chf']:+,.2f}")
-    print(f"")
+    print("")
 
-    if result['pnl_chf'] <= circuit_breaker_threshold:
-        print(f"⚠️  CIRCUIT BREAKER TRIGGERED!")
-        print(f"   Daily loss (CHF {result['pnl_chf']:+,.2f}) exceeds threshold (CHF {circuit_breaker_threshold:+,.2f})")
-        print(f"   System will close all positions and halt trading for the day.")
+    if result["pnl_chf"] <= circuit_breaker_threshold:
+        print("⚠️  CIRCUIT BREAKER TRIGGERED!")
+        print(
+            f"   Daily loss (CHF {result['pnl_chf']:+,.2f}) exceeds threshold (CHF {circuit_breaker_threshold:+,.2f})"
+        )
+        print("   System will close all positions and halt trading for the day.")
 
     # Risk Limits Summary
     print("\n" + "=" * 70)
@@ -165,8 +171,8 @@ def main():
     print(f"Max Position Size (20%):    CHF {capital_chf * Decimal('0.20'):,.2f}")
     print(f"Max Total Exposure (80%):   CHF {capital_chf * Decimal('0.80'):,.2f}")
     print(f"Circuit Breaker (-7%):      CHF {circuit_breaker_threshold:+,.2f}")
-    print(f"Leverage Range:             5x - 40x")
-    print(f"Stop-Loss:                  REQUIRED (100% enforcement)")
+    print("Leverage Range:             5x - 40x")
+    print("Stop-Loss:                  REQUIRED (100% enforcement)")
     print("=" * 70)
 
 

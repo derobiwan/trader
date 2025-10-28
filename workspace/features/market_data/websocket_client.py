@@ -17,7 +17,7 @@ from typing import Dict, Callable, Optional, List, Any
 import websockets
 from websockets.client import WebSocketClientProtocol
 
-from .models import Ticker, OHLCV, Timeframe, WebSocketMessage
+from .models import Ticker, OHLCV, Timeframe
 
 
 logger = logging.getLogger(__name__)
@@ -170,10 +170,7 @@ class BybitWebSocketClient:
                 channels.append(f"kline.{bybit_interval}.{symbol}")
 
         # Send subscription request
-        subscribe_message = {
-            "op": "subscribe",
-            "args": channels
-        }
+        subscribe_message = {"op": "subscribe", "args": channels}
 
         logger.info(f"Subscribing to channels: {channels}")
         await self.ws.send(json.dumps(subscribe_message))
@@ -229,7 +226,7 @@ class BybitWebSocketClient:
         if op == "subscribe":
             success = data.get("success", False)
             if success:
-                logger.info(f"Subscription successful")
+                logger.info("Subscription successful")
             else:
                 logger.error(f"Subscription failed: {data.get('ret_msg')}")
 
@@ -274,11 +271,14 @@ class BybitWebSocketClient:
                 low_24h=Decimal(str(ticker_data.get("lowPrice24h", 0))),
                 volume_24h=Decimal(str(ticker_data.get("volume24h", 0))),
                 change_24h=Decimal("0"),  # Will calculate
-                change_24h_pct=Decimal(str(ticker_data.get("price24hPcnt", 0))) * Decimal("100"),
+                change_24h_pct=Decimal(str(ticker_data.get("price24hPcnt", 0)))
+                * Decimal("100"),
             )
 
             # Calculate 24h change
-            ticker.change_24h = ticker.last - (ticker.last / (Decimal("1") + (ticker.change_24h_pct / Decimal("100"))))
+            ticker.change_24h = ticker.last - (
+                ticker.last / (Decimal("1") + (ticker.change_24h_pct / Decimal("100")))
+            )
 
             # Invoke callback
             if self.on_ticker:

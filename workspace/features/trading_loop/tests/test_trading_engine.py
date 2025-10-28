@@ -8,11 +8,9 @@ Date: 2025-10-28
 """
 
 import pytest
-import asyncio
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock, Mock, patch
-from typing import Dict
+from unittest.mock import AsyncMock, Mock
 
 from workspace.features.trading_loop.trading_engine import (
     TradingEngine,
@@ -315,7 +313,9 @@ async def test_fetch_snapshots_with_missing_data(trading_engine):
 
 
 @pytest.mark.asyncio
-async def test_fetch_snapshots_with_incomplete_indicators(trading_engine, sample_snapshot):
+async def test_fetch_snapshots_with_incomplete_indicators(
+    trading_engine, sample_snapshot
+):
     """Test handling of snapshots with incomplete indicators"""
     # Create snapshot without all indicators
     incomplete_snapshot = Mock(has_all_indicators=False)
@@ -350,7 +350,9 @@ async def test_fetch_snapshots_handles_errors(trading_engine):
 
 
 @pytest.mark.asyncio
-async def test_generate_signals_without_decision_engine(trading_engine, sample_snapshot):
+async def test_generate_signals_without_decision_engine(
+    trading_engine, sample_snapshot
+):
     """Test signal generation without decision engine (HOLD signals)"""
     snapshots = {"BTCUSDT": sample_snapshot}
 
