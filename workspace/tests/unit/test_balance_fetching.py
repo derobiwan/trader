@@ -129,14 +129,14 @@ class TestBalanceFetching:
         }
 
         # First fetch
-        await executor.get_account_balance(cache_ttl_seconds=1)
+        balance1 = await executor.get_account_balance(cache_ttl_seconds=1)
         assert mock_exchange.fetch_balance.call_count == 1
 
         # Wait for cache to expire
         await asyncio.sleep(1.1)
 
         # Second fetch - should hit exchange again
-        await executor.get_account_balance(cache_ttl_seconds=1)
+        balance2 = await executor.get_account_balance(cache_ttl_seconds=1)
         assert mock_exchange.fetch_balance.call_count == 2
 
     @pytest.mark.asyncio
@@ -220,15 +220,15 @@ class TestBalanceFetching:
         }
 
         # Test with 5-second TTL
-        await executor.get_account_balance(cache_ttl_seconds=5)
+        balance1 = await executor.get_account_balance(cache_ttl_seconds=5)
         await asyncio.sleep(0.1)
-        await executor.get_account_balance(cache_ttl_seconds=5)
+        balance2 = await executor.get_account_balance(cache_ttl_seconds=5)
 
         # Should use cache
         assert mock_exchange.fetch_balance.call_count == 1
 
         # Test with 0-second TTL (no caching)
-        await executor.get_account_balance(cache_ttl_seconds=0)
+        balance3 = await executor.get_account_balance(cache_ttl_seconds=0)
         assert mock_exchange.fetch_balance.call_count == 2  # Cache bypassed
 
     @pytest.mark.asyncio
