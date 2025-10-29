@@ -1,0 +1,331 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/trading-engine
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  # Job 1: Run tests
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: timescale/timescaledb:2.13.0-pg15
+        env:
+          POSTGRES_DB: trading_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov pytest-timeout
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/trading_test
+        run: |
+          python workspace/shared/database/migrations/migration_runner.py
+
+      - name: Run unit tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/trading_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          pytest workspace/tests/unit/ -v --cov=workspace --cov-report=xml --cov-report=html --junitxml=test-results.xml
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/trading_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          pytest workspace/tests/integration/ -v --cov=workspace --cov-append --cov-report=xml --junitxml=test-results-integration.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            test-results.xml
+            test-results-integration.xml
+            htmlcov/
+
+  # Job 2: Build and push Docker image
+  build:
+    name: Build Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:cache,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+
+      - name: Image digest
+        run: echo ${{ steps.build.outputs.digest }}
+
+  # Job 3: Security scanning
+  security:
+    name: Security Scan
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Fail on critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL'
+
+  # Job 4: Deploy to Kubernetes
+  deploy:
+    name: Deploy to Kubernetes
+    needs: [build, security]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+
+    environment:
+      name: production
+      url: http://trading.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl create namespace trading-system --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply Kubernetes manifests
+        run: |
+          # Apply in order: namespace, configs, secrets, deployments, services
+          kubectl apply -f kubernetes/namespace.yaml
+          kubectl apply -f kubernetes/configmaps/
+          # Note: Secrets should be created separately using kubectl create secret
+          kubectl apply -f kubernetes/deployments/
+          kubectl apply -f kubernetes/services/
+
+      - name: Update image tag
+        run: |
+          kubectl set image deployment/trading-engine \
+            trading-engine=${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -n trading-system
+
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/trading-engine -n trading-system --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n trading-system
+
+          echo "=== Pods ==="
+          kubectl get pods -n trading-system -l app=trading-engine
+
+          echo "=== Services ==="
+          kubectl get services -n trading-system
+
+          echo "=== Recent Events ==="
+          kubectl get events -n trading-system --sort-by='.lastTimestamp' | tail -20
+
+      - name: Run smoke tests
+        run: |
+          # Get the LoadBalancer IP
+          export LB_IP=$(kubectl get svc trading-engine-service -n trading-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+          # Wait for LoadBalancer to be ready
+          timeout=300
+          while [ -z "$LB_IP" ] && [ $timeout -gt 0 ]; do
+            sleep 5
+            timeout=$((timeout-5))
+            export LB_IP=$(kubectl get svc trading-engine-service -n trading-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          done
+
+          if [ -z "$LB_IP" ]; then
+            echo "LoadBalancer IP not available after 5 minutes"
+            exit 1
+          fi
+
+          echo "Testing endpoints on $LB_IP"
+
+          # Test health endpoint
+          curl -f http://$LB_IP/health || exit 1
+
+          # Test readiness endpoint
+          curl -f http://$LB_IP/ready || exit 1
+
+          # Test metrics endpoint
+          curl -f http://$LB_IP/metrics || exit 1
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "Deployment completed at $(date)"
+
+  # Job 5: Rollback on failure
+  rollback:
+    name: Rollback Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 10
+
+    steps:
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Rollback deployment
+        run: |
+          echo "⚠️ Rolling back deployment due to failure"
+          kubectl rollout undo deployment/trading-engine -n trading-system
+          kubectl rollout status deployment/trading-engine -n trading-system --timeout=5m
+
+      - name: Verify rollback
+        run: |
+          kubectl get pods -n trading-system -l app=trading-engine
+          kubectl describe deployment trading-engine -n trading-system
+
+      - name: Notify rollback
+        run: |
+          echo "⚠️ Deployment rolled back due to failure"
+          echo "Manual investigation required"
