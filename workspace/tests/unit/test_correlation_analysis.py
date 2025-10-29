@@ -15,13 +15,12 @@ Sprint: 3, Stream B
 import pytest
 from decimal import Decimal
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from workspace.features.risk_manager import (
     CorrelationAnalyzer,
     CorrelationMatrix,
     CorrelationPair,
-    PriceHistory,
 )
 
 
@@ -42,8 +41,10 @@ def mock_market_data_service():
 
     service.get_ohlcv = AsyncMock(
         side_effect=lambda symbol, **kwargs: (
-            create_ohlcv(50000) if "BTC" in symbol
-            else create_ohlcv(3000) if "ETH" in symbol
+            create_ohlcv(50000)
+            if "BTC" in symbol
+            else create_ohlcv(3000)
+            if "ETH" in symbol
             else create_ohlcv(100)
         )
     )
