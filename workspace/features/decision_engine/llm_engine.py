@@ -197,8 +197,8 @@ class LLMDecisionEngine:
             "model": self.config.model,
         }
 
-        # Generate cache key
-        cache_key = f"llm:signals:{hashlib.md5(json.dumps(cache_data, sort_keys=True).encode()).hexdigest()}"
+        # Generate cache key (MD5 used for cache key generation only, not security)
+        cache_key = f"llm:signals:{hashlib.md5(json.dumps(cache_data, sort_keys=True).encode(), usedforsecurity=False).hexdigest()}"
 
         return cache_key
 
