@@ -107,15 +107,17 @@ class TradeHistoryService:
                 side=side,
                 quantity=quantity,
                 entry_price=price,
-                exit_price=price
-                if trade_type
-                in [
-                    TradeType.EXIT_LONG,
-                    TradeType.EXIT_SHORT,
-                    TradeType.STOP_LOSS,
-                    TradeType.TAKE_PROFIT,
-                ]
-                else None,
+                exit_price=(
+                    price
+                    if trade_type
+                    in [
+                        TradeType.EXIT_LONG,
+                        TradeType.EXIT_SHORT,
+                        TradeType.STOP_LOSS,
+                        TradeType.TAKE_PROFIT,
+                    ]
+                    else None
+                ),
                 fees=fees,
                 realized_pnl=realized_pnl,
                 timestamp=datetime.utcnow(),

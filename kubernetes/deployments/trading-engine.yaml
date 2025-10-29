@@ -1,0 +1,227 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-engine
+  namespace: trading-system
+  labels:
+    app: trading-engine
+    version: v1.0.0
+    component: core
+spec:
+  replicas: 3  # High availability
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero-downtime deployments
+  selector:
+    matchLabels:
+      app: trading-engine
+  template:
+    metadata:
+      labels:
+        app: trading-engine
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: trading-engine-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      # Anti-affinity to spread pods across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - trading-engine
+              topologyKey: kubernetes.io/hostname
+
+      # Init container to wait for dependencies
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z postgres-service 5432; do echo waiting for postgres; sleep 2; done']
+
+      - name: wait-for-redis
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z redis-service 6379; do echo waiting for redis; sleep 2; done']
+
+      containers:
+      - name: trading-engine
+        image: trading-engine:latest
+        imagePullPolicy: Always
+
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+
+        # Resource limits for production
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+            ephemeral-storage: "1Gi"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+            ephemeral-storage: "2Gi"
+
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: trading-config
+
+        # Sensitive environment variables from Secrets
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: database-url
+
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: redis-url
+
+        - name: EXCHANGE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: exchange-api-key
+
+        - name: EXCHANGE_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: exchange-api-secret
+
+        - name: OPENROUTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: openrouter-api-key
+
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: smtp-password
+              optional: true
+
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: slack-webhook-url
+              optional: true
+
+        - name: PAGERDUTY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: trading-secrets
+              key: pagerduty-api-key
+              optional: true
+
+        # Liveness probe - detects frozen application
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Readiness probe - traffic routing control
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Startup probe - handles slow starts
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 30  # 150 seconds max startup time
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+
+        # Volume mounts for logs and cache
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: cache
+          mountPath: /app/cache
+
+      volumes:
+      - name: logs
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: cache
+        emptyDir:
+          sizeLimit: 500Mi
+
+      # Graceful shutdown
+      terminationGracePeriodSeconds: 60
+
+      # DNS configuration
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trading-engine-sa
+  namespace: trading-system
+  labels:
+    app: trading-engine
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: trading-engine-pdb
+  namespace: trading-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: trading-engine

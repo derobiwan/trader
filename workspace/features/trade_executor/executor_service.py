@@ -428,9 +428,11 @@ class TradeExecutor:
                         quantity=quantity,
                         stop_price=stop_loss_price,
                         reduce_only=True,
-                        position_id=order_result.order.position_id
-                        if order_result.order
-                        else None,
+                        position_id=(
+                            order_result.order.position_id
+                            if order_result.order
+                            else None
+                        ),
                         metadata={"protection_layer": "layer1"},
                     )
 
@@ -478,9 +480,11 @@ class TradeExecutor:
                         quantity=quantity,
                         stop_price=stop_loss_price,
                         reduce_only=True,
-                        position_id=order_result.order.position_id
-                        if order_result.order
-                        else None,
+                        position_id=(
+                            order_result.order.position_id
+                            if order_result.order
+                            else None
+                        ),
                         metadata={"protection_layer": "layer1"},
                     )
 

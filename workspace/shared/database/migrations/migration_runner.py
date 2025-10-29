@@ -72,13 +72,15 @@ class MigrationRunner:
         Args:
             conn: Database connection
         """
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
                 applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 description TEXT
             )
-        """)
+        """
+        )
         logger.info("Ensured schema_migrations table exists")
 
     async def get_applied_versions(self, conn: asyncpg.Connection) -> List[int]:
@@ -263,53 +265,79 @@ class MigrationRunner:
 
 async def main():
     """Run migrations from command line"""
-    parser = argparse.ArgumentParser(description="Run database migrations")
-    parser.add_argument(
-        "--host",
-        default=os.getenv("DB_HOST", "localhost"),
-        help="Database host",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=int(os.getenv("DB_PORT", "5432")),
-        help="Database port",
-    )
-    parser.add_argument(
-        "--database",
-        default=os.getenv("DB_NAME", "trading_system"),
-        help="Database name",
-    )
-    parser.add_argument(
-        "--user",
-        default=os.getenv("DB_USER", "trading_user"),
-        help="Database user",
-    )
-    parser.add_argument(
-        "--password",
-        default=os.getenv("DB_PASSWORD", ""),
-        help="Database password",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be executed without applying",
-    )
+    # Check if DATABASE_URL is provided (standard format)
+    database_url = os.getenv("DATABASE_URL")
+    dry_run = False
 
-    args = parser.parse_args()
+    if database_url:
+        # Parse DATABASE_URL (format: postgresql://user:password@host:port/database)
+        from urllib.parse import urlparse
+
+        parsed = urlparse(database_url)
+
+        host = parsed.hostname or "localhost"
+        port = parsed.port or 5432
+        database = parsed.path.lstrip("/") if parsed.path else "trading_system"
+        user = parsed.username or "trading_user"
+        password = parsed.password or ""
+
+        logger.info(f"Using DATABASE_URL: {user}@{host}:{port}/{database}")
+    else:
+        # Fall back to individual environment variables
+        parser = argparse.ArgumentParser(description="Run database migrations")
+        parser.add_argument(
+            "--host",
+            default=os.getenv("DB_HOST", "localhost"),
+            help="Database host",
+        )
+        parser.add_argument(
+            "--port",
+            type=int,
+            default=int(os.getenv("DB_PORT", "5432")),
+            help="Database port",
+        )
+        parser.add_argument(
+            "--database",
+            default=os.getenv("DB_NAME", "trading_system"),
+            help="Database name",
+        )
+        parser.add_argument(
+            "--user",
+            default=os.getenv("DB_USER", "trading_user"),
+            help="Database user",
+        )
+        parser.add_argument(
+            "--password",
+            default=os.getenv("DB_PASSWORD", ""),
+            help="Database password",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show what would be executed without applying",
+        )
+
+        args = parser.parse_args()
+
+        host = args.host
+        port = args.port
+        database = args.database
+        user = args.user
+        password = args.password
+        dry_run = args.dry_run
 
     runner = MigrationRunner(
-        host=args.host,
-        port=args.port,
-        database=args.database,
-        user=args.user,
-        password=args.password,
+        host=host,
+        port=port,
+        database=database,
+        user=user,
+        password=password,
     )
 
     try:
-        applied, total = await runner.run_migrations(dry_run=args.dry_run)
+        applied, total = await runner.run_migrations(dry_run=dry_run)
 
-        if args.dry_run:
+        if dry_run:
             logger.info("Dry run complete - no changes made")
         else:
             logger.info(f"Migration complete: {applied} applied, {total} total")

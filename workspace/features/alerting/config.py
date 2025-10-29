@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class EmailConfig(BaseModel):
     """Email channel configuration"""
+
     enabled: bool = Field(default=True)
     smtp_host: str = Field(...)
     smtp_port: int = Field(default=587)
@@ -30,6 +31,7 @@ class EmailConfig(BaseModel):
 
 class SlackConfig(BaseModel):
     """Slack channel configuration"""
+
     enabled: bool = Field(default=True)
     webhook_url: str = Field(...)
     username: Optional[str] = Field(default="Trading System")
@@ -38,6 +40,7 @@ class SlackConfig(BaseModel):
 
 class PagerDutyConfig(BaseModel):
     """PagerDuty channel configuration"""
+
     enabled: bool = Field(default=True)
     integration_key: str = Field(...)
     min_severity: str = Field(default="critical")
@@ -45,6 +48,7 @@ class PagerDutyConfig(BaseModel):
 
 class AlertingConfig(BaseModel):
     """Alerting system configuration"""
+
     throttle_window: int = Field(default=300, description="Throttle window in seconds")
     email: Optional[EmailConfig] = None
     slack: Optional[SlackConfig] = None
@@ -91,7 +95,9 @@ def load_alerting_config() -> AlertingConfig:
     email_from = os.getenv("ALERT_EMAIL_FROM")
     email_to = os.getenv("ALERT_EMAIL_TO")
 
-    if email_enabled and all([smtp_host, smtp_username, smtp_password, email_from, email_to]):
+    if email_enabled and all(
+        [smtp_host, smtp_username, smtp_password, email_from, email_to]
+    ):
         config.email = EmailConfig(
             enabled=True,
             smtp_host=smtp_host,

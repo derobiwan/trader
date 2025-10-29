@@ -13,7 +13,6 @@ import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
-import json
 
 from .models import (
     OHLCV,
@@ -182,7 +181,9 @@ class MarketDataService:
 
         return snapshot
 
-    async def get_latest_ticker(self, symbol: str, use_cache: bool = True) -> Optional[Ticker]:
+    async def get_latest_ticker(
+        self, symbol: str, use_cache: bool = True
+    ) -> Optional[Ticker]:
         """
         Get latest ticker for symbol with caching
 
@@ -207,16 +208,20 @@ class MarketDataService:
                 logger.debug(f"Cache hit for ticker {formatted_symbol}")
                 # Convert back to Ticker object
                 return Ticker(
-                    symbol=cached_ticker['symbol'],
-                    last=Decimal(str(cached_ticker['last'])),
-                    bid=Decimal(str(cached_ticker.get('bid', 0))),
-                    ask=Decimal(str(cached_ticker.get('ask', 0))),
-                    high_24h=Decimal(str(cached_ticker.get('high_24h', 0))),
-                    low_24h=Decimal(str(cached_ticker.get('low_24h', 0))),
-                    volume_24h=Decimal(str(cached_ticker.get('volume_24h', 0))),
-                    change_24h=Decimal(str(cached_ticker.get('change_24h', 0))),
-                    change_24h_pct=Decimal(str(cached_ticker.get('change_24h_pct', 0))),
-                    timestamp=datetime.fromisoformat(cached_ticker['timestamp']) if isinstance(cached_ticker['timestamp'], str) else cached_ticker['timestamp'],
+                    symbol=cached_ticker["symbol"],
+                    last=Decimal(str(cached_ticker["last"])),
+                    bid=Decimal(str(cached_ticker.get("bid", 0))),
+                    ask=Decimal(str(cached_ticker.get("ask", 0))),
+                    high_24h=Decimal(str(cached_ticker.get("high_24h", 0))),
+                    low_24h=Decimal(str(cached_ticker.get("low_24h", 0))),
+                    volume_24h=Decimal(str(cached_ticker.get("volume_24h", 0))),
+                    change_24h=Decimal(str(cached_ticker.get("change_24h", 0))),
+                    change_24h_pct=Decimal(str(cached_ticker.get("change_24h_pct", 0))),
+                    timestamp=(
+                        datetime.fromisoformat(cached_ticker["timestamp"])
+                        if isinstance(cached_ticker["timestamp"], str)
+                        else cached_ticker["timestamp"]
+                    ),
                 )
 
             # Cache miss
@@ -228,16 +233,30 @@ class MarketDataService:
         if use_cache and ticker:
             # Serialize for caching
             serialized = {
-                'symbol': ticker.symbol,
-                'last': str(ticker.last),
-                'bid': str(ticker.bid) if ticker.bid else '0',
-                'ask': str(ticker.ask) if ticker.ask else '0',
-                'high_24h': str(ticker.high_24h) if hasattr(ticker, 'high_24h') else '0',
-                'low_24h': str(ticker.low_24h) if hasattr(ticker, 'low_24h') else '0',
-                'volume_24h': str(ticker.volume_24h) if hasattr(ticker, 'volume_24h') else '0',
-                'change_24h': str(ticker.change_24h) if hasattr(ticker, 'change_24h') else '0',
-                'change_24h_pct': str(ticker.change_24h_pct) if hasattr(ticker, 'change_24h_pct') else '0',
-                'timestamp': ticker.timestamp.isoformat() if hasattr(ticker.timestamp, 'isoformat') else str(ticker.timestamp),
+                "symbol": ticker.symbol,
+                "last": str(ticker.last),
+                "bid": str(ticker.bid) if ticker.bid else "0",
+                "ask": str(ticker.ask) if ticker.ask else "0",
+                "high_24h": (
+                    str(ticker.high_24h) if hasattr(ticker, "high_24h") else "0"
+                ),
+                "low_24h": str(ticker.low_24h) if hasattr(ticker, "low_24h") else "0",
+                "volume_24h": (
+                    str(ticker.volume_24h) if hasattr(ticker, "volume_24h") else "0"
+                ),
+                "change_24h": (
+                    str(ticker.change_24h) if hasattr(ticker, "change_24h") else "0"
+                ),
+                "change_24h_pct": (
+                    str(ticker.change_24h_pct)
+                    if hasattr(ticker, "change_24h_pct")
+                    else "0"
+                ),
+                "timestamp": (
+                    ticker.timestamp.isoformat()
+                    if hasattr(ticker.timestamp, "isoformat")
+                    else str(ticker.timestamp)
+                ),
             }
             # Cache for 30 seconds
             cache_key = f"market_data:ticker:{formatted_symbol}"
@@ -268,31 +287,41 @@ class MarketDataService:
 
         if use_cache:
             # Generate cache key
-            cache_key = f"market_data:ohlcv:{formatted_symbol}:{self.timeframe.value}:{limit}"
+            cache_key = (
+                f"market_data:ohlcv:{formatted_symbol}:{self.timeframe.value}:{limit}"
+            )
 
             # Try cache first
             cached_data = await self.cache.get(cache_key)
             if cached_data is not None:
-                logger.debug(f"Cache hit for OHLCV {formatted_symbol} {self.timeframe.value}")
+                logger.debug(
+                    f"Cache hit for OHLCV {formatted_symbol} {self.timeframe.value}"
+                )
                 # Convert back to OHLCV objects
                 return [
                     OHLCV(
-                        symbol=candle['symbol'],
-                        timeframe=Timeframe(candle['timeframe']),
-                        timestamp=datetime.fromisoformat(candle['timestamp']) if isinstance(candle['timestamp'], str) else candle['timestamp'],
-                        open=Decimal(str(candle['open'])),
-                        high=Decimal(str(candle['high'])),
-                        low=Decimal(str(candle['low'])),
-                        close=Decimal(str(candle['close'])),
-                        volume=Decimal(str(candle['volume'])),
-                        quote_volume=Decimal(str(candle.get('quote_volume', 0))),
-                        trades_count=candle.get('trades_count', 0),
+                        symbol=candle["symbol"],
+                        timeframe=Timeframe(candle["timeframe"]),
+                        timestamp=(
+                            datetime.fromisoformat(candle["timestamp"])
+                            if isinstance(candle["timestamp"], str)
+                            else candle["timestamp"]
+                        ),
+                        open=Decimal(str(candle["open"])),
+                        high=Decimal(str(candle["high"])),
+                        low=Decimal(str(candle["low"])),
+                        close=Decimal(str(candle["close"])),
+                        volume=Decimal(str(candle["volume"])),
+                        quote_volume=Decimal(str(candle.get("quote_volume", 0))),
+                        trades_count=candle.get("trades_count", 0),
                     )
                     for candle in cached_data
                 ]
 
             # Cache miss
-            logger.debug(f"Cache miss for OHLCV {formatted_symbol} {self.timeframe.value}")
+            logger.debug(
+                f"Cache miss for OHLCV {formatted_symbol} {self.timeframe.value}"
+            )
 
         # Get from memory
         candles = self.ohlcv_data.get(formatted_symbol, [])
@@ -302,21 +331,31 @@ class MarketDataService:
             # Serialize for caching
             serialized = [
                 {
-                    'symbol': c.symbol,
-                    'timeframe': c.timeframe.value if hasattr(c.timeframe, 'value') else str(c.timeframe),
-                    'timestamp': c.timestamp.isoformat() if hasattr(c.timestamp, 'isoformat') else str(c.timestamp),
-                    'open': str(c.open),
-                    'high': str(c.high),
-                    'low': str(c.low),
-                    'close': str(c.close),
-                    'volume': str(c.volume),
-                    'quote_volume': str(c.quote_volume) if c.quote_volume else '0',
-                    'trades_count': c.trades_count or 0,
+                    "symbol": c.symbol,
+                    "timeframe": (
+                        c.timeframe.value
+                        if hasattr(c.timeframe, "value")
+                        else str(c.timeframe)
+                    ),
+                    "timestamp": (
+                        c.timestamp.isoformat()
+                        if hasattr(c.timestamp, "isoformat")
+                        else str(c.timestamp)
+                    ),
+                    "open": str(c.open),
+                    "high": str(c.high),
+                    "low": str(c.low),
+                    "close": str(c.close),
+                    "volume": str(c.volume),
+                    "quote_volume": str(c.quote_volume) if c.quote_volume else "0",
+                    "trades_count": c.trades_count or 0,
                 }
                 for c in result
             ]
             # Cache for 60 seconds
-            cache_key = f"market_data:ohlcv:{formatted_symbol}:{self.timeframe.value}:{limit}"
+            cache_key = (
+                f"market_data:ohlcv:{formatted_symbol}:{self.timeframe.value}:{limit}"
+            )
             await self.cache.set(cache_key, serialized, ttl_seconds=60)
 
         return result
@@ -386,16 +425,16 @@ class MarketDataService:
                     candles = []
                     for row in reversed(rows):
                         candle = OHLCV(
-                            symbol=row['symbol'],
-                            timeframe=Timeframe(row['timeframe']),
-                            timestamp=row['timestamp'],
-                            open=row['open'],
-                            high=row['high'],
-                            low=row['low'],
-                            close=row['close'],
-                            volume=row['volume'],
-                            quote_volume=row['quote_volume'],
-                            trades_count=row['trades_count'],
+                            symbol=row["symbol"],
+                            timeframe=Timeframe(row["timeframe"]),
+                            timestamp=row["timestamp"],
+                            open=row["open"],
+                            high=row["high"],
+                            low=row["low"],
+                            close=row["close"],
+                            volume=row["volume"],
+                            quote_volume=row["quote_volume"],
+                            trades_count=row["trades_count"],
                         )
                         candles.append(candle)
 
@@ -403,14 +442,18 @@ class MarketDataService:
                     logger.info(f"Loaded {len(candles)} candles for {formatted_symbol}")
 
             except Exception as e:
-                logger.error(f"Error loading historical data for {symbol}: {e}", exc_info=True)
+                logger.error(
+                    f"Error loading historical data for {symbol}: {e}", exc_info=True
+                )
 
     async def _update_indicators(self, symbol: str):
         """Calculate and update indicators for symbol"""
         try:
             candles = self.ohlcv_data.get(symbol, [])
             if len(candles) < 50:  # Need enough data for indicators
-                logger.debug(f"Insufficient data for indicators: {symbol} ({len(candles)} candles)")
+                logger.debug(
+                    f"Insufficient data for indicators: {symbol} ({len(candles)} candles)"
+                )
                 return
 
             # Get latest ticker
@@ -429,11 +472,11 @@ class MarketDataService:
                 timestamp=datetime.utcnow(),
                 ohlcv=candles[-1],
                 ticker=ticker,
-                rsi=indicators.get('rsi'),
-                macd=indicators.get('macd'),
-                ema_fast=indicators.get('ema_fast'),
-                ema_slow=indicators.get('ema_slow'),
-                bollinger=indicators.get('bollinger'),
+                rsi=indicators.get("rsi"),
+                macd=indicators.get("macd"),
+                ema_fast=indicators.get("ema_fast"),
+                ema_slow=indicators.get("ema_slow"),
+                bollinger=indicators.get("bollinger"),
             )
 
             self.latest_snapshots[symbol] = snapshot

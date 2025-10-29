@@ -16,7 +16,6 @@ Sprint: Sprint 2 Stream C
 
 import httpx
 import logging
-from typing import Optional
 
 from ..alert_service import AlertChannel
 from ..models import Alert, AlertSeverity
@@ -49,9 +48,7 @@ class PagerDutyAlertChannel(AlertChannel):
         self.min_severity = min_severity
         self.api_url = "https://events.pagerduty.com/v2/enqueue"
 
-        logger.info(
-            f"PagerDuty channel initialized (min_severity={min_severity})"
-        )
+        logger.info(f"PagerDuty channel initialized (min_severity={min_severity})")
 
     async def send(self, alert: Alert) -> bool:
         """
@@ -70,7 +67,9 @@ class PagerDutyAlertChannel(AlertChannel):
             AlertSeverity.CRITICAL: 2,
         }
 
-        if severity_order.get(alert.severity, 0) < severity_order.get(self.min_severity, 2):
+        if severity_order.get(alert.severity, 0) < severity_order.get(
+            self.min_severity, 2
+        ):
             logger.debug(
                 f"Alert severity {alert.severity} below minimum {self.min_severity}, skipping PagerDuty"
             )

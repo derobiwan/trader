@@ -139,9 +139,9 @@ class BaseStrategy(ABC):
             "name": self.get_name(),
             "type": self.get_type().value,
             "signal_count": self._signal_count,
-            "last_signal_time": self._last_signal_time.isoformat()
-            if self._last_signal_time
-            else None,
+            "last_signal_time": (
+                self._last_signal_time.isoformat() if self._last_signal_time else None
+            ),
         }
 
     def _record_signal(self, signal: StrategySignal):

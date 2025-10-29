@@ -13,7 +13,7 @@ import random
 import logging
 from typing import Optional, Callable, Any
 from datetime import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ReconnectionStats:
     """Statistics about reconnection attempts"""
+
     total_attempts: int = 0
     successful_reconnections: int = 0
     failed_attempts: int = 0
@@ -106,7 +107,7 @@ class WebSocketReconnectionManager:
             Delay in seconds before next reconnection attempt
         """
         # Exponential backoff: 1, 2, 4, 8, 16, 32, 60 (capped at max_delay)
-        delay = min(self.base_delay * (2 ** self.attempt), self.max_delay)
+        delay = min(self.base_delay * (2**self.attempt), self.max_delay)
 
         # Add jitter to prevent thundering herd problem
         # Jitter range: +/- (jitter_range * delay)
@@ -169,7 +170,9 @@ class WebSocketReconnectionManager:
 
                 # Calculate downtime
                 if self.stats.last_disconnect:
-                    downtime = (datetime.utcnow() - self.stats.last_disconnect).total_seconds()
+                    downtime = (
+                        datetime.utcnow() - self.stats.last_disconnect
+                    ).total_seconds()
                     self.stats.total_downtime_seconds += downtime
 
                 logger.info(
@@ -184,7 +187,7 @@ class WebSocketReconnectionManager:
                 self.stats.failed_attempts += 1
                 logger.warning(
                     f"Connection attempt {self.attempt} failed: {e}",
-                    exc_info=False  # Don't log full traceback for expected reconnection errors
+                    exc_info=False,  # Don't log full traceback for expected reconnection errors
                 )
 
                 # Calculate backoff delay
@@ -231,11 +234,13 @@ class WebSocketReconnectionManager:
             "failed_attempts": self.stats.failed_attempts,
             "last_disconnect": (
                 self.stats.last_disconnect.isoformat()
-                if self.stats.last_disconnect else None
+                if self.stats.last_disconnect
+                else None
             ),
             "last_reconnect": (
                 self.stats.last_reconnect.isoformat()
-                if self.stats.last_reconnect else None
+                if self.stats.last_reconnect
+                else None
             ),
             "uptime_percentage": self.stats.calculate_uptime_percentage(),
             "total_downtime_seconds": self.stats.total_downtime_seconds,

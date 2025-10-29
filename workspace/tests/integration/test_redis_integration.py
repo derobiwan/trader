@@ -9,9 +9,12 @@ Date: 2025-10-28
 
 import pytest
 import asyncio
-from decimal import Decimal
 
-from workspace.infrastructure.cache import RedisManager, init_redis, get_redis, close_redis
+from workspace.infrastructure.cache import (
+    RedisManager,
+    init_redis,
+    close_redis,
+)
 from workspace.features.caching.cache_service import CacheService
 
 

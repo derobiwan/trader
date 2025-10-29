@@ -433,7 +433,7 @@ class TestExecuteSignalIntegration:
         # Note: execute_signal currently imports TradingDecision
         # We need to call it to see if it validates symbol format
         with patch("workspace.features.trade_executor.executor_service.OrderSide"):
-            result = await executor.execute_signal(
+            await executor.execute_signal(
                 signal=invalid_signal,
                 account_balance_chf=account_balance_chf,
             )
@@ -454,7 +454,7 @@ class TestExecuteSignalIntegration:
         assert result.success is True
 
         # Verify metadata was passed to order
-        call_args = executor.exchange.create_order.call_args_list[0]
+        executor.exchange.create_order.call_args_list[0]
         # The method should have stored reasoning in metadata
 
     # ========================================================================

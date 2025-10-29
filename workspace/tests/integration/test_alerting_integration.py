@@ -10,7 +10,6 @@ Sprint: Sprint 2 Stream C
 
 import pytest
 import asyncio
-from datetime import datetime
 
 from workspace.features.alerting import (
     Alert,
@@ -205,40 +204,48 @@ class TestAlertingIntegration:
         # Scenario: Trading system experiencing issues
 
         # 1. Position opened (INFO)
-        await service.send_alert(Alert(
-            title="Position Opened",
-            message="Long position opened on BTC/USDT",
-            severity=AlertSeverity.INFO,
-            category=AlertCategory.TRADING,
-            metadata={"symbol": "BTC/USDT", "size": 0.5},
-        ))
+        await service.send_alert(
+            Alert(
+                title="Position Opened",
+                message="Long position opened on BTC/USDT",
+                severity=AlertSeverity.INFO,
+                category=AlertCategory.TRADING,
+                metadata={"symbol": "BTC/USDT", "size": 0.5},
+            )
+        )
 
         # 2. High drawdown (WARNING)
-        await service.send_alert(Alert(
-            title="High Drawdown",
-            message="Position drawdown exceeds 5%",
-            severity=AlertSeverity.WARNING,
-            category=AlertCategory.RISK,
-            metadata={"symbol": "BTC/USDT", "drawdown_pct": 5.2},
-        ))
+        await service.send_alert(
+            Alert(
+                title="High Drawdown",
+                message="Position drawdown exceeds 5%",
+                severity=AlertSeverity.WARNING,
+                category=AlertCategory.RISK,
+                metadata={"symbol": "BTC/USDT", "drawdown_pct": 5.2},
+            )
+        )
 
         # 3. Stop loss triggered (WARNING)
-        await service.send_alert(Alert(
-            title="Stop Loss Triggered",
-            message="Stop loss triggered on BTC/USDT",
-            severity=AlertSeverity.WARNING,
-            category=AlertCategory.TRADING,
-            metadata={"symbol": "BTC/USDT", "loss": -250},
-        ))
+        await service.send_alert(
+            Alert(
+                title="Stop Loss Triggered",
+                message="Stop loss triggered on BTC/USDT",
+                severity=AlertSeverity.WARNING,
+                category=AlertCategory.TRADING,
+                metadata={"symbol": "BTC/USDT", "loss": -250},
+            )
+        )
 
         # 4. System error (CRITICAL)
-        await service.send_alert(Alert(
-            title="Exchange API Error",
-            message="Critical error connecting to exchange API",
-            severity=AlertSeverity.CRITICAL,
-            category=AlertCategory.SYSTEM,
-            metadata={"exchange": "Binance", "error": "Connection timeout"},
-        ))
+        await service.send_alert(
+            Alert(
+                title="Exchange API Error",
+                message="Critical error connecting to exchange API",
+                severity=AlertSeverity.CRITICAL,
+                category=AlertCategory.SYSTEM,
+                metadata={"exchange": "Binance", "error": "Connection timeout"},
+            )
+        )
 
         # Verify alerts were routed correctly
         assert len(email_channel.sent_alerts) == 4  # All alerts

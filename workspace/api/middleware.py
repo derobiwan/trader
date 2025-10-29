@@ -167,9 +167,9 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             # Build error response
             error_response = {
                 "error": "Internal server error",
-                "message": str(exc)
-                if settings.debug
-                else "An unexpected error occurred",
+                "message": (
+                    str(exc) if settings.debug else "An unexpected error occurred"
+                ),
                 "request_id": request_id,
                 "timestamp": datetime.utcnow().isoformat(),
             }

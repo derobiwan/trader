@@ -11,7 +11,7 @@ Date: 2025-10-29
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HealthMetrics:
     """Health metrics for WebSocket connection"""
+
     total_messages: int = 0
     messages_per_minute: float = 0.0
     total_errors: int = 0

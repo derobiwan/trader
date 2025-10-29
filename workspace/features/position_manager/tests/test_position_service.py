@@ -805,7 +805,7 @@ async def test_get_statistics(position_service):
         stop_loss=Decimal("44000.00"),
     )
 
-    position2 = await position_service.create_position(
+    await position_service.create_position(
         symbol="ETHUSDT",
         side="LONG",
         quantity=Decimal("0.1"),

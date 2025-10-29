@@ -16,13 +16,12 @@ Sprint: Sprint 2 Stream C
 """
 
 import logging
-from typing import List, Optional, Dict
+from typing import List, Dict
 from datetime import datetime, timedelta
 
 from .models import (
     Alert,
     AlertSeverity,
-    AlertCategory,
     AlertDeliveryStatus,
     AlertDeliveryRecord,
 )
@@ -67,9 +66,9 @@ class AlertRoutingRules:
 
     def __init__(self):
         self.rules: Dict[AlertSeverity, List[str]] = {
-            AlertSeverity.INFO: ['email'],
-            AlertSeverity.WARNING: ['email', 'slack'],
-            AlertSeverity.CRITICAL: ['email', 'slack', 'pagerduty'],
+            AlertSeverity.INFO: ["email"],
+            AlertSeverity.WARNING: ["email", "slack"],
+            AlertSeverity.CRITICAL: ["email", "slack", "pagerduty"],
         }
         self.channel_map: Dict[str, AlertChannel] = {}
 
@@ -164,8 +163,7 @@ class AlertThrottler:
         # Clean old entries (older than 2x throttle window)
         cutoff_time = datetime.utcnow() - timedelta(seconds=self.throttle_window * 2)
         self.recent_alerts = {
-            k: v for k, v in self.recent_alerts.items()
-            if v > cutoff_time
+            k: v for k, v in self.recent_alerts.items() if v > cutoff_time
         }
 
         return True
@@ -208,9 +206,7 @@ class AlertService:
         self.routing_rules.register_channel(name, channel)
 
     async def send_alert(
-        self,
-        alert: Alert,
-        force: bool = False
+        self, alert: Alert, force: bool = False
     ) -> Dict[str, AlertDeliveryStatus]:
         """
         Send alert to appropriate channels
@@ -225,17 +221,13 @@ class AlertService:
         # Check throttling
         if not force and not self.throttler.should_send(alert):
             logger.info(f"Alert throttled: {alert.title}")
-            return {
-                "throttled": AlertDeliveryStatus.THROTTLED
-            }
+            return {"throttled": AlertDeliveryStatus.THROTTLED}
 
         # Get channels for this severity
         channels = self.routing_rules.get_channels(alert.severity)
 
         if not channels:
-            logger.warning(
-                f"No channels configured for severity {alert.severity}"
-            )
+            logger.warning(f"No channels configured for severity {alert.severity}")
             return {}
 
         # Send to each channel
@@ -249,8 +241,7 @@ class AlertService:
                 success = await channel.send(alert)
 
                 status = (
-                    AlertDeliveryStatus.SENT if success
-                    else AlertDeliveryStatus.FAILED
+                    AlertDeliveryStatus.SENT if success else AlertDeliveryStatus.FAILED
                 )
 
                 results[channel.name] = status
@@ -265,8 +256,7 @@ class AlertService:
 
             except Exception as e:
                 logger.error(
-                    f"Failed to send alert via {channel.name}: {e}",
-                    exc_info=True
+                    f"Failed to send alert via {channel.name}: {e}", exc_info=True
                 )
                 results[channel.name] = AlertDeliveryStatus.FAILED
 
@@ -287,7 +277,7 @@ class AlertService:
 
         # Trim history
         if len(self.delivery_history) > self._max_history:
-            self.delivery_history = self.delivery_history[-self._max_history:]
+            self.delivery_history = self.delivery_history[-self._max_history :]
 
     def get_delivery_stats(self) -> Dict:
         """Get alert delivery statistics"""
@@ -301,12 +291,10 @@ class AlertService:
             }
 
         sent = sum(
-            1 for r in self.delivery_history
-            if r.status == AlertDeliveryStatus.SENT
+            1 for r in self.delivery_history if r.status == AlertDeliveryStatus.SENT
         )
         failed = sum(
-            1 for r in self.delivery_history
-            if r.status == AlertDeliveryStatus.FAILED
+            1 for r in self.delivery_history if r.status == AlertDeliveryStatus.FAILED
         )
 
         return {
