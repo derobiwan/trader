@@ -160,7 +160,7 @@ class LLMDecisionEngine:
             price = float(snapshot.ticker.last) if snapshot.ticker else 0.0
 
             # Round price to reduce cache misses
-            if 'BTC' in symbol:
+            if "BTC" in symbol:
                 rounded_price = round(price / 10) * 10  # Nearest $10
             else:
                 rounded_price = round(price)  # Nearest $1
@@ -168,7 +168,7 @@ class LLMDecisionEngine:
             # Round indicators
             # RSI and MACD can be objects or Decimals, handle both
             if snapshot.rsi:
-                if hasattr(snapshot.rsi, 'value'):
+                if hasattr(snapshot.rsi, "value"):
                     rsi = float(snapshot.rsi.value)
                 else:
                     rsi = float(snapshot.rsi)
@@ -177,7 +177,7 @@ class LLMDecisionEngine:
                 rounded_rsi = 0
 
             if snapshot.macd:
-                if hasattr(snapshot.macd, 'macd_line'):
+                if hasattr(snapshot.macd, "macd_line"):
                     macd = float(snapshot.macd.macd_line)
                 else:
                     macd = float(snapshot.macd)
@@ -186,15 +186,15 @@ class LLMDecisionEngine:
                 rounded_macd = 0
 
             cache_inputs[symbol] = {
-                'price': rounded_price,
-                'rsi': rounded_rsi,
-                'macd': rounded_macd,
+                "price": rounded_price,
+                "rsi": rounded_rsi,
+                "macd": rounded_macd,
             }
 
         # Create hashable representation
         cache_data = {
-            'snapshots': cache_inputs,
-            'model': self.config.model,
+            "snapshots": cache_inputs,
+            "model": self.config.model,
         }
 
         # Generate cache key
@@ -250,18 +250,26 @@ class LLMDecisionEngine:
                     signals = {}
                     for symbol, signal_data in cached_signals.items():
                         signal = TradingSignal(
-                            symbol=signal_data['symbol'],
-                            decision=TradingDecision(signal_data['decision']),
-                            confidence=Decimal(str(signal_data['confidence'])),
-                            size_pct=Decimal(str(signal_data['size_pct'])),
-                            stop_loss_pct=Decimal(str(signal_data['stop_loss_pct'])) if signal_data.get('stop_loss_pct') else None,
-                            take_profit_pct=Decimal(str(signal_data['take_profit_pct'])) if signal_data.get('take_profit_pct') else None,
-                            reasoning=signal_data.get('reasoning', ''),
-                            model_used=signal_data.get('model_used', ''),
-                            tokens_input=signal_data.get('tokens_input', 0),
-                            tokens_output=signal_data.get('tokens_output', 0),
-                            cost_usd=Decimal(str(signal_data.get('cost_usd', 0))),
-                            generation_time_ms=signal_data.get('generation_time_ms', 0),
+                            symbol=signal_data["symbol"],
+                            decision=TradingDecision(signal_data["decision"]),
+                            confidence=Decimal(str(signal_data["confidence"])),
+                            size_pct=Decimal(str(signal_data["size_pct"])),
+                            stop_loss_pct=(
+                                Decimal(str(signal_data["stop_loss_pct"]))
+                                if signal_data.get("stop_loss_pct")
+                                else None
+                            ),
+                            take_profit_pct=(
+                                Decimal(str(signal_data["take_profit_pct"]))
+                                if signal_data.get("take_profit_pct")
+                                else None
+                            ),
+                            reasoning=signal_data.get("reasoning", ""),
+                            model_used=signal_data.get("model_used", ""),
+                            tokens_input=signal_data.get("tokens_input", 0),
+                            tokens_output=signal_data.get("tokens_output", 0),
+                            cost_usd=Decimal(str(signal_data.get("cost_usd", 0))),
+                            generation_time_ms=signal_data.get("generation_time_ms", 0),
                         )
                         signals[symbol] = signal
 
@@ -328,18 +336,24 @@ class LLMDecisionEngine:
                 serialized_signals = {}
                 for symbol, signal in signals.items():
                     serialized_signals[symbol] = {
-                        'symbol': signal.symbol,
-                        'decision': signal.decision.value,
-                        'confidence': str(signal.confidence),
-                        'size_pct': str(signal.size_pct),
-                        'stop_loss_pct': str(signal.stop_loss_pct) if signal.stop_loss_pct else None,
-                        'take_profit_pct': str(signal.take_profit_pct) if signal.take_profit_pct else None,
-                        'reasoning': signal.reasoning or '',
-                        'model_used': signal.model_used or '',
-                        'tokens_input': signal.tokens_input or 0,
-                        'tokens_output': signal.tokens_output or 0,
-                        'cost_usd': str(signal.cost_usd) if signal.cost_usd else '0',
-                        'generation_time_ms': signal.generation_time_ms or 0,
+                        "symbol": signal.symbol,
+                        "decision": signal.decision.value,
+                        "confidence": str(signal.confidence),
+                        "size_pct": str(signal.size_pct),
+                        "stop_loss_pct": (
+                            str(signal.stop_loss_pct) if signal.stop_loss_pct else None
+                        ),
+                        "take_profit_pct": (
+                            str(signal.take_profit_pct)
+                            if signal.take_profit_pct
+                            else None
+                        ),
+                        "reasoning": signal.reasoning or "",
+                        "model_used": signal.model_used or "",
+                        "tokens_input": signal.tokens_input or 0,
+                        "tokens_output": signal.tokens_output or 0,
+                        "cost_usd": str(signal.cost_usd) if signal.cost_usd else "0",
+                        "generation_time_ms": signal.generation_time_ms or 0,
                     }
 
                 await self.cache.set(cache_key, serialized_signals, ttl_seconds=180)
@@ -596,9 +610,9 @@ class LLMDecisionEngine:
                 confidence=Decimal(str(confidence)),
                 size_pct=Decimal(str(size_pct)),
                 stop_loss_pct=Decimal(str(stop_loss_pct)) if stop_loss_pct else None,
-                take_profit_pct=Decimal(str(take_profit_pct))
-                if take_profit_pct
-                else None,
+                take_profit_pct=(
+                    Decimal(str(take_profit_pct)) if take_profit_pct else None
+                ),
                 reasoning=reasoning,
             )
 

@@ -242,9 +242,11 @@ class PositionService:
                                 "entry_price": str(request.entry_price),
                                 "leverage": request.leverage,
                                 "stop_loss": str(request.stop_loss),
-                                "take_profit": str(request.take_profit)
-                                if request.take_profit
-                                else None,
+                                "take_profit": (
+                                    str(request.take_profit)
+                                    if request.take_profit
+                                    else None
+                                ),
                                 "signal_id": str(signal_id) if signal_id else None,
                                 "notes": notes,
                             },
@@ -504,7 +506,7 @@ class PositionService:
                         )
 
                         # Update daily P&L tracking
-                        today = date.today()
+                        today = Date.today()
                         await conn.execute(
                             """
                             INSERT INTO circuit_breaker_state (date, current_pnl_chf)

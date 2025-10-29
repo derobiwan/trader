@@ -81,19 +81,19 @@ class EmailAlertChannel(AlertChannel):
         """
         try:
             # Create message
-            message = MIMEMultipart('alternative')
-            message['From'] = self.from_email
-            message['To'] = ", ".join(self.to_emails)
-            message['Subject'] = f"[{alert.severity.upper()}] {alert.title}"
+            message = MIMEMultipart("alternative")
+            message["From"] = self.from_email
+            message["To"] = ", ".join(self.to_emails)
+            message["Subject"] = f"[{alert.severity.upper()}] {alert.title}"
 
             # Plain text body
             text_body = self._format_text_body(alert)
-            text_part = MIMEText(text_body, 'plain')
+            text_part = MIMEText(text_body, "plain")
             message.attach(text_part)
 
             # HTML body
             html_body = self._format_html_body(alert)
-            html_part = MIMEText(html_body, 'html')
+            html_part = MIMEText(html_body, "html")
             message.attach(html_part)
 
             # Send via SMTP
@@ -115,12 +115,12 @@ class EmailAlertChannel(AlertChannel):
         """Format plain text email body"""
         body = f"""
 Trading System Alert
-{'=' * 50}
+{"=" * 50}
 
 Alert: {alert.title}
 Severity: {alert.severity.upper()}
 Category: {alert.category}
-Time: {alert.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}
+Time: {alert.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 Message:
 {alert.message}
@@ -133,7 +133,7 @@ Message:
                 body += f"  {key}: {value}\n"
 
         body += f"""
-{'=' * 50}
+{"=" * 50}
 Alert ID: {alert.id}
 """
         return body
@@ -142,8 +142,8 @@ Alert ID: {alert.id}
         """Format HTML email body"""
         # Color based on severity
         severity_colors = {
-            AlertSeverity.INFO: "#3498db",      # Blue
-            AlertSeverity.WARNING: "#f39c12",   # Orange
+            AlertSeverity.INFO: "#3498db",  # Blue
+            AlertSeverity.WARNING: "#f39c12",  # Orange
             AlertSeverity.CRITICAL: "#e74c3c",  # Red
         }
         color = severity_colors.get(alert.severity, "#95a5a6")
@@ -213,12 +213,12 @@ Alert ID: {alert.id}
         </div>
         <div class="info-row">
             <span class="label">Time:</span>
-            <span>{alert.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}</span>
+            <span>{alert.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")}</span>
         </div>
 
         <div class="message">
             <strong>Message:</strong><br>
-            {alert.message.replace('\n', '<br>')}
+            {alert.message.replace("\n", "<br>")}
         </div>
 """
 

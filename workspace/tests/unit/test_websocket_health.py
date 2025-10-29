@@ -7,7 +7,7 @@ Date: 2025-10-29
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from workspace.features.market_data.websocket_health import (
     WebSocketHealthMonitor,
     HealthMetrics,
@@ -123,7 +123,7 @@ class TestWebSocketHealthMonitor:
         """Test health check with stale message (exceeds threshold)"""
         monitor = WebSocketHealthMonitor(
             heartbeat_interval=1,  # 1 second
-            unhealthy_threshold=2.0  # 2x = 2 seconds max
+            unhealthy_threshold=2.0,  # 2x = 2 seconds max
         )
 
         monitor.record_message()
@@ -282,7 +282,9 @@ class TestWebSocketHealthMonitor:
     @pytest.mark.asyncio
     async def test_health_degradation_over_time(self):
         """Test that health degrades when no messages received"""
-        monitor = WebSocketHealthMonitor(heartbeat_interval=0.1, unhealthy_threshold=2.0)
+        monitor = WebSocketHealthMonitor(
+            heartbeat_interval=0.1, unhealthy_threshold=2.0
+        )
 
         # Initial message
         monitor.record_message()
@@ -344,7 +346,9 @@ class TestWebSocketHealthMonitorIntegration:
     @pytest.mark.asyncio
     async def test_realistic_unhealthy_scenario(self):
         """Test realistic scenario with unhealthy connection"""
-        monitor = WebSocketHealthMonitor(heartbeat_interval=0.5, unhealthy_threshold=2.0)
+        monitor = WebSocketHealthMonitor(
+            heartbeat_interval=0.5, unhealthy_threshold=2.0
+        )
 
         # Start healthy
         monitor.record_message()
@@ -360,7 +364,9 @@ class TestWebSocketHealthMonitorIntegration:
     @pytest.mark.asyncio
     async def test_recovery_scenario(self):
         """Test recovery from unhealthy state"""
-        monitor = WebSocketHealthMonitor(heartbeat_interval=0.5, unhealthy_threshold=2.0)
+        monitor = WebSocketHealthMonitor(
+            heartbeat_interval=0.5, unhealthy_threshold=2.0
+        )
 
         # Start healthy
         monitor.record_message()
@@ -386,7 +392,7 @@ class TestWebSocketHealthMonitorIntegration:
             monitor.record_message()
             await asyncio.sleep(0.01)
 
-        duration = (datetime.utcnow() - start).total_seconds()
+        (datetime.utcnow() - start).total_seconds()
 
         # Should have high messages per minute
         assert monitor.metrics.messages_per_minute > 0

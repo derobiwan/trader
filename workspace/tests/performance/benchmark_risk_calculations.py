@@ -13,23 +13,18 @@ Date: 2025-10-29
 import time
 import asyncio
 from decimal import Decimal
-from datetime import datetime, timedelta
 
 from workspace.features.risk_manager import (
     PortfolioRiskManager,
     KellyPositionSizer,
     CorrelationAnalyzer,
     RiskMetricsCalculator,
-    PositionInfo,
-    TradeResult,
 )
 
 
 def benchmark_portfolio_risk_check():
     """Benchmark portfolio risk limit checks"""
-    risk_manager = PortfolioRiskManager(
-        max_portfolio_value=Decimal("2626.96")
-    )
+    risk_manager = PortfolioRiskManager(max_portfolio_value=Decimal("2626.96"))
 
     # Warm up
     for _ in range(10):
@@ -132,7 +127,9 @@ def benchmark_risk_metrics():
     end = time.perf_counter()
     avg_time_ms = ((end - start) / iterations) * 1000
 
-    print(f"Risk Metrics Calculation: {avg_time_ms:.2f}ms per calculation (target: <100ms)")
+    print(
+        f"Risk Metrics Calculation: {avg_time_ms:.2f}ms per calculation (target: <100ms)"
+    )
     assert avg_time_ms < 100, f"Performance target missed: {avg_time_ms:.2f}ms"
 
     return avg_time_ms
@@ -140,9 +137,7 @@ def benchmark_risk_metrics():
 
 def benchmark_circuit_breaker():
     """Benchmark circuit breaker trigger"""
-    risk_manager = PortfolioRiskManager(
-        max_portfolio_value=Decimal("2626.96")
-    )
+    risk_manager = PortfolioRiskManager(max_portfolio_value=Decimal("2626.96"))
 
     # Warm up
     for _ in range(10):
@@ -186,7 +181,11 @@ async def run_all_benchmarks():
     print("=" * 70)
 
     for name, time_ms in results.items():
-        status = "✓ PASS" if time_ms < 100 or (name == "correlation" and time_ms < 500) else "✗ FAIL"
+        status = (
+            "✓ PASS"
+            if time_ms < 100 or (name == "correlation" and time_ms < 500)
+            else "✗ FAIL"
+        )
         print(f"{status} | {name:20s}: {time_ms:6.2f}ms")
 
     print("=" * 70 + "\n")

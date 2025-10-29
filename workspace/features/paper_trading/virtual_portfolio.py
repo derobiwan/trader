@@ -58,7 +58,7 @@ class VirtualPortfolio:
         side: str,
         quantity: Decimal,
         entry_price: Decimal,
-        fees: Decimal
+        fees: Decimal,
     ):
         """
         Open or add to virtual position
@@ -77,17 +77,16 @@ class VirtualPortfolio:
             pos = self.positions[symbol]
 
             # Calculate weighted average entry price
-            total_quantity = pos['quantity'] + quantity
+            total_quantity = pos["quantity"] + quantity
             avg_price = (
-                (pos['entry_price'] * pos['quantity'] + entry_price * quantity)
-                / total_quantity
-            )
+                pos["entry_price"] * pos["quantity"] + entry_price * quantity
+            ) / total_quantity
 
             # Update position
-            pos['quantity'] = total_quantity
-            pos['entry_price'] = avg_price
-            pos['total_fees'] += fees
-            pos['last_updated'] = datetime.utcnow()
+            pos["quantity"] = total_quantity
+            pos["entry_price"] = avg_price
+            pos["total_fees"] += fees
+            pos["last_updated"] = datetime.utcnow()
 
             logger.info(
                 f"Added to position {symbol}: "
@@ -97,13 +96,13 @@ class VirtualPortfolio:
         else:
             # Create new position
             self.positions[symbol] = {
-                'symbol': symbol,
-                'side': side,
-                'quantity': quantity,
-                'entry_price': entry_price,
-                'total_fees': fees,
-                'opened_at': datetime.utcnow(),
-                'last_updated': datetime.utcnow(),
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "entry_price": entry_price,
+                "total_fees": fees,
+                "opened_at": datetime.utcnow(),
+                "last_updated": datetime.utcnow(),
             }
 
             logger.info(
@@ -117,25 +116,27 @@ class VirtualPortfolio:
             self.balance -= cost
         else:
             # For shorts, we receive proceeds
-            self.balance += (quantity * entry_price - fees)
+            self.balance += quantity * entry_price - fees
 
         # Record trade
-        self.trade_history.append({
-            'action': 'open',
-            'symbol': symbol,
-            'side': side,
-            'quantity': quantity,
-            'price': entry_price,
-            'fees': fees,
-            'timestamp': datetime.utcnow(),
-        })
+        self.trade_history.append(
+            {
+                "action": "open",
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "price": entry_price,
+                "fees": fees,
+                "timestamp": datetime.utcnow(),
+            }
+        )
 
     def close_position(
         self,
         symbol: str,
         exit_price: Decimal,
         fees: Decimal,
-        quantity: Optional[Decimal] = None
+        quantity: Optional[Decimal] = None,
     ) -> Decimal:
         """
         Close virtual position (fully or partially)
@@ -156,25 +157,25 @@ class VirtualPortfolio:
             raise ValueError(f"No position for {symbol}")
 
         pos = self.positions[symbol]
-        close_quantity = quantity if quantity is not None else pos['quantity']
+        close_quantity = quantity if quantity is not None else pos["quantity"]
 
         # Validate quantity
-        if close_quantity > pos['quantity']:
+        if close_quantity > pos["quantity"]:
             raise ValueError(
                 f"Cannot close {close_quantity} - only {pos['quantity']} available"
             )
 
         # Calculate P&L
-        if pos['side'] == "long":
-            pnl = (exit_price - pos['entry_price']) * close_quantity
+        if pos["side"] == "long":
+            pnl = (exit_price - pos["entry_price"]) * close_quantity
         else:
-            pnl = (pos['entry_price'] - exit_price) * close_quantity
+            pnl = (pos["entry_price"] - exit_price) * close_quantity
 
         # Subtract fees
         pnl -= fees
 
         # Update balance
-        if pos['side'] == "long":
+        if pos["side"] == "long":
             proceeds = close_quantity * exit_price - fees
             self.balance += proceeds
         else:
@@ -183,31 +184,28 @@ class VirtualPortfolio:
 
         # Record closed position
         closed_pos = {
-            'symbol': symbol,
-            'side': pos['side'],
-            'quantity': close_quantity,
-            'entry_price': pos['entry_price'],
-            'exit_price': exit_price,
-            'pnl': pnl,
-            'total_fees': pos['total_fees'] + fees,
-            'opened_at': pos['opened_at'],
-            'closed_at': datetime.utcnow(),
-            'holding_period': (datetime.utcnow() - pos['opened_at']).total_seconds(),
+            "symbol": symbol,
+            "side": pos["side"],
+            "quantity": close_quantity,
+            "entry_price": pos["entry_price"],
+            "exit_price": exit_price,
+            "pnl": pnl,
+            "total_fees": pos["total_fees"] + fees,
+            "opened_at": pos["opened_at"],
+            "closed_at": datetime.utcnow(),
+            "holding_period": (datetime.utcnow() - pos["opened_at"]).total_seconds(),
         }
         self.closed_positions.append(closed_pos)
 
         # Update or remove position
-        if close_quantity >= pos['quantity']:
+        if close_quantity >= pos["quantity"]:
             # Fully closed
             del self.positions[symbol]
-            logger.info(
-                f"Closed position {symbol} fully: "
-                f"P&L: ${pnl:.2f}"
-            )
+            logger.info(f"Closed position {symbol} fully: P&L: ${pnl:.2f}")
         else:
             # Partially closed
-            pos['quantity'] -= close_quantity
-            pos['last_updated'] = datetime.utcnow()
+            pos["quantity"] -= close_quantity
+            pos["last_updated"] = datetime.utcnow()
             logger.info(
                 f"Partially closed position {symbol}: "
                 f"Closed: {close_quantity}, Remaining: {pos['quantity']}, "
@@ -215,16 +213,18 @@ class VirtualPortfolio:
             )
 
         # Record trade
-        self.trade_history.append({
-            'action': 'close',
-            'symbol': symbol,
-            'side': pos['side'],
-            'quantity': close_quantity,
-            'price': exit_price,
-            'fees': fees,
-            'pnl': pnl,
-            'timestamp': datetime.utcnow(),
-        })
+        self.trade_history.append(
+            {
+                "action": "close",
+                "symbol": symbol,
+                "side": pos["side"],
+                "quantity": close_quantity,
+                "price": exit_price,
+                "fees": fees,
+                "pnl": pnl,
+                "timestamp": datetime.utcnow(),
+            }
+        )
 
         return pnl
 
@@ -244,19 +244,21 @@ class VirtualPortfolio:
             if symbol in current_prices:
                 current_price = current_prices[symbol]
 
-                if pos['side'] == "long":
-                    position_pnl = (current_price - pos['entry_price']) * pos['quantity']
+                if pos["side"] == "long":
+                    position_pnl = (current_price - pos["entry_price"]) * pos[
+                        "quantity"
+                    ]
                 else:
-                    position_pnl = (pos['entry_price'] - current_price) * pos['quantity']
+                    position_pnl = (pos["entry_price"] - current_price) * pos[
+                        "quantity"
+                    ]
 
                 total_pnl += position_pnl
 
         return total_pnl
 
     def get_position_pnl(
-        self,
-        symbol: str,
-        current_price: Decimal
+        self, symbol: str, current_price: Decimal
     ) -> Optional[Decimal]:
         """
         Calculate unrealized P&L for specific position
@@ -273,10 +275,10 @@ class VirtualPortfolio:
 
         pos = self.positions[symbol]
 
-        if pos['side'] == "long":
-            return (current_price - pos['entry_price']) * pos['quantity']
+        if pos["side"] == "long":
+            return (current_price - pos["entry_price"]) * pos["quantity"]
         else:
-            return (pos['entry_price'] - current_price) * pos['quantity']
+            return (pos["entry_price"] - current_price) * pos["quantity"]
 
     def get_total_equity(self, current_prices: Dict[str, Decimal]) -> Decimal:
         """
@@ -292,8 +294,7 @@ class VirtualPortfolio:
         return self.balance + unrealized_pnl
 
     def get_portfolio_summary(
-        self,
-        current_prices: Optional[Dict[str, Decimal]] = None
+        self, current_prices: Optional[Dict[str, Decimal]] = None
     ) -> Dict[str, Any]:
         """
         Get comprehensive portfolio summary
@@ -305,11 +306,11 @@ class VirtualPortfolio:
             Portfolio summary with balance, positions, and P&L
         """
         summary = {
-            'initial_balance': float(self.initial_balance),
-            'current_balance': float(self.balance),
-            'open_positions': len(self.positions),
-            'closed_positions': len(self.closed_positions),
-            'total_trades': len(self.trade_history),
+            "initial_balance": float(self.initial_balance),
+            "current_balance": float(self.balance),
+            "open_positions": len(self.positions),
+            "closed_positions": len(self.closed_positions),
+            "total_trades": len(self.trade_history),
         }
 
         # Add unrealized P&L if prices provided
@@ -317,28 +318,32 @@ class VirtualPortfolio:
             unrealized_pnl = self.get_unrealized_pnl(current_prices)
             total_equity = self.get_total_equity(current_prices)
 
-            summary['unrealized_pnl'] = float(unrealized_pnl)
-            summary['total_equity'] = float(total_equity)
-            summary['return_pct'] = float(
+            summary["unrealized_pnl"] = float(unrealized_pnl)
+            summary["total_equity"] = float(total_equity)
+            summary["return_pct"] = float(
                 (total_equity - self.initial_balance) / self.initial_balance * 100
             )
 
         # Calculate realized P&L
-        realized_pnl = sum(
-            pos['pnl'] for pos in self.closed_positions
-        )
-        summary['realized_pnl'] = float(realized_pnl)
+        realized_pnl = sum(pos["pnl"] for pos in self.closed_positions)
+        summary["realized_pnl"] = float(realized_pnl)
 
         # Position details
-        summary['positions'] = [
+        summary["positions"] = [
             {
-                'symbol': pos['symbol'],
-                'side': pos['side'],
-                'quantity': float(pos['quantity']),
-                'entry_price': float(pos['entry_price']),
-                'unrealized_pnl': float(
-                    self.get_position_pnl(pos['symbol'], current_prices[pos['symbol']])
-                ) if current_prices and pos['symbol'] in current_prices else None,
+                "symbol": pos["symbol"],
+                "side": pos["side"],
+                "quantity": float(pos["quantity"]),
+                "entry_price": float(pos["entry_price"]),
+                "unrealized_pnl": (
+                    float(
+                        self.get_position_pnl(
+                            pos["symbol"], current_prices[pos["symbol"]]
+                        )
+                    )
+                    if current_prices and pos["symbol"] in current_prices
+                    else None
+                ),
             }
             for pos in self.positions.values()
         ]
@@ -354,54 +359,48 @@ class VirtualPortfolio:
         """
         if not self.closed_positions:
             return {
-                'total_trades': 0,
-                'winning_trades': 0,
-                'losing_trades': 0,
-                'win_rate': 0.0,
-                'avg_win': 0.0,
-                'avg_loss': 0.0,
-                'total_pnl': 0.0,
-                'largest_win': 0.0,
-                'largest_loss': 0.0,
+                "total_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+                "win_rate": 0.0,
+                "avg_win": 0.0,
+                "avg_loss": 0.0,
+                "total_pnl": 0.0,
+                "largest_win": 0.0,
+                "largest_loss": 0.0,
             }
 
-        winning_trades = [
-            pos for pos in self.closed_positions if pos['pnl'] > 0
-        ]
-        losing_trades = [
-            pos for pos in self.closed_positions if pos['pnl'] < 0
-        ]
+        winning_trades = [pos for pos in self.closed_positions if pos["pnl"] > 0]
+        losing_trades = [pos for pos in self.closed_positions if pos["pnl"] < 0]
 
-        total_pnl = sum(pos['pnl'] for pos in self.closed_positions)
+        total_pnl = sum(pos["pnl"] for pos in self.closed_positions)
         avg_win = (
-            sum(pos['pnl'] for pos in winning_trades) / len(winning_trades)
-            if winning_trades else Decimal("0")
+            sum(pos["pnl"] for pos in winning_trades) / len(winning_trades)
+            if winning_trades
+            else Decimal("0")
         )
         avg_loss = (
-            sum(pos['pnl'] for pos in losing_trades) / len(losing_trades)
-            if losing_trades else Decimal("0")
+            sum(pos["pnl"] for pos in losing_trades) / len(losing_trades)
+            if losing_trades
+            else Decimal("0")
         )
 
         return {
-            'total_trades': len(self.closed_positions),
-            'winning_trades': len(winning_trades),
-            'losing_trades': len(losing_trades),
-            'win_rate': float(
-                len(winning_trades) / len(self.closed_positions) * 100
+            "total_trades": len(self.closed_positions),
+            "winning_trades": len(winning_trades),
+            "losing_trades": len(losing_trades),
+            "win_rate": float(len(winning_trades) / len(self.closed_positions) * 100),
+            "avg_win": float(avg_win),
+            "avg_loss": float(avg_loss),
+            "total_pnl": float(total_pnl),
+            "largest_win": float(
+                max((pos["pnl"] for pos in winning_trades), default=Decimal("0"))
             ),
-            'avg_win': float(avg_win),
-            'avg_loss': float(avg_loss),
-            'total_pnl': float(total_pnl),
-            'largest_win': float(max(
-                (pos['pnl'] for pos in winning_trades),
-                default=Decimal("0")
-            )),
-            'largest_loss': float(min(
-                (pos['pnl'] for pos in losing_trades),
-                default=Decimal("0")
-            )),
-            'avg_holding_period_seconds': (
-                sum(pos['holding_period'] for pos in self.closed_positions) /
-                len(self.closed_positions)
+            "largest_loss": float(
+                min((pos["pnl"] for pos in losing_trades), default=Decimal("0"))
+            ),
+            "avg_holding_period_seconds": (
+                sum(pos["holding_period"] for pos in self.closed_positions)
+                / len(self.closed_positions)
             ),
         }

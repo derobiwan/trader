@@ -9,13 +9,12 @@ Run with:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import uuid4
 
 from workspace.features.position_manager.state_machine import (
     PositionStateMachine,
     PositionState,
-    StateTransition,
     InvalidStateTransition,
     create_state_machine,
     validate_transition_path,
@@ -105,7 +104,9 @@ def test_valid_transition_open_to_closing(opened_state_machine):
 
 def test_valid_transition_open_to_liquidated(opened_state_machine):
     """Test valid transition: OPEN → LIQUIDATED."""
-    opened_state_machine.transition(PositionState.LIQUIDATED, "Position liquidated by exchange")
+    opened_state_machine.transition(
+        PositionState.LIQUIDATED, "Position liquidated by exchange"
+    )
 
     assert opened_state_machine.current_state == PositionState.LIQUIDATED
     assert opened_state_machine.is_terminal_state()
@@ -159,7 +160,9 @@ def test_invalid_transition_none_to_open(state_machine):
 def test_invalid_transition_none_to_closing(state_machine):
     """Test invalid transition: NONE → CLOSING."""
     with pytest.raises(InvalidStateTransition):
-        state_machine.transition(PositionState.CLOSING, "Cannot close non-existent position")
+        state_machine.transition(
+            PositionState.CLOSING, "Cannot close non-existent position"
+        )
 
 
 def test_invalid_transition_opening_to_closing(state_machine):
@@ -200,7 +203,9 @@ def test_invalid_transition_from_liquidated(opened_state_machine):
     opened_state_machine.transition(PositionState.LIQUIDATED, "Position liquidated")
 
     with pytest.raises(InvalidStateTransition):
-        opened_state_machine.transition(PositionState.CLOSING, "Cannot close liquidated position")
+        opened_state_machine.transition(
+            PositionState.CLOSING, "Cannot close liquidated position"
+        )
 
     assert opened_state_machine.current_state == PositionState.LIQUIDATED
 
@@ -273,7 +278,9 @@ def test_transition_history_is_chronological(state_machine):
 def test_transition_with_metadata(state_machine):
     """Test that transitions can include metadata."""
     metadata = {"order_id": "12345", "price": "45000.00"}
-    state_machine.transition(PositionState.OPENING, "Order submitted", metadata=metadata)
+    state_machine.transition(
+        PositionState.OPENING, "Order submitted", metadata=metadata
+    )
 
     assert state_machine.history[0].metadata == metadata
 
@@ -501,7 +508,9 @@ def test_special_characters_in_reason(state_machine):
     """Test state machine handles special characters in reason."""
     reason = "Order failed: 'Insufficient margin' (error code: 123)"
     state_machine.transition(PositionState.OPENING, reason)
-    state_machine.transition(PositionState.FAILED, "Database error: 'Connection refused'")
+    state_machine.transition(
+        PositionState.FAILED, "Database error: 'Connection refused'"
+    )
 
     assert state_machine.history[0].reason == reason
 
@@ -556,28 +565,28 @@ def test_realistic_position_lifecycle():
     sm.transition(
         PositionState.OPENING,
         "Market order submitted to exchange",
-        metadata={"order_id": "12345", "quantity": "0.01"}
+        metadata={"order_id": "12345", "quantity": "0.01"},
     )
 
     # Order filled
     sm.transition(
         PositionState.OPEN,
         "Order filled successfully",
-        metadata={"fill_price": "45000.00", "fill_time": datetime.utcnow().isoformat()}
+        metadata={"fill_price": "45000.00", "fill_time": datetime.utcnow().isoformat()},
     )
 
     # Close order submitted
     sm.transition(
         PositionState.CLOSING,
         "Take profit triggered at target price",
-        metadata={"current_price": "46000.00"}
+        metadata={"current_price": "46000.00"},
     )
 
     # Position closed
     sm.transition(
         PositionState.CLOSED,
         "Position closed with profit",
-        metadata={"exit_price": "46000.00", "pnl": "85.00"}
+        metadata={"exit_price": "46000.00", "pnl": "85.00"},
     )
 
     assert sm.is_terminal_state()
@@ -592,13 +601,13 @@ def test_failed_order_lifecycle():
     sm.transition(
         PositionState.OPENING,
         "Order submitted to exchange",
-        metadata={"order_id": "67890"}
+        metadata={"order_id": "67890"},
     )
 
     sm.transition(
         PositionState.FAILED,
         "Order rejected: Insufficient margin",
-        metadata={"error_code": "INSUFFICIENT_MARGIN", "required_margin": "500.00"}
+        metadata={"error_code": "INSUFFICIENT_MARGIN", "required_margin": "500.00"},
     )
 
     assert sm.is_terminal_state()
@@ -616,7 +625,7 @@ def test_liquidation_lifecycle():
     sm.transition(
         PositionState.LIQUIDATED,
         "Position liquidated by exchange due to margin call",
-        metadata={"liquidation_price": "100.00", "loss": "-450.00"}
+        metadata={"liquidation_price": "100.00", "loss": "-450.00"},
     )
 
     assert sm.is_terminal_state()

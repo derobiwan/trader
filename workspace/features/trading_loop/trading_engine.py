@@ -508,7 +508,9 @@ class TradingEngine:
 
         # Add paper trading specific info
         if self.paper_trading and isinstance(self.trade_executor, PaperTradingExecutor):
-            status["paper_trading_report"] = self.trade_executor.get_performance_report()
+            status["paper_trading_report"] = (
+                self.trade_executor.get_performance_report()
+            )
 
         return status
 
@@ -519,7 +521,9 @@ class TradingEngine:
         Returns:
             Performance report or None if not in paper trading mode
         """
-        if not self.paper_trading or not isinstance(self.trade_executor, PaperTradingExecutor):
+        if not self.paper_trading or not isinstance(
+            self.trade_executor, PaperTradingExecutor
+        ):
             return None
 
         return self.trade_executor.get_performance_report()
@@ -534,7 +538,9 @@ class TradingEngine:
         Raises:
             ValueError: If not in paper trading mode
         """
-        if not self.paper_trading or not isinstance(self.trade_executor, PaperTradingExecutor):
+        if not self.paper_trading or not isinstance(
+            self.trade_executor, PaperTradingExecutor
+        ):
             raise ValueError("Not in paper trading mode")
 
         await self.trade_executor.reset(initial_balance=initial_balance)

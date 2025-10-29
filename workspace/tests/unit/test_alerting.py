@@ -7,8 +7,8 @@ Sprint: Sprint 2 Stream C
 """
 
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 from workspace.features.alerting import (
     Alert,
@@ -54,7 +54,7 @@ class TestAlertModels:
                 "symbol": "BTC/USDT",
                 "order_id": "12345",
                 "error": "Insufficient balance",
-            }
+            },
         )
 
         assert alert.metadata is not None
@@ -202,7 +202,7 @@ class TestAlertRoutingRules:
         rules.register_channel("email", email_channel)
 
         # Set custom routing: INFO to email only
-        rules.set_routing(AlertSeverity.INFO, ['email'])
+        rules.set_routing(AlertSeverity.INFO, ["email"])
 
         channels = rules.get_channels(AlertSeverity.INFO)
         assert len(channels) == 1
@@ -350,8 +350,7 @@ class TestAlertService:
         service.register_channel("channel2", channel2)
 
         service.routing_rules.set_routing(
-            AlertSeverity.CRITICAL,
-            ["channel1", "channel2"]
+            AlertSeverity.CRITICAL, ["channel1", "channel2"]
         )
 
         alert = Alert(
@@ -372,7 +371,7 @@ class TestEmailChannel:
     """Test email alert channel"""
 
     @pytest.mark.asyncio
-    @patch('smtplib.SMTP')
+    @patch("smtplib.SMTP")
     async def test_send_email_success(self, mock_smtp):
         """Test successful email sending"""
         channel = EmailAlertChannel(
@@ -396,7 +395,7 @@ class TestEmailChannel:
         mock_smtp.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('smtplib.SMTP')
+    @patch("smtplib.SMTP")
     async def test_send_email_failure(self, mock_smtp):
         """Test email sending failure"""
         mock_smtp.side_effect = Exception("SMTP error")
@@ -437,7 +436,7 @@ class TestSlackChannel:
             severity=AlertSeverity.WARNING,
         )
 
-        with patch('httpx.AsyncClient.post') as mock_post:
+        with patch("httpx.AsyncClient.post") as mock_post:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_post.return_value = mock_response
@@ -464,7 +463,7 @@ class TestPagerDutyChannel:
             severity=AlertSeverity.CRITICAL,
         )
 
-        with patch('httpx.AsyncClient.post') as mock_post:
+        with patch("httpx.AsyncClient.post") as mock_post:
             mock_response = MagicMock()
             mock_response.status_code = 202
             mock_post.return_value = mock_response

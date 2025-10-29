@@ -20,12 +20,11 @@ import asyncio
 import logging
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
 from uuid import uuid4
 
-import ccxt.async_support as ccxt
 
 from workspace.features.trade_executor.executor_service import TradeExecutor
 from workspace.features.trade_executor.models import (
@@ -33,7 +32,6 @@ from workspace.features.trade_executor.models import (
     OrderType,
     OrderSide,
     OrderStatus,
-    ExecutionResult,
 )
 from .virtual_portfolio import VirtualPortfolio
 from .performance_tracker import PaperTradingPerformanceTracker
@@ -66,7 +64,7 @@ class PaperTradingExecutor(TradeExecutor):
         enable_partial_fills: bool = True,
         maker_fee_pct: Decimal = Decimal("0.001"),
         taker_fee_pct: Decimal = Decimal("0.001"),
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize Paper Trading Executor
@@ -80,7 +78,7 @@ class PaperTradingExecutor(TradeExecutor):
             **kwargs: Additional arguments for TradeExecutor base class
         """
         # Initialize base TradeExecutor with testnet mode
-        kwargs['testnet'] = True
+        kwargs["testnet"] = True
         super().__init__(**kwargs)
 
         # Paper trading specific attributes
@@ -95,9 +93,7 @@ class PaperTradingExecutor(TradeExecutor):
         self.maker_fee_pct = maker_fee_pct
         self.taker_fee_pct = taker_fee_pct
 
-        logger.info(
-            f"Paper Trading Executor initialized with ${initial_balance} USDT"
-        )
+        logger.info(f"Paper Trading Executor initialized with ${initial_balance} USDT")
 
     async def initialize(self):
         """Initialize exchange (read-only for paper trading)"""
@@ -116,11 +112,7 @@ class PaperTradingExecutor(TradeExecutor):
         latency = random.uniform(0.05, 0.15)
         await asyncio.sleep(latency)
 
-    def _calculate_slippage(
-        self,
-        side: OrderSide,
-        current_price: Decimal
-    ) -> Decimal:
+    def _calculate_slippage(self, side: OrderSide, current_price: Decimal) -> Decimal:
         """
         Calculate price slippage
 
@@ -168,10 +160,7 @@ class PaperTradingExecutor(TradeExecutor):
         return quantity * fill_percentage
 
     def _calculate_fees(
-        self,
-        quantity: Decimal,
-        price: Decimal,
-        order_type: OrderType
+        self, quantity: Decimal, price: Decimal, order_type: OrderType
     ) -> Decimal:
         """
         Calculate trading fees
@@ -198,7 +187,7 @@ class PaperTradingExecutor(TradeExecutor):
         quantity: Decimal,
         reduce_only: bool = False,
         position_id: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> Order:
         """
         Simulate market order execution
@@ -222,7 +211,7 @@ class PaperTradingExecutor(TradeExecutor):
         try:
             # Get current market price from exchange
             ticker = await self.exchange.fetch_ticker(symbol)
-            current_price = Decimal(str(ticker['last']))
+            current_price = Decimal(str(ticker["last"]))
 
             # Apply slippage
             execution_price = self._calculate_slippage(side, current_price)
@@ -231,7 +220,9 @@ class PaperTradingExecutor(TradeExecutor):
             filled_quantity = self._calculate_partial_fill(quantity)
 
             # Calculate fees
-            fees = self._calculate_fees(filled_quantity, execution_price, OrderType.MARKET)
+            fees = self._calculate_fees(
+                filled_quantity, execution_price, OrderType.MARKET
+            )
 
             # Check if sufficient balance
             if side == OrderSide.BUY:
@@ -249,12 +240,9 @@ class PaperTradingExecutor(TradeExecutor):
                     symbol=symbol,
                     exit_price=execution_price,
                     fees=fees,
-                    quantity=filled_quantity
+                    quantity=filled_quantity,
                 )
-                logger.info(
-                    f"Paper Trade: Closed position {symbol} - "
-                    f"P&L: ${pnl:.2f}"
-                )
+                logger.info(f"Paper Trade: Closed position {symbol} - P&L: ${pnl:.2f}")
             else:
                 # Opening position
                 self.virtual_portfolio.open_position(
@@ -262,7 +250,7 @@ class PaperTradingExecutor(TradeExecutor):
                     side="long" if side == OrderSide.BUY else "short",
                     quantity=filled_quantity,
                     entry_price=execution_price,
-                    fees=fees
+                    fees=fees,
                 )
                 logger.info(
                     f"Paper Trade: Opened position {symbol} - "
@@ -285,31 +273,33 @@ class PaperTradingExecutor(TradeExecutor):
                 filled_at=datetime.utcnow(),
                 fees_paid=fees,
                 metadata={
-                    'paper_trading': True,
-                    'slippage_enabled': self.enable_slippage,
-                    'partial_fills_enabled': self.enable_partial_fills,
-                }
+                    "paper_trading": True,
+                    "slippage_enabled": self.enable_slippage,
+                    "partial_fills_enabled": self.enable_partial_fills,
+                },
             )
 
             # Record trade
             trade_record = {
-                'order': order,
-                'timestamp': datetime.utcnow(),
-                'pnl': pnl if reduce_only else Decimal("0"),
+                "order": order,
+                "timestamp": datetime.utcnow(),
+                "pnl": pnl if reduce_only else Decimal("0"),
             }
             self.simulated_trades.append(trade_record)
 
             # Track performance
             if reduce_only:
-                self.performance_tracker.record_trade({
-                    'symbol': symbol,
-                    'side': side.value,
-                    'quantity': float(filled_quantity),
-                    'price': float(execution_price),
-                    'fees': float(fees),
-                    'pnl': float(pnl),
-                    'timestamp': datetime.utcnow(),
-                })
+                self.performance_tracker.record_trade(
+                    {
+                        "symbol": symbol,
+                        "side": side.value,
+                        "quantity": float(filled_quantity),
+                        "price": float(execution_price),
+                        "fees": float(fees),
+                        "pnl": float(pnl),
+                        "timestamp": datetime.utcnow(),
+                    }
+                )
 
             # Record metrics
             latency_ms = (time.time() - start_time) * 1000
@@ -350,7 +340,7 @@ class PaperTradingExecutor(TradeExecutor):
         quantity: Decimal,
         stop_price: Decimal,
         position_id: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> Order:
         """
         Simulate stop-loss order creation
@@ -382,9 +372,9 @@ class PaperTradingExecutor(TradeExecutor):
             position_id=position_id,
             submitted_at=datetime.utcnow(),
             metadata={
-                'paper_trading': True,
-                'stop_loss': True,
-            }
+                "paper_trading": True,
+                "stop_loss": True,
+            },
         )
 
         logger.info(
@@ -425,14 +415,15 @@ class PaperTradingExecutor(TradeExecutor):
         report = self.performance_tracker.generate_report()
 
         # Add portfolio information
-        report['portfolio'] = {
-            'initial_balance': float(self.initial_balance),
-            'current_balance': float(self.virtual_portfolio.balance),
-            'total_return': float(
-                (self.virtual_portfolio.balance - self.initial_balance) /
-                self.initial_balance * 100
+        report["portfolio"] = {
+            "initial_balance": float(self.initial_balance),
+            "current_balance": float(self.virtual_portfolio.balance),
+            "total_return": float(
+                (self.virtual_portfolio.balance - self.initial_balance)
+                / self.initial_balance
+                * 100
             ),
-            'open_positions': len(self.virtual_portfolio.positions),
+            "open_positions": len(self.virtual_portfolio.positions),
         }
 
         return report

@@ -8,12 +8,14 @@ Date: 2025-10-28
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
-from workspace.shared.database.connection import DatabasePool, init_pool, close_pool, get_pool
-from workspace.shared.database.models import Position, PositionSide, PositionStatus
+from workspace.shared.database.connection import (
+    DatabasePool,
+    init_pool,
+    close_pool,
+)
 
 
 @pytest.fixture(scope="module")

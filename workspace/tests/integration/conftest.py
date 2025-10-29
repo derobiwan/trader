@@ -131,9 +131,11 @@ def mock_trade_executor():
             position = {
                 "id": f"pos_{len(self.positions) + 1}",
                 "symbol": signal.symbol,
-                "entry_price": signal.entry_price
-                if hasattr(signal, "entry_price")
-                else Decimal("50000"),
+                "entry_price": (
+                    signal.entry_price
+                    if hasattr(signal, "entry_price")
+                    else Decimal("50000")
+                ),
                 "size_pct": signal.size_pct,
                 "stop_loss_pct": signal.stop_loss_pct,
                 "side": signal.decision.lower(),

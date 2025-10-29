@@ -198,12 +198,12 @@ class TradingScheduler:
             "state": self.state.value,
             "cycle_count": self.cycle_count,
             "error_count": self.error_count,
-            "last_cycle": self.last_cycle_time.isoformat()
-            if self.last_cycle_time
-            else None,
-            "next_cycle": self.next_cycle_time.isoformat()
-            if self.next_cycle_time
-            else None,
+            "last_cycle": (
+                self.last_cycle_time.isoformat() if self.last_cycle_time else None
+            ),
+            "next_cycle": (
+                self.next_cycle_time.isoformat() if self.next_cycle_time else None
+            ),
         }
 
         if self.next_cycle_time and self.state == SchedulerState.RUNNING:

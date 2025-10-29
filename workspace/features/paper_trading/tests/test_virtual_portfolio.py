@@ -10,7 +10,6 @@ Date: 2025-10-29
 
 import pytest
 from decimal import Decimal
-from datetime import datetime
 
 from workspace.features.paper_trading import VirtualPortfolio
 
@@ -43,12 +42,14 @@ def test_open_long_position(portfolio):
     # Verify position created
     assert "BTC/USDT:USDT" in portfolio.positions
     pos = portfolio.positions["BTC/USDT:USDT"]
-    assert pos['side'] == "long"
-    assert pos['quantity'] == Decimal("0.1")
-    assert pos['entry_price'] == Decimal("45000")
+    assert pos["side"] == "long"
+    assert pos["quantity"] == Decimal("0.1")
+    assert pos["entry_price"] == Decimal("45000")
 
     # Verify balance updated
-    expected_balance = Decimal("10000") - (Decimal("0.1") * Decimal("45000") + Decimal("4.5"))
+    expected_balance = Decimal("10000") - (
+        Decimal("0.1") * Decimal("45000") + Decimal("4.5")
+    )
     assert portfolio.balance == expected_balance
 
     # Verify trade history
@@ -69,10 +70,12 @@ def test_open_short_position(portfolio):
 
     # Verify position created
     pos = portfolio.positions["BTC/USDT:USDT"]
-    assert pos['side'] == "short"
+    assert pos["side"] == "short"
 
     # Verify balance (shorts receive proceeds)
-    expected_balance = initial_balance + (Decimal("0.1") * Decimal("45000") - Decimal("4.5"))
+    expected_balance = initial_balance + (
+        Decimal("0.1") * Decimal("45000") - Decimal("4.5")
+    )
     assert portfolio.balance == expected_balance
 
 
@@ -98,12 +101,14 @@ def test_add_to_existing_position(portfolio):
 
     # Verify position averaged
     pos = portfolio.positions["BTC/USDT:USDT"]
-    assert pos['quantity'] == Decimal("0.2")
+    assert pos["quantity"] == Decimal("0.2")
 
     # Calculate expected average price
-    expected_avg = (Decimal("45000") * Decimal("0.1") + Decimal("46000") * Decimal("0.1")) / Decimal("0.2")
-    assert pos['entry_price'] == expected_avg
-    assert pos['total_fees'] == Decimal("4.5") + Decimal("4.6")
+    expected_avg = (
+        Decimal("45000") * Decimal("0.1") + Decimal("46000") * Decimal("0.1")
+    ) / Decimal("0.2")
+    assert pos["entry_price"] == expected_avg
+    assert pos["total_fees"] == Decimal("4.5") + Decimal("4.6")
 
 
 def test_close_position_profit(portfolio):
@@ -117,8 +122,6 @@ def test_close_position_profit(portfolio):
         fees=Decimal("4.5"),
     )
 
-    initial_balance = portfolio.balance
-
     # Close at higher price (profit)
     pnl = portfolio.close_position(
         symbol="BTC/USDT:USDT",
@@ -127,7 +130,9 @@ def test_close_position_profit(portfolio):
     )
 
     # Verify P&L
-    expected_pnl = (Decimal("46000") - Decimal("45000")) * Decimal("0.1") - Decimal("4.6")
+    expected_pnl = (Decimal("46000") - Decimal("45000")) * Decimal("0.1") - Decimal(
+        "4.6"
+    )
     assert pnl == expected_pnl
     assert pnl > 0  # Profit
 
@@ -137,7 +142,7 @@ def test_close_position_profit(portfolio):
     # Verify closed positions tracking
     assert len(portfolio.closed_positions) == 1
     closed = portfolio.closed_positions[0]
-    assert closed['pnl'] == pnl
+    assert closed["pnl"] == pnl
 
 
 def test_close_position_loss(portfolio):
@@ -159,7 +164,9 @@ def test_close_position_loss(portfolio):
     )
 
     # Verify P&L
-    expected_pnl = (Decimal("44000") - Decimal("45000")) * Decimal("0.1") - Decimal("4.4")
+    expected_pnl = (Decimal("44000") - Decimal("45000")) * Decimal("0.1") - Decimal(
+        "4.4"
+    )
     assert pnl == expected_pnl
     assert pnl < 0  # Loss
 
@@ -183,7 +190,9 @@ def test_close_position_short_profit(portfolio):
     )
 
     # Verify P&L (profit when price goes down)
-    expected_pnl = (Decimal("45000") - Decimal("44000")) * Decimal("0.1") - Decimal("4.4")
+    expected_pnl = (Decimal("45000") - Decimal("44000")) * Decimal("0.1") - Decimal(
+        "4.4"
+    )
     assert pnl == expected_pnl
     assert pnl > 0  # Profit
 
@@ -210,10 +219,12 @@ def test_partial_position_close(portfolio):
     # Verify position still exists with remaining quantity
     assert "BTC/USDT:USDT" in portfolio.positions
     pos = portfolio.positions["BTC/USDT:USDT"]
-    assert pos['quantity'] == Decimal("0.1")
+    assert pos["quantity"] == Decimal("0.1")
 
     # Verify P&L for closed portion
-    expected_pnl = (Decimal("46000") - Decimal("45000")) * Decimal("0.1") - Decimal("4.6")
+    expected_pnl = (Decimal("46000") - Decimal("45000")) * Decimal("0.1") - Decimal(
+        "4.6"
+    )
     assert pnl == expected_pnl
 
 
@@ -357,12 +368,12 @@ def test_get_portfolio_summary(portfolio):
     summary = portfolio.get_portfolio_summary()
 
     # Verify structure
-    assert summary['initial_balance'] == 10000.0
-    assert 'current_balance' in summary
-    assert summary['open_positions'] == 0
-    assert summary['closed_positions'] == 1
-    assert summary['total_trades'] == 2  # Open + close
-    assert 'realized_pnl' in summary
+    assert summary["initial_balance"] == 10000.0
+    assert "current_balance" in summary
+    assert summary["open_positions"] == 0
+    assert summary["closed_positions"] == 1
+    assert summary["total_trades"] == 2  # Open + close
+    assert "realized_pnl" in summary
 
 
 def test_get_portfolio_summary_with_current_prices(portfolio):
@@ -383,14 +394,14 @@ def test_get_portfolio_summary_with_current_prices(portfolio):
     summary = portfolio.get_portfolio_summary(current_prices=current_prices)
 
     # Verify additional fields
-    assert 'unrealized_pnl' in summary
-    assert 'total_equity' in summary
-    assert 'return_pct' in summary
+    assert "unrealized_pnl" in summary
+    assert "total_equity" in summary
+    assert "return_pct" in summary
 
     # Verify position details
-    assert len(summary['positions']) == 1
-    assert summary['positions'][0]['symbol'] == "BTC/USDT:USDT"
-    assert summary['positions'][0]['unrealized_pnl'] is not None
+    assert len(summary["positions"]) == 1
+    assert summary["positions"][0]["symbol"] == "BTC/USDT:USDT"
+    assert summary["positions"][0]["unrealized_pnl"] is not None
 
 
 def test_get_performance_stats(portfolio):
@@ -428,23 +439,23 @@ def test_get_performance_stats(portfolio):
     stats = portfolio.get_performance_stats()
 
     # Verify structure
-    assert stats['total_trades'] == 2
-    assert stats['winning_trades'] == 1
-    assert stats['losing_trades'] == 1
-    assert 0 < stats['win_rate'] < 100
-    assert stats['avg_win'] > 0
-    assert stats['avg_loss'] < 0
-    assert 'largest_win' in stats
-    assert 'largest_loss' in stats
+    assert stats["total_trades"] == 2
+    assert stats["winning_trades"] == 1
+    assert stats["losing_trades"] == 1
+    assert 0 < stats["win_rate"] < 100
+    assert stats["avg_win"] > 0
+    assert stats["avg_loss"] < 0
+    assert "largest_win" in stats
+    assert "largest_loss" in stats
 
 
 def test_get_performance_stats_empty(portfolio):
     """Test performance stats with no trades"""
     stats = portfolio.get_performance_stats()
 
-    assert stats['total_trades'] == 0
-    assert stats['winning_trades'] == 0
-    assert stats['losing_trades'] == 0
-    assert stats['win_rate'] == 0.0
-    assert stats['avg_win'] == 0.0
-    assert stats['avg_loss'] == 0.0
+    assert stats["total_trades"] == 0
+    assert stats["winning_trades"] == 0
+    assert stats["losing_trades"] == 0
+    assert stats["win_rate"] == 0.0
+    assert stats["avg_win"] == 0.0
+    assert stats["avg_loss"] == 0.0

@@ -48,6 +48,7 @@ class TestReconnectionStats:
 
         # Wait a bit to have some uptime
         import time
+
         time.sleep(0.1)
 
         uptime = stats.calculate_uptime_percentage()
@@ -100,7 +101,7 @@ class TestWebSocketReconnectionManager:
         manager = WebSocketReconnectionManager(
             base_delay=2.0,
             max_delay=60.0,
-            jitter_range=0.0  # No jitter
+            jitter_range=0.0,  # No jitter
         )
 
         expected_delays = [2.0, 4.0, 8.0, 16.0, 32.0, 60.0]
@@ -116,6 +117,7 @@ class TestWebSocketReconnectionManager:
         manager = WebSocketReconnectionManager()
 
         call_count = 0
+
         async def mock_connect():
             nonlocal call_count
             call_count += 1
@@ -136,6 +138,7 @@ class TestWebSocketReconnectionManager:
         manager = WebSocketReconnectionManager(base_delay=0.01, max_delay=0.1)
 
         call_count = 0
+
         async def mock_connect():
             nonlocal call_count
             call_count += 1
@@ -155,12 +158,11 @@ class TestWebSocketReconnectionManager:
     async def test_max_attempts_reached(self):
         """Test connection fails after max attempts"""
         manager = WebSocketReconnectionManager(
-            base_delay=0.01,
-            max_delay=0.1,
-            max_attempts=3
+            base_delay=0.01, max_delay=0.1, max_attempts=3
         )
 
         call_count = 0
+
         async def mock_connect():
             nonlocal call_count
             call_count += 1
@@ -187,6 +189,7 @@ class TestWebSocketReconnectionManager:
             delays.append(delay)
 
         call_count = 0
+
         async def mock_connect():
             nonlocal call_count
             call_count += 1
@@ -212,6 +215,7 @@ class TestWebSocketReconnectionManager:
             attempts.append(attempt)
 
         call_count = 0
+
         async def mock_connect():
             nonlocal call_count
             call_count += 1
@@ -280,7 +284,7 @@ class TestWebSocketReconnectionManager:
 
         # Simulate disconnect
         manager.mark_disconnected()
-        disconnect_time = datetime.utcnow()
+        datetime.utcnow()
 
         # Wait a bit
         await asyncio.sleep(0.1)

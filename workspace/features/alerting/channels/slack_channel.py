@@ -87,8 +87,8 @@ class SlackAlertChannel(AlertChannel):
         """Build Slack message payload"""
         # Color based on severity
         severity_colors = {
-            AlertSeverity.INFO: "#36a64f",      # Green
-            AlertSeverity.WARNING: "#ff9900",   # Orange
+            AlertSeverity.INFO: "#36a64f",  # Green
+            AlertSeverity.WARNING: "#ff9900",  # Orange
             AlertSeverity.CRITICAL: "#ff0000",  # Red
         }
         color = severity_colors.get(alert.severity, "#808080")
@@ -115,7 +115,7 @@ class SlackAlertChannel(AlertChannel):
             },
             {
                 "title": "Time",
-                "value": alert.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC'),
+                "value": alert.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "short": True,
             },
         ]
@@ -124,12 +124,14 @@ class SlackAlertChannel(AlertChannel):
         if alert.metadata:
             for key, value in alert.metadata.items():
                 # Convert key to title case
-                title = key.replace('_', ' ').title()
-                fields.append({
-                    "title": title,
-                    "value": str(value),
-                    "short": True,
-                })
+                title = key.replace("_", " ").title()
+                fields.append(
+                    {
+                        "title": title,
+                        "value": str(value),
+                        "short": True,
+                    }
+                )
 
         # Build payload
         payload = {

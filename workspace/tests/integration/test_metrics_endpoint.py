@@ -79,7 +79,9 @@ class TestMetricsEndpoint:
         assert "trading_llm_calls_total" in content
 
     @pytest.mark.asyncio
-    async def test_metrics_endpoint_contains_correct_values(self, client, metrics_service):
+    async def test_metrics_endpoint_contains_correct_values(
+        self, client, metrics_service
+    ):
         """Test metrics contain correct values"""
         response = await client.get("/metrics")
 
@@ -109,6 +111,7 @@ class TestMetricsEndpoint:
         """Test /metrics returns error when service not initialized"""
         # Reset global service
         import workspace.features.monitoring.metrics.metrics_api as api_module
+
         api_module._metrics_service = None
 
         # Create new client without initialization
@@ -120,11 +123,12 @@ class TestMetricsEndpoint:
             assert "Metrics service not initialized" in response.text
 
     @pytest.mark.asyncio
-    async def test_metrics_endpoint_updates_with_new_data(self, client, metrics_service):
+    async def test_metrics_endpoint_updates_with_new_data(
+        self, client, metrics_service
+    ):
         """Test metrics endpoint reflects new data"""
         # Initial fetch
-        response1 = await client.get("/metrics")
-        content1 = response1.text
+        await client.get("/metrics")
 
         # Add more trades
         metrics_service.record_trade(success=True, fees=Decimal("2.0"))
@@ -176,6 +180,7 @@ class TestMetricsEndpoint:
         """Test /ready returns 503 when not initialized"""
         # Reset global service
         import workspace.features.monitoring.metrics.metrics_api as api_module
+
         api_module._metrics_service = None
 
         transport = ASGITransport(app=app)
@@ -208,6 +213,7 @@ class TestMetricsEndpoint:
         """Test /ready returns 200 after startup period"""
         # Simulate system running for > 10 seconds by manipulating start time
         import time
+
         metrics_service.start_time = time.time() - 15  # 15 seconds ago
 
         response = await client.get("/ready")
@@ -235,7 +241,9 @@ class TestMetricsEndpoint:
     async def test_live_endpoint_unhealthy_when_frozen(self, client, metrics_service):
         """Test /live returns 503 when no trades for > 10 minutes"""
         # Set old trade timestamp (15 minutes ago)
-        metrics_service.metrics.last_trade_timestamp = datetime.utcnow() - timedelta(minutes=15)
+        metrics_service.metrics.last_trade_timestamp = datetime.utcnow() - timedelta(
+            minutes=15
+        )
 
         response = await client.get("/live")
 
@@ -249,6 +257,7 @@ class TestMetricsEndpoint:
         """Test /live returns 503 when metrics service not initialized"""
         # Reset global service
         import workspace.features.monitoring.metrics.metrics_api as api_module
+
         api_module._metrics_service = None
 
         transport = ASGITransport(app=app)
@@ -278,6 +287,7 @@ class TestMetricsEndpoint:
         """Test all endpoints include timestamps when successful"""
         # Ensure system is ready (uptime > 10s) so /ready returns 200
         import time
+
         metrics_service.start_time = time.time() - 15
 
         # Ensure system has recent trade so /live returns 200

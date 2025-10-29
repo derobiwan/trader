@@ -761,7 +761,7 @@ class TestStrategyIntegration:
         ]
 
         # Create snapshots that should trigger signals
-        snapshots = {
+        {
             "mean_reversion": pytest.lazy_fixture("oversold_snapshot"),
             "trend_following": pytest.lazy_fixture("bullish_trend_snapshot"),
             "volatility_breakout": pytest.lazy_fixture("upper_breakout_snapshot"),
@@ -770,11 +770,11 @@ class TestStrategyIntegration:
         for strategy in strategies:
             # Get appropriate snapshot for strategy
             if isinstance(strategy, MeanReversionStrategy):
-                snapshot = oversold_snapshot
+                pass
             elif isinstance(strategy, TrendFollowingStrategy):
-                snapshot = bullish_trend_snapshot
+                pass
             else:
-                snapshot = upper_breakout_snapshot
+                pass
 
             # Note: Can't use fixtures directly here, will need to create in actual test
             # This is just to show the pattern

@@ -9,9 +9,8 @@ Date: 2025-10-29
 """
 
 import pytest
-import asyncio
 from decimal import Decimal
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock
 
 from workspace.features.paper_trading import PaperTradingExecutor
 from workspace.features.trade_executor.models import OrderSide, OrderType
@@ -30,9 +29,7 @@ async def paper_executor():
 
     # Mock exchange
     executor.exchange = AsyncMock()
-    executor.exchange.fetch_ticker = AsyncMock(
-        return_value={'last': 45000.0}
-    )
+    executor.exchange.fetch_ticker = AsyncMock(return_value={"last": 45000.0})
     executor.exchange.load_markets = AsyncMock()
 
     await executor.initialize()
@@ -48,8 +45,8 @@ async def test_paper_trading_initialization(paper_executor):
     assert paper_executor.initial_balance == Decimal("10000")
     assert paper_executor.virtual_portfolio.balance == Decimal("10000")
     assert len(paper_executor.simulated_trades) == 0
-    assert paper_executor.enable_slippage == False
-    assert paper_executor.enable_partial_fills == False
+    assert not paper_executor.enable_slippage
+    assert not paper_executor.enable_partial_fills
 
 
 @pytest.mark.asyncio
@@ -68,7 +65,7 @@ async def test_paper_trading_buy_order(paper_executor):
     assert order.quantity == Decimal("0.1")
     assert order.filled_quantity == Decimal("0.1")
     assert order.status.value == "filled"
-    assert order.metadata['paper_trading'] == True
+    assert order.metadata["paper_trading"]
 
     # Verify balance updated
     expected_cost = Decimal("0.1") * Decimal("45000") + order.fees_paid
@@ -83,7 +80,7 @@ async def test_paper_trading_buy_order(paper_executor):
 async def test_paper_trading_sell_order(paper_executor):
     """Test paper trading sell order (close position)"""
     # First, open a position
-    buy_order = await paper_executor.create_market_order(
+    await paper_executor.create_market_order(
         symbol="BTC/USDT:USDT",
         side=OrderSide.BUY,
         quantity=Decimal("0.1"),
@@ -93,9 +90,7 @@ async def test_paper_trading_sell_order(paper_executor):
 
     # Now close it
     # Mock price increase
-    paper_executor.exchange.fetch_ticker = AsyncMock(
-        return_value={'last': 46000.0}
-    )
+    paper_executor.exchange.fetch_ticker = AsyncMock(return_value={"last": 46000.0})
 
     sell_order = await paper_executor.create_market_order(
         symbol="BTC/USDT:USDT",
@@ -154,9 +149,7 @@ async def test_paper_trading_with_slippage():
     )
 
     executor.exchange = AsyncMock()
-    executor.exchange.fetch_ticker = AsyncMock(
-        return_value={'last': 45000.0}
-    )
+    executor.exchange.fetch_ticker = AsyncMock(return_value={"last": 45000.0})
     executor.exchange.load_markets = AsyncMock()
 
     await executor.initialize()
@@ -187,9 +180,7 @@ async def test_paper_trading_with_partial_fills():
     )
 
     executor.exchange = AsyncMock()
-    executor.exchange.fetch_ticker = AsyncMock(
-        return_value={'last': 45000.0}
-    )
+    executor.exchange.fetch_ticker = AsyncMock(return_value={"last": 45000.0})
     executor.exchange.load_markets = AsyncMock()
 
     await executor.initialize()
@@ -219,9 +210,7 @@ async def test_paper_trading_performance_report(paper_executor):
     )
 
     # Mock price increase and close
-    paper_executor.exchange.fetch_ticker = AsyncMock(
-        return_value={'last': 46000.0}
-    )
+    paper_executor.exchange.fetch_ticker = AsyncMock(return_value={"last": 46000.0})
 
     await paper_executor.create_market_order(
         symbol="BTC/USDT:USDT",
@@ -234,14 +223,14 @@ async def test_paper_trading_performance_report(paper_executor):
     report = paper_executor.get_performance_report()
 
     # Verify report structure
-    assert 'summary' in report
-    assert 'profitability' in report
-    assert 'portfolio' in report
+    assert "summary" in report
+    assert "profitability" in report
+    assert "portfolio" in report
 
     # Verify portfolio metrics
-    assert report['portfolio']['initial_balance'] == 10000.0
-    assert 'current_balance' in report['portfolio']
-    assert 'total_return' in report['portfolio']
+    assert report["portfolio"]["initial_balance"] == 10000.0
+    assert "current_balance" in report["portfolio"]
+    assert "total_return" in report["portfolio"]
 
 
 @pytest.mark.asyncio
@@ -271,13 +260,14 @@ async def test_paper_trading_reset(paper_executor):
 @pytest.mark.asyncio
 async def test_paper_trading_multiple_symbols(paper_executor):
     """Test paper trading with multiple symbols"""
+
     # Mock different prices for different symbols
     async def mock_fetch_ticker(symbol):
         prices = {
-            "BTC/USDT:USDT": {'last': 45000.0},
-            "ETH/USDT:USDT": {'last': 2500.0},
+            "BTC/USDT:USDT": {"last": 45000.0},
+            "ETH/USDT:USDT": {"last": 2500.0},
         }
-        return prices.get(symbol, {'last': 1000.0})
+        return prices.get(symbol, {"last": 1000.0})
 
     paper_executor.exchange.fetch_ticker = mock_fetch_ticker
 
@@ -314,7 +304,7 @@ async def test_paper_trading_stop_loss_order(paper_executor):
     assert order.type == OrderType.STOP_MARKET
     assert order.stop_price == Decimal("44000")
     assert order.status.value == "open"
-    assert order.metadata['stop_loss'] == True
+    assert order.metadata["stop_loss"]
 
 
 @pytest.mark.asyncio
@@ -353,5 +343,5 @@ async def test_paper_trading_get_position(paper_executor):
     # Position should exist
     position = await paper_executor.get_position("BTC/USDT:USDT")
     assert position is not None
-    assert position['symbol'] == "BTC/USDT:USDT"
-    assert position['quantity'] == Decimal("0.1")
+    assert position["symbol"] == "BTC/USDT:USDT"
+    assert position["quantity"] == Decimal("0.1")

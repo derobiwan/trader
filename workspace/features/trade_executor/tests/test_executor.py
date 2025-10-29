@@ -318,7 +318,7 @@ async def test_retry_on_rate_limit(executor, mock_exchange):
         },
     ]
 
-    result = await executor.create_market_order(
+    await executor.create_market_order(
         symbol="BTC/USDT:USDT",
         side=OrderSide.BUY,
         quantity=Decimal("0.001"),

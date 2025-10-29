@@ -18,7 +18,8 @@ async def upgrade(conn: asyncpg.Connection) -> None:
     Args:
         conn: Database connection
     """
-    await conn.execute("""
+    await conn.execute(
+        """
         -- Position State Transitions Table
         -- Tracks all state changes throughout position lifecycle
         CREATE TABLE IF NOT EXISTS position_state_transitions (
@@ -77,7 +78,8 @@ async def upgrade(conn: asyncpg.Connection) -> None:
             'Additional structured data about the transition (optional)';
         COMMENT ON COLUMN position_state_transitions.timestamp IS
             'When the transition occurred (UTC)';
-    """)
+    """
+    )
 
     print("✅ Migration 002 applied: position_state_transitions table created")
 
@@ -89,7 +91,8 @@ async def downgrade(conn: asyncpg.Connection) -> None:
     Args:
         conn: Database connection
     """
-    await conn.execute("""
+    await conn.execute(
+        """
         -- Drop indexes first
         DROP INDEX IF EXISTS idx_transitions_position_timestamp;
         DROP INDEX IF EXISTS idx_transitions_states;
@@ -99,7 +102,8 @@ async def downgrade(conn: asyncpg.Connection) -> None:
 
         -- Drop table
         DROP TABLE IF EXISTS position_state_transitions;
-    """)
+    """
+    )
 
     print("✅ Migration 002 rolled back: position_state_transitions table dropped")
 

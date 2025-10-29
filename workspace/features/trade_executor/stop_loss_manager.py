@@ -453,9 +453,11 @@ class StopLossManager:
                     protection.stop_price,
                     protection.created_at,
                     protection.triggered_at,
-                    protection.triggered_layer.value
-                    if protection.triggered_layer
-                    else None,
+                    (
+                        protection.triggered_layer.value
+                        if protection.triggered_layer
+                        else None
+                    ),
                     protection.metadata,
                 )
             logger.debug(f"Stop-loss protection stored: {protection.position_id}")
@@ -476,9 +478,11 @@ class StopLossManager:
                     WHERE position_id = $4
                     """,
                     protection.triggered_at,
-                    protection.triggered_layer.value
-                    if protection.triggered_layer
-                    else None,
+                    (
+                        protection.triggered_layer.value
+                        if protection.triggered_layer
+                        else None
+                    ),
                     protection.metadata,
                     protection.position_id,
                 )

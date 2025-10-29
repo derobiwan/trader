@@ -202,12 +202,14 @@ def upgrade() -> None:
     )
 
     # Convert to TimescaleDB hypertable
-    op.execute("""
+    op.execute(
+        """
         SELECT create_hypertable('market_data', 'timestamp',
             chunk_time_interval => 86400000000,
             if_not_exists => TRUE
         )
-    """)
+    """
+    )
 
     op.create_index(
         "idx_market_data_symbol_timestamp",
@@ -216,23 +218,29 @@ def upgrade() -> None:
     )
 
     # Enable compression
-    op.execute("""
+    op.execute(
+        """
         ALTER TABLE market_data SET (
             timescaledb.compress,
             timescaledb.compress_segmentby = 'symbol',
             timescaledb.compress_orderby = 'timestamp DESC'
         )
-    """)
+    """
+    )
 
     # Add compression policy (compress after 7 days)
-    op.execute("""
+    op.execute(
+        """
         SELECT add_compression_policy('market_data', INTERVAL '7 days', if_not_exists => TRUE)
-    """)
+    """
+    )
 
     # Add retention policy (keep 90 days)
-    op.execute("""
+    op.execute(
+        """
         SELECT add_retention_policy('market_data', INTERVAL '90 days', if_not_exists => TRUE)
-    """)
+    """
+    )
 
     # ========================================================================
     # TABLE 5: daily_performance (TimescaleDB Hypertable)
@@ -251,21 +259,25 @@ def upgrade() -> None:
     )
 
     # Convert to TimescaleDB hypertable
-    op.execute("""
+    op.execute(
+        """
         SELECT create_hypertable('daily_performance', 'date',
             chunk_time_interval => INTERVAL '1 day',
             if_not_exists => TRUE
         )
-    """)
+    """
+    )
 
     op.create_index(
         "idx_daily_performance_date", "daily_performance", [sa.text("date DESC")]
     )
 
     # Add retention policy (keep 2 years)
-    op.execute("""
+    op.execute(
+        """
         SELECT add_retention_policy('daily_performance', INTERVAL '2 years', if_not_exists => TRUE)
-    """)
+    """
+    )
 
     # ========================================================================
     # TABLE 6: risk_events (TimescaleDB Hypertable)
@@ -285,12 +297,14 @@ def upgrade() -> None:
     )
 
     # Convert to TimescaleDB hypertable
-    op.execute("""
+    op.execute(
+        """
         SELECT create_hypertable('risk_events', 'timestamp',
             chunk_time_interval => 86400000000,
             if_not_exists => TRUE
         )
-    """)
+    """
+    )
 
     op.create_index(
         "idx_risk_events_timestamp", "risk_events", [sa.text("timestamp DESC")]
@@ -300,9 +314,11 @@ def upgrade() -> None:
     op.create_index("idx_risk_events_position_id", "risk_events", ["position_id"])
 
     # Add retention policy (keep 1 year)
-    op.execute("""
+    op.execute(
+        """
         SELECT add_retention_policy('risk_events', INTERVAL '1 year', if_not_exists => TRUE)
-    """)
+    """
+    )
 
     # ========================================================================
     # TABLE 7: llm_requests
@@ -363,7 +379,8 @@ def upgrade() -> None:
     )
 
     # Insert default configuration
-    op.execute("""
+    op.execute(
+        """
         INSERT INTO system_config (key, value, updated_by) VALUES
             ('trading.capital_chf', '2626.96', 'SYSTEM_INIT'),
             ('trading.circuit_breaker_chf', '183.89', 'SYSTEM_INIT'),
@@ -379,7 +396,8 @@ def upgrade() -> None:
             ('llm.model', '"anthropic/claude-3.5-sonnet"', 'SYSTEM_INIT'),
             ('llm.max_cost_monthly_usd', '100', 'SYSTEM_INIT')
         ON CONFLICT (key) DO NOTHING
-    """)
+    """
+    )
 
     # ========================================================================
     # TABLE 9: audit_log
@@ -480,7 +498,8 @@ def upgrade() -> None:
     # ========================================================================
 
     # Function to update updated_at timestamp
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION update_updated_at_column()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -488,33 +507,41 @@ def upgrade() -> None:
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql
-    """)
+    """
+    )
 
     # Triggers for updated_at columns
-    op.execute("""
+    op.execute(
+        """
         CREATE TRIGGER update_positions_updated_at
         BEFORE UPDATE ON positions
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE TRIGGER update_orders_updated_at
         BEFORE UPDATE ON orders
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
-    """)
+    """
+    )
 
-    op.execute("""
+    op.execute(
+        """
         CREATE TRIGGER update_system_config_updated_at
         BEFORE UPDATE ON system_config
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
-    """)
+    """
+    )
 
     # ========================================================================
     # VIEWS
     # ========================================================================
 
     # View: Open positions with current P&L
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE VIEW v_open_positions AS
         SELECT
             p.id,
@@ -534,10 +561,12 @@ def upgrade() -> None:
             p.updated_at
         FROM positions p
         WHERE p.status = 'OPEN'
-    """)
+    """
+    )
 
     # View: Portfolio summary
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE VIEW v_portfolio_summary AS
         SELECT
             COUNT(*) FILTER (WHERE status = 'OPEN') as open_positions,
@@ -548,10 +577,12 @@ def upgrade() -> None:
             COUNT(*) FILTER (WHERE status = 'CLOSED' AND pnl_chf > 0) as winning_trades,
             COUNT(*) FILTER (WHERE status = 'CLOSED' AND pnl_chf < 0) as losing_trades
         FROM positions
-    """)
+    """
+    )
 
     # View: Daily LLM cost
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE VIEW v_daily_llm_cost AS
         SELECT
             DATE(timestamp) as date,
@@ -563,14 +594,16 @@ def upgrade() -> None:
         FROM llm_requests
         GROUP BY DATE(timestamp)
         ORDER BY DATE(timestamp) DESC
-    """)
+    """
+    )
 
     # ========================================================================
     # FUNCTIONS
     # ========================================================================
 
     # Function: Get current circuit breaker status
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION get_circuit_breaker_status()
         RETURNS TABLE(
             is_triggered BOOLEAN,
@@ -591,7 +624,8 @@ def upgrade() -> None:
             LIMIT 1;
         END;
         $$ LANGUAGE plpgsql
-    """)
+    """
+    )
 
 
 def downgrade() -> None:

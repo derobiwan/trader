@@ -330,7 +330,7 @@ async def test_auto_correction_statistics(reconciliation_service, mock_trade_exe
     )
     mock_trade_executor.position_service.close_position = AsyncMock()
 
-    result = await reconciliation_service.reconcile_positions()
+    await reconciliation_service.reconcile_positions()
 
     # Check that auto-correction was attempted
     assert mock_trade_executor.position_service.close_position.called

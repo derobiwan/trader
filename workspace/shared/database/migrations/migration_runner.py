@@ -72,13 +72,15 @@ class MigrationRunner:
         Args:
             conn: Database connection
         """
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version INTEGER PRIMARY KEY,
                 applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 description TEXT
             )
-        """)
+        """
+        )
         logger.info("Ensured schema_migrations table exists")
 
     async def get_applied_versions(self, conn: asyncpg.Connection) -> List[int]:
