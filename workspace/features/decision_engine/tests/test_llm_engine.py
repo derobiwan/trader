@@ -8,7 +8,6 @@ Date: 2025-10-28
 """
 
 import pytest
-import asyncio
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
@@ -16,9 +15,8 @@ from unittest.mock import AsyncMock, Mock, patch
 from workspace.features.decision_engine.llm_engine import (
     LLMDecisionEngine,
     LLMProvider,
-    LLMConfig,
 )
-from workspace.features.trading_loop import TradingSignal, TradingDecision
+from workspace.features.trading_loop import TradingDecision
 from workspace.features.market_data import (
     MarketDataSnapshot,
     OHLCV,
@@ -147,7 +145,9 @@ async def test_generate_signals_basic(llm_engine, sample_snapshot):
 ```
 """
 
-    with patch.object(llm_engine, '_call_llm', new=AsyncMock(return_value=mock_response)):
+    with patch.object(
+        llm_engine, "_call_llm", new=AsyncMock(return_value=mock_response)
+    ):
         signals = await llm_engine.generate_signals(
             snapshots=snapshots,
             capital_chf=Decimal("2626.96"),
@@ -193,7 +193,9 @@ async def test_generate_signals_multiple_symbols(llm_engine, sample_snapshot):
 ```
 """
 
-    with patch.object(llm_engine, '_call_llm', new=AsyncMock(return_value=mock_response)):
+    with patch.object(
+        llm_engine, "_call_llm", new=AsyncMock(return_value=mock_response)
+    ):
         signals = await llm_engine.generate_signals(snapshots=snapshots)
 
         assert len(signals) == 2
@@ -225,7 +227,9 @@ async def test_generate_signals_with_positions(llm_engine, sample_snapshot):
 ```
 """
 
-    with patch.object(llm_engine, '_call_llm', new=AsyncMock(return_value=mock_response)):
+    with patch.object(
+        llm_engine, "_call_llm", new=AsyncMock(return_value=mock_response)
+    ):
         signals = await llm_engine.generate_signals(
             snapshots=snapshots,
             current_positions=positions,
@@ -240,7 +244,9 @@ async def test_generate_signals_error_fallback(llm_engine, sample_snapshot):
     snapshots = {"BTCUSDT": sample_snapshot}
 
     # Mock LLM error
-    with patch.object(llm_engine, '_call_llm', new=AsyncMock(side_effect=Exception("API error"))):
+    with patch.object(
+        llm_engine, "_call_llm", new=AsyncMock(side_effect=Exception("API error"))
+    ):
         signals = await llm_engine.generate_signals(snapshots=snapshots)
 
         # Should return fallback HOLD signals
@@ -531,18 +537,10 @@ def test_generate_fallback_signals(llm_engine, sample_snapshot):
 @pytest.mark.asyncio
 async def test_call_openrouter_success(llm_engine):
     """Test successful OpenRouter API call"""
-    mock_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": "Test response"
-                }
-            }
-        ]
-    }
+    mock_response = {"choices": [{"message": {"content": "Test response"}}]}
 
     # Mock httpx client
-    with patch.object(llm_engine.client, 'post', new=AsyncMock()) as mock_post:
+    with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         mock_post.return_value.json.return_value = mock_response
         mock_post.return_value.raise_for_status = Mock()
 
@@ -555,17 +553,9 @@ async def test_call_openrouter_success(llm_engine):
 @pytest.mark.asyncio
 async def test_call_openrouter_empty_response(llm_engine):
     """Test handling empty OpenRouter response"""
-    mock_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": ""
-                }
-            }
-        ]
-    }
+    mock_response = {"choices": [{"message": {"content": ""}}]}
 
-    with patch.object(llm_engine.client, 'post', new=AsyncMock()) as mock_post:
+    with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         mock_post.return_value.json.return_value = mock_response
         mock_post.return_value.raise_for_status = Mock()
 
@@ -576,8 +566,9 @@ async def test_call_openrouter_empty_response(llm_engine):
 @pytest.mark.asyncio
 async def test_call_openrouter_api_error(llm_engine):
     """Test handling API error"""
-    with patch.object(llm_engine.client, 'post', new=AsyncMock()) as mock_post:
+    with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         import httpx
+
         mock_post.side_effect = httpx.HTTPStatusError(
             "API error",
             request=Mock(),
@@ -591,7 +582,7 @@ async def test_call_openrouter_api_error(llm_engine):
 @pytest.mark.asyncio
 async def test_call_openrouter_network_error(llm_engine):
     """Test handling network error"""
-    with patch.object(llm_engine.client, 'post', new=AsyncMock()) as mock_post:
+    with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         mock_post.side_effect = Exception("Network timeout")
 
         with pytest.raises(Exception):

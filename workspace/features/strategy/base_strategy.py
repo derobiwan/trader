@@ -20,6 +20,7 @@ from workspace.features.trading_loop import TradingDecision
 
 class StrategyType(str, Enum):
     """Strategy types"""
+
     MEAN_REVERSION = "mean_reversion"
     TREND_FOLLOWING = "trend_following"
     VOLATILITY_BREAKOUT = "volatility_breakout"
@@ -36,6 +37,7 @@ class StrategySignal:
     Similar to TradingSignal but from algorithmic strategy
     rather than LLM decision engine.
     """
+
     symbol: str
     decision: TradingDecision
     confidence: Decimal  # 0.0 to 1.0
@@ -137,7 +139,9 @@ class BaseStrategy(ABC):
             "name": self.get_name(),
             "type": self.get_type().value,
             "signal_count": self._signal_count,
-            "last_signal_time": self._last_signal_time.isoformat() if self._last_signal_time else None,
+            "last_signal_time": self._last_signal_time.isoformat()
+            if self._last_signal_time
+            else None,
         }
 
     def _record_signal(self, signal: StrategySignal):

@@ -8,19 +8,15 @@ Date: 2025-10-28
 """
 
 import pytest
-import asyncio
 from decimal import Decimal
-from datetime import datetime, timezone
 from dataclasses import dataclass
 
 from workspace.features.risk_manager import (
     RiskManager,
     CircuitBreaker,
     StopLossManager,
-    RiskValidation,
     ValidationStatus,
     CircuitBreakerState,
-    Protection,
 )
 
 
@@ -28,9 +24,11 @@ from workspace.features.risk_manager import (
 # Mock Classes
 # ============================================================================
 
+
 @dataclass
 class MockSignal:
     """Mock trading signal for testing"""
+
     symbol: str = "BTC/USDT:USDT"
     decision: str = "BUY"
     confidence: Decimal = Decimal("0.75")
@@ -43,6 +41,7 @@ class MockSignal:
 @dataclass
 class MockPosition:
     """Mock position for testing"""
+
     id: str = "pos_123"
     symbol: str = "BTC/USDT:USDT"
     entry_price: Decimal = Decimal("50000")
@@ -54,6 +53,7 @@ class MockPosition:
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def risk_manager():
@@ -83,6 +83,7 @@ def stop_loss_manager():
 # Risk Manager Tests
 # ============================================================================
 
+
 class TestRiskManager:
     """Tests for Risk Manager"""
 
@@ -98,7 +99,10 @@ class TestRiskManager:
         validation = await risk_manager.validate_signal(signal)
 
         assert validation.approved is True
-        assert validation.status in [ValidationStatus.APPROVED, ValidationStatus.WARNING]
+        assert validation.status in [
+            ValidationStatus.APPROVED,
+            ValidationStatus.WARNING,
+        ]
         assert len(validation.checks) > 0
 
     @pytest.mark.asyncio
@@ -151,6 +155,7 @@ class TestRiskManager:
 # Circuit Breaker Tests
 # ============================================================================
 
+
 class TestCircuitBreaker:
     """Tests for Circuit Breaker"""
 
@@ -170,7 +175,10 @@ class TestCircuitBreaker:
 
         status = await circuit_breaker.check_daily_loss(daily_pnl)
 
-        assert status.state in [CircuitBreakerState.TRIPPED, CircuitBreakerState.MANUAL_RESET_REQUIRED]
+        assert status.state in [
+            CircuitBreakerState.TRIPPED,
+            CircuitBreakerState.MANUAL_RESET_REQUIRED,
+        ]
         assert status.daily_pnl_chf == daily_pnl
 
     @pytest.mark.asyncio
@@ -216,6 +224,7 @@ class TestCircuitBreaker:
 # ============================================================================
 # Stop-Loss Manager Tests
 # ============================================================================
+
 
 class TestStopLossManager:
     """Tests for Stop-Loss Manager"""

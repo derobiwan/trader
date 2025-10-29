@@ -13,11 +13,8 @@ Uses FastAPI TestClient for synchronous testing.
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 import time
-import json
 
-from workspace.api.main import app
 from workspace.api.config import Settings
 
 
@@ -27,6 +24,7 @@ def client():
     """Create test client for API testing."""
     # Create a fresh TestClient for each test to avoid rate limit carryover
     from workspace.api.main import create_application
+
     test_app = create_application()
     return TestClient(test_app)
 
@@ -150,7 +148,7 @@ class TestMiddleware:
             headers={
                 "Origin": "http://localhost:3000",
                 "Access-Control-Request-Method": "GET",
-            }
+            },
         )
 
         # Should have CORS headers
@@ -303,7 +301,7 @@ class TestConfiguration:
             db_password="testpass",
             db_host="testhost",
             db_port=5432,
-            db_name="testdb"
+            db_name="testdb",
         )
 
         expected = "postgresql://testuser:testpass@testhost:5432/testdb"
@@ -313,27 +311,20 @@ class TestConfiguration:
         """Test Redis URL is generated correctly."""
         # Without password
         settings = Settings(
-            redis_host="localhost",
-            redis_port=6379,
-            redis_db=0,
-            redis_password=None
+            redis_host="localhost", redis_port=6379, redis_db=0, redis_password=None
         )
         assert settings.redis_url == "redis://localhost:6379/0"
 
         # With password
         settings = Settings(
-            redis_host="localhost",
-            redis_port=6379,
-            redis_db=0,
-            redis_password="secret"
+            redis_host="localhost", redis_port=6379, redis_db=0, redis_password="secret"
         )
         assert settings.redis_url == "redis://:secret@localhost:6379/0"
 
     def test_cors_config_generation(self):
         """Test CORS configuration generation."""
         settings = Settings(
-            cors_origins=["http://localhost:3000"],
-            cors_allow_credentials=True
+            cors_origins=["http://localhost:3000"], cors_allow_credentials=True
         )
 
         cors_config = settings.get_cors_config()

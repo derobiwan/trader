@@ -16,10 +16,11 @@ from pydantic import BaseModel, Field
 
 class MetricType(str, Enum):
     """Prometheus metric types"""
-    COUNTER = "counter"      # Monotonically increasing counter
-    GAUGE = "gauge"          # Value that can go up or down
+
+    COUNTER = "counter"  # Monotonically increasing counter
+    GAUGE = "gauge"  # Value that can go up or down
     HISTOGRAM = "histogram"  # Distribution of values
-    SUMMARY = "summary"      # Similar to histogram but calculated client-side
+    SUMMARY = "summary"  # Similar to histogram but calculated client-side
 
 
 class TradingMetrics(BaseModel):
@@ -45,9 +46,15 @@ class TradingMetrics(BaseModel):
     orders_rejected_total: int = Field(default=0, description="Total orders rejected")
 
     # Financial metrics
-    realized_pnl_total: Decimal = Field(default=Decimal("0"), description="Total realized P&L")
-    unrealized_pnl_current: Decimal = Field(default=Decimal("0"), description="Current unrealized P&L")
-    fees_paid_total: Decimal = Field(default=Decimal("0"), description="Total fees paid")
+    realized_pnl_total: Decimal = Field(
+        default=Decimal("0"), description="Total realized P&L"
+    )
+    unrealized_pnl_current: Decimal = Field(
+        default=Decimal("0"), description="Current unrealized P&L"
+    )
+    fees_paid_total: Decimal = Field(
+        default=Decimal("0"), description="Total fees paid"
+    )
 
     # Performance metrics
     win_rate: Decimal = Field(default=Decimal("0"), description="Win rate percentage")
@@ -55,31 +62,57 @@ class TradingMetrics(BaseModel):
     sharpe_ratio: Optional[Decimal] = Field(default=None, description="Sharpe ratio")
 
     # Execution metrics
-    execution_latency_avg_ms: Decimal = Field(default=Decimal("0"), description="Average execution latency")
-    execution_latency_p95_ms: Decimal = Field(default=Decimal("0"), description="95th percentile latency")
-    execution_latency_p99_ms: Decimal = Field(default=Decimal("0"), description="99th percentile latency")
+    execution_latency_avg_ms: Decimal = Field(
+        default=Decimal("0"), description="Average execution latency"
+    )
+    execution_latency_p95_ms: Decimal = Field(
+        default=Decimal("0"), description="95th percentile latency"
+    )
+    execution_latency_p99_ms: Decimal = Field(
+        default=Decimal("0"), description="99th percentile latency"
+    )
 
     # System health
-    system_uptime_seconds: int = Field(default=0, description="System uptime in seconds")
-    last_trade_timestamp: Optional[datetime] = Field(default=None, description="Last trade timestamp")
-    last_signal_timestamp: Optional[datetime] = Field(default=None, description="Last signal timestamp")
+    system_uptime_seconds: int = Field(
+        default=0, description="System uptime in seconds"
+    )
+    last_trade_timestamp: Optional[datetime] = Field(
+        default=None, description="Last trade timestamp"
+    )
+    last_signal_timestamp: Optional[datetime] = Field(
+        default=None, description="Last signal timestamp"
+    )
 
     # LLM metrics
     llm_calls_total: int = Field(default=0, description="Total LLM API calls")
     llm_tokens_input_total: int = Field(default=0, description="Total input tokens")
     llm_tokens_output_total: int = Field(default=0, description="Total output tokens")
-    llm_cost_total_usd: Decimal = Field(default=Decimal("0"), description="Total LLM cost")
+    llm_cost_total_usd: Decimal = Field(
+        default=Decimal("0"), description="Total LLM cost"
+    )
     llm_errors_total: int = Field(default=0, description="Total LLM errors")
 
     # Market data metrics
-    market_data_fetches_total: int = Field(default=0, description="Total market data fetches")
-    market_data_errors_total: int = Field(default=0, description="Market data fetch errors")
-    websocket_reconnections_total: int = Field(default=0, description="WebSocket reconnections")
+    market_data_fetches_total: int = Field(
+        default=0, description="Total market data fetches"
+    )
+    market_data_errors_total: int = Field(
+        default=0, description="Market data fetch errors"
+    )
+    websocket_reconnections_total: int = Field(
+        default=0, description="WebSocket reconnections"
+    )
 
     # Risk metrics
-    circuit_breaker_triggers_total: int = Field(default=0, description="Circuit breaker triggers")
-    max_position_size_exceeded_total: int = Field(default=0, description="Max position size violations")
-    daily_loss_limit_triggers_total: int = Field(default=0, description="Daily loss limit triggers")
+    circuit_breaker_triggers_total: int = Field(
+        default=0, description="Circuit breaker triggers"
+    )
+    max_position_size_exceeded_total: int = Field(
+        default=0, description="Max position size violations"
+    )
+    daily_loss_limit_triggers_total: int = Field(
+        default=0, description="Daily loss limit triggers"
+    )
 
     # Cache metrics
     cache_hits_total: int = Field(default=0, description="Cache hits")
@@ -99,13 +132,18 @@ class MetricSnapshot(BaseModel):
 
     Used for time-series storage and analysis.
     """
+
     timestamp: datetime = Field(description="Snapshot timestamp")
     metrics: TradingMetrics = Field(description="Metrics at this point in time")
 
     # Additional context
-    trading_symbols: list[str] = Field(default_factory=list, description="Active trading symbols")
+    trading_symbols: list[str] = Field(
+        default_factory=list, description="Active trading symbols"
+    )
     system_version: str = Field(default="1.0.0", description="System version")
-    environment: str = Field(default="production", description="Environment (production/testnet)")
+    environment: str = Field(
+        default="production", description="Environment (production/testnet)"
+    )
 
     class Config:
         json_encoders = {
@@ -119,6 +157,7 @@ class AlertRule(BaseModel):
 
     Defines conditions for triggering alerts.
     """
+
     name: str = Field(description="Alert rule name")
     metric: str = Field(description="Metric to monitor")
     condition: str = Field(description="Alert condition (e.g., '> 0.5', '< 100')")
@@ -127,11 +166,15 @@ class AlertRule(BaseModel):
     enabled: bool = Field(default=True, description="Whether alert is enabled")
 
     # Alert actions
-    notify_channels: list[str] = Field(default_factory=list, description="Notification channels")
+    notify_channels: list[str] = Field(
+        default_factory=list, description="Notification channels"
+    )
     cooldown_seconds: int = Field(default=300, description="Cooldown between alerts")
 
     # Tracking
-    last_triggered: Optional[datetime] = Field(default=None, description="Last trigger timestamp")
+    last_triggered: Optional[datetime] = Field(
+        default=None, description="Last trigger timestamp"
+    )
     trigger_count: int = Field(default=0, description="Total trigger count")
 
 
@@ -141,6 +184,7 @@ class PrometheusExportFormat(BaseModel):
 
     Formatted metrics ready for Prometheus scraping.
     """
+
     metrics: Dict[str, Any] = Field(description="Metrics in Prometheus format")
     timestamp: datetime = Field(description="Export timestamp")
 

@@ -39,14 +39,17 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 # Enums for type safety
 # ============================================================================
 
+
 class PositionSide(str, Enum):
     """Position side (long or short)."""
+
     LONG = "LONG"
     SHORT = "SHORT"
 
 
 class PositionStatus(str, Enum):
     """Position status."""
+
     OPEN = "OPEN"
     CLOSED = "CLOSED"
     LIQUIDATED = "LIQUIDATED"
@@ -54,6 +57,7 @@ class PositionStatus(str, Enum):
 
 class SignalType(str, Enum):
     """Trading signal type."""
+
     ENTRY = "ENTRY"
     EXIT = "EXIT"
     HOLD = "HOLD"
@@ -63,6 +67,7 @@ class SignalType(str, Enum):
 
 class SignalAction(str, Enum):
     """Trading signal action."""
+
     BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
@@ -70,12 +75,14 @@ class SignalAction(str, Enum):
 
 class OrderSide(str, Enum):
     """Order side."""
+
     BUY = "BUY"
     SELL = "SELL"
 
 
 class OrderType(str, Enum):
     """Order type."""
+
     MARKET = "MARKET"
     LIMIT = "LIMIT"
     STOP_LOSS = "STOP_LOSS"
@@ -84,6 +91,7 @@ class OrderType(str, Enum):
 
 class OrderStatus(str, Enum):
     """Order status."""
+
     PENDING = "PENDING"
     FILLED = "FILLED"
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
@@ -93,6 +101,7 @@ class OrderStatus(str, Enum):
 
 class RiskEventSeverity(str, Enum):
     """Risk event severity."""
+
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -102,6 +111,7 @@ class RiskEventSeverity(str, Enum):
 # ============================================================================
 # Base Model Configuration
 # ============================================================================
+
 
 class DatabaseModel(BaseModel):
     """Base model with common configuration."""
@@ -115,13 +125,14 @@ class DatabaseModel(BaseModel):
             Decimal: lambda v: str(v),
             datetime: lambda v: v.isoformat(),
             UUID: lambda v: str(v),
-        }
+        },
     )
 
 
 # ============================================================================
 # Position Model
 # ============================================================================
+
 
 class Position(DatabaseModel):
     """
@@ -131,21 +142,40 @@ class Position(DatabaseModel):
     """
 
     id: UUID = Field(default_factory=uuid4)
-    symbol: str = Field(..., min_length=1, max_length=20, description="Trading pair (e.g., BTCUSDT)")
+    symbol: str = Field(
+        ..., min_length=1, max_length=20, description="Trading pair (e.g., BTCUSDT)"
+    )
     side: PositionSide = Field(..., description="Position side (LONG or SHORT)")
-    quantity: Decimal = Field(..., gt=0, description="Position quantity (crypto amount)")
+    quantity: Decimal = Field(
+        ..., gt=0, description="Position quantity (crypto amount)"
+    )
     entry_price: Decimal = Field(..., gt=0, description="Entry price in USD")
-    current_price: Optional[Decimal] = Field(None, gt=0, description="Current market price in USD")
+    current_price: Optional[Decimal] = Field(
+        None, gt=0, description="Current market price in USD"
+    )
     leverage: int = Field(..., ge=5, le=40, description="Position leverage (5-40x)")
-    stop_loss: Optional[Decimal] = Field(None, gt=0, description="Stop loss price in USD")
-    take_profit: Optional[Decimal] = Field(None, gt=0, description="Take profit price in USD")
-    status: PositionStatus = Field(default=PositionStatus.OPEN, description="Position status")
+    stop_loss: Optional[Decimal] = Field(
+        None, gt=0, description="Stop loss price in USD"
+    )
+    take_profit: Optional[Decimal] = Field(
+        None, gt=0, description="Take profit price in USD"
+    )
+    status: PositionStatus = Field(
+        default=PositionStatus.OPEN, description="Position status"
+    )
     pnl_chf: Optional[Decimal] = Field(None, description="Realized P&L in CHF")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     closed_at: Optional[datetime] = Field(None, description="Position close timestamp")
 
-    @field_validator("quantity", "entry_price", "current_price", "stop_loss", "take_profit", "pnl_chf")
+    @field_validator(
+        "quantity",
+        "entry_price",
+        "current_price",
+        "stop_loss",
+        "take_profit",
+        "pnl_chf",
+    )
     @classmethod
     def validate_decimal_precision(cls, v: Optional[Decimal]) -> Optional[Decimal]:
         """Ensure proper decimal precision (8 places)."""
@@ -165,9 +195,13 @@ class Position(DatabaseModel):
             return None
 
         if self.side == PositionSide.LONG:
-            pnl = (self.current_price - self.entry_price) * self.quantity * self.leverage
+            pnl = (
+                (self.current_price - self.entry_price) * self.quantity * self.leverage
+            )
         else:  # SHORT
-            pnl = (self.entry_price - self.current_price) * self.quantity * self.leverage
+            pnl = (
+                (self.entry_price - self.current_price) * self.quantity * self.leverage
+            )
 
         return pnl.quantize(Decimal("0.00000001"))
 
@@ -195,6 +229,7 @@ class Position(DatabaseModel):
 # Trading Signal Model
 # ============================================================================
 
+
 class TradingSignal(DatabaseModel):
     """
     LLM-generated trading signal model.
@@ -206,7 +241,9 @@ class TradingSignal(DatabaseModel):
     symbol: str = Field(..., min_length=1, max_length=20)
     signal_type: SignalType
     action: SignalAction
-    confidence: Decimal = Field(..., ge=0, le=1, description="Confidence score (0.0-1.0)")
+    confidence: Decimal = Field(
+        ..., ge=0, le=1, description="Confidence score (0.0-1.0)"
+    )
     risk_usd: Optional[Decimal] = Field(None, description="Risk amount in USD")
     reasoning: str = Field(..., min_length=1, description="LLM decision reasoning")
     llm_model: str = Field(..., min_length=1, max_length=100)
@@ -243,6 +280,7 @@ class TradingSignal(DatabaseModel):
 # Order Model
 # ============================================================================
 
+
 class Order(DatabaseModel):
     """
     Exchange order model.
@@ -252,7 +290,9 @@ class Order(DatabaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     position_id: Optional[UUID] = Field(None, description="Associated position ID")
-    exchange_order_id: Optional[str] = Field(None, max_length=100, description="Exchange's order ID")
+    exchange_order_id: Optional[str] = Field(
+        None, max_length=100, description="Exchange's order ID"
+    )
     symbol: str = Field(..., min_length=1, max_length=20)
     side: OrderSide
     order_type: OrderType
@@ -295,6 +335,7 @@ class Order(DatabaseModel):
 # Market Data Model
 # ============================================================================
 
+
 class MarketData(DatabaseModel):
     """
     Time-series market data model.
@@ -309,7 +350,9 @@ class MarketData(DatabaseModel):
     low: Decimal = Field(..., gt=0)
     close: Decimal = Field(..., gt=0)
     volume: Decimal = Field(..., ge=0)
-    indicators: Optional[Dict[str, Any]] = Field(None, description="Technical indicators (RSI, MACD, etc.)")
+    indicators: Optional[Dict[str, Any]] = Field(
+        None, description="Technical indicators (RSI, MACD, etc.)"
+    )
 
     @field_validator("open", "high", "low", "close", "volume")
     @classmethod
@@ -335,6 +378,7 @@ class MarketData(DatabaseModel):
 # Daily Performance Model
 # ============================================================================
 
+
 class DailyPerformance(DatabaseModel):
     """
     Daily portfolio performance model.
@@ -343,13 +387,21 @@ class DailyPerformance(DatabaseModel):
     """
 
     date: date
-    portfolio_value_chf: Decimal = Field(..., description="Total portfolio value in CHF")
+    portfolio_value_chf: Decimal = Field(
+        ..., description="Total portfolio value in CHF"
+    )
     daily_pnl_chf: Decimal = Field(..., description="Daily P&L in CHF")
     daily_pnl_pct: Decimal = Field(..., description="Daily P&L percentage")
-    sharpe_ratio: Optional[Decimal] = Field(None, description="Sharpe ratio (target > 0.5)")
-    win_rate: Optional[Decimal] = Field(None, ge=0, le=1, description="Win rate (0.0-1.0)")
+    sharpe_ratio: Optional[Decimal] = Field(
+        None, description="Sharpe ratio (target > 0.5)"
+    )
+    win_rate: Optional[Decimal] = Field(
+        None, ge=0, le=1, description="Win rate (0.0-1.0)"
+    )
     total_trades: int = Field(default=0, ge=0)
-    positions_snapshot: Optional[Dict[str, Any]] = Field(None, description="EOD positions snapshot")
+    positions_snapshot: Optional[Dict[str, Any]] = Field(
+        None, description="EOD positions snapshot"
+    )
 
     @field_validator("portfolio_value_chf", "daily_pnl_chf")
     @classmethod
@@ -383,6 +435,7 @@ class DailyPerformance(DatabaseModel):
 # Risk Event Model
 # ============================================================================
 
+
 class RiskEvent(DatabaseModel):
     """
     Risk event model.
@@ -412,6 +465,7 @@ class RiskEvent(DatabaseModel):
 # ============================================================================
 # LLM Request Model
 # ============================================================================
+
 
 class LLMRequest(DatabaseModel):
     """
@@ -455,6 +509,7 @@ class LLMRequest(DatabaseModel):
 # Circuit Breaker State Model
 # ============================================================================
 
+
 class CircuitBreakerState(DatabaseModel):
     """
     Circuit breaker daily state model.
@@ -466,7 +521,9 @@ class CircuitBreakerState(DatabaseModel):
     current_pnl_chf: Decimal = Field(default=Decimal("0"))
     triggered: bool = Field(default=False)
     trigger_reason: Optional[str] = None
-    positions_closed: Optional[List[str]] = Field(None, description="Array of position IDs closed")
+    positions_closed: Optional[List[str]] = Field(
+        None, description="Array of position IDs closed"
+    )
     reset_at: Optional[datetime] = None
 
     @field_validator("current_pnl_chf")
@@ -503,6 +560,7 @@ class CircuitBreakerState(DatabaseModel):
 # Position Reconciliation Model
 # ============================================================================
 
+
 class PositionReconciliation(DatabaseModel):
     """
     Position reconciliation model.
@@ -514,8 +572,12 @@ class PositionReconciliation(DatabaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     position_id: UUID
     system_state: Dict[str, Any] = Field(..., description="System's view of position")
-    exchange_state: Dict[str, Any] = Field(..., description="Exchange's view of position")
-    discrepancies: Optional[List[Dict[str, Any]]] = Field(None, description="List of discrepancies")
+    exchange_state: Dict[str, Any] = Field(
+        ..., description="Exchange's view of position"
+    )
+    discrepancies: Optional[List[Dict[str, Any]]] = Field(
+        None, description="List of discrepancies"
+    )
     resolved: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -537,7 +599,10 @@ class PositionReconciliation(DatabaseModel):
 # Utility Functions
 # ============================================================================
 
-def usd_to_chf(usd_amount: Decimal, exchange_rate: Decimal = Decimal("0.85")) -> Decimal:
+
+def usd_to_chf(
+    usd_amount: Decimal, exchange_rate: Decimal = Decimal("0.85")
+) -> Decimal:
     """
     Convert USD to CHF.
 
@@ -552,7 +617,9 @@ def usd_to_chf(usd_amount: Decimal, exchange_rate: Decimal = Decimal("0.85")) ->
     return chf_amount.quantize(Decimal("0.00000001"))
 
 
-def chf_to_usd(chf_amount: Decimal, exchange_rate: Decimal = Decimal("0.85")) -> Decimal:
+def chf_to_usd(
+    chf_amount: Decimal, exchange_rate: Decimal = Decimal("0.85")
+) -> Decimal:
     """
     Convert CHF to USD.
 

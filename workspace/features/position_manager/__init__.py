@@ -16,7 +16,7 @@ Usage:
 
 from workspace.features.position_manager.position_service import (
     PositionService,
-    bulk_update_prices
+    bulk_update_prices,
 )
 
 # Alias for consistency with other modules
@@ -27,21 +27,17 @@ from workspace.features.position_manager.models import (
     PositionCreateRequest,
     PositionUpdateRequest,
     PositionCloseRequest,
-
     # Response Models
     PositionWithPnL,
     DailyPnLSummary,
     PositionStatistics,
-
     # Enums
     CloseReason,
-
     # Exceptions
     ValidationError,
     RiskLimitError,
     PositionNotFoundError,
     InsufficientCapitalError,
-
     # Constants
     CAPITAL_CHF,
     CIRCUIT_BREAKER_LOSS_CHF,
@@ -49,7 +45,7 @@ from workspace.features.position_manager.models import (
     MAX_TOTAL_EXPOSURE_CHF,
     MIN_LEVERAGE,
     MAX_LEVERAGE,
-    VALID_SYMBOLS
+    VALID_SYMBOLS,
 )
 
 __all__ = [
@@ -57,26 +53,21 @@ __all__ = [
     "PositionService",
     "PositionManager",  # Alias for PositionService
     "bulk_update_prices",
-
     # Request Models
     "PositionCreateRequest",
     "PositionUpdateRequest",
     "PositionCloseRequest",
-
     # Response Models
     "PositionWithPnL",
     "DailyPnLSummary",
     "PositionStatistics",
-
     # Enums
     "CloseReason",
-
     # Exceptions
     "ValidationError",
     "RiskLimitError",
     "PositionNotFoundError",
     "InsufficientCapitalError",
-
     # Constants
     "CAPITAL_CHF",
     "CIRCUIT_BREAKER_LOSS_CHF",
@@ -84,7 +75,7 @@ __all__ = [
     "MAX_TOTAL_EXPOSURE_CHF",
     "MIN_LEVERAGE",
     "MAX_LEVERAGE",
-    "VALID_SYMBOLS"
+    "VALID_SYMBOLS",
 ]
 
 __version__ = "1.0.0"

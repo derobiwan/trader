@@ -18,6 +18,7 @@ import uuid
 
 class OrderType(str, Enum):
     """Order type enumeration"""
+
     MARKET = "market"
     LIMIT = "limit"
     STOP_MARKET = "stop_market"
@@ -26,12 +27,14 @@ class OrderType(str, Enum):
 
 class OrderSide(str, Enum):
     """Order side enumeration"""
+
     BUY = "buy"
     SELL = "sell"
 
 
 class OrderStatus(str, Enum):
     """Order status enumeration"""
+
     PENDING = "pending"  # Created but not yet submitted
     OPEN = "open"  # Submitted to exchange, awaiting fill
     FILLED = "filled"  # Completely filled
@@ -43,6 +46,7 @@ class OrderStatus(str, Enum):
 
 class TimeInForce(str, Enum):
     """Time in force options"""
+
     GTC = "GTC"  # Good Till Cancel
     IOC = "IOC"  # Immediate or Cancel
     FOK = "FOK"  # Fill or Kill
@@ -51,6 +55,7 @@ class TimeInForce(str, Enum):
 
 class StopLossLayer(str, Enum):
     """Stop-loss protection layers"""
+
     EXCHANGE = "exchange"  # Layer 1: Exchange stop-loss order
     APPLICATION = "application"  # Layer 2: App-level monitoring
     EMERGENCY = "emergency"  # Layer 3: Emergency liquidation
@@ -108,16 +113,13 @@ class Order(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
-    @validator('remaining_quantity', always=True)
+    @validator("remaining_quantity", always=True)
     def calculate_remaining(cls, v, values):
         """Calculate remaining quantity"""
-        if 'quantity' in values and 'filled_quantity' in values:
-            return values['quantity'] - values['filled_quantity']
+        if "quantity" in values and "filled_quantity" in values:
+            return values["quantity"] - values["filled_quantity"]
         return v
 
     @property
@@ -156,10 +158,7 @@ class ExecutionResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
 
 class StopLossProtection(BaseModel):
@@ -192,10 +191,7 @@ class StopLossProtection(BaseModel):
 
     class Config:
         use_enum_values = True
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
 
 class ReconciliationResult(BaseModel):
@@ -221,25 +217,22 @@ class ReconciliationResult(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
-    @validator('discrepancy', always=True)
+    @validator("discrepancy", always=True)
     def calculate_discrepancy(cls, v, values):
         """Calculate discrepancy"""
-        if 'system_quantity' in values and 'exchange_quantity' in values:
-            return values['system_quantity'] - values['exchange_quantity']
+        if "system_quantity" in values and "exchange_quantity" in values:
+            return values["system_quantity"] - values["exchange_quantity"]
         return v
 
-    @validator('needs_correction', always=True)
+    @validator("needs_correction", always=True)
     def check_correction_needed(cls, v, values):
         """Check if correction is needed"""
-        if 'discrepancy' in values:
+        if "discrepancy" in values:
             # Need correction if discrepancy > 0.001% of position
             threshold = Decimal("0.00001")
-            return abs(values['discrepancy']) > threshold
+            return abs(values["discrepancy"]) > threshold
         return v
 
 
@@ -268,10 +261,7 @@ class PositionSnapshot(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        json_encoders = {
-            Decimal: lambda v: str(v),
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
 
 # Export all models

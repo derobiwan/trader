@@ -37,17 +37,17 @@ diagrams_needed:
     - Happy path journey
     - Error scenarios
     - Edge cases
-  
+
   architecture:
     - System components
     - Data flow
     - Integration points
-  
+
   sequences:
     - API interactions
     - Event flows
     - State changes
-  
+
   data_models:
     - Entity relationships
     - Schema design

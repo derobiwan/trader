@@ -16,7 +16,9 @@ from typing import Dict, Any
 def sample_ohlcv_data() -> pd.DataFrame:
     """Generate sample OHLCV data for testing"""
     periods = 100
-    dates = [datetime.now(timezone.utc) - timedelta(minutes=3*i) for i in range(periods)]
+    dates = [
+        datetime.now(timezone.utc) - timedelta(minutes=3 * i) for i in range(periods)
+    ]
     dates.reverse()
 
     # Generate realistic-looking price data
@@ -27,16 +29,16 @@ def sample_ohlcv_data() -> pd.DataFrame:
         prices.append(prices[-1] + change)
 
     data = {
-        'timestamp': dates,
-        'open': prices,
-        'high': [p * (1 + abs(np.random.normal(0, 0.002))) for p in prices],
-        'low': [p * (1 - abs(np.random.normal(0, 0.002))) for p in prices],
-        'close': [p + np.random.normal(0, 50) for p in prices],
-        'volume': [np.random.uniform(10, 100) for _ in range(periods)],
+        "timestamp": dates,
+        "open": prices,
+        "high": [p * (1 + abs(np.random.normal(0, 0.002))) for p in prices],
+        "low": [p * (1 - abs(np.random.normal(0, 0.002))) for p in prices],
+        "close": [p + np.random.normal(0, 50) for p in prices],
+        "volume": [np.random.uniform(10, 100) for _ in range(periods)],
     }
 
     df = pd.DataFrame(data)
-    df.set_index('timestamp', inplace=True)
+    df.set_index("timestamp", inplace=True)
 
     return df
 
@@ -45,10 +47,10 @@ def sample_ohlcv_data() -> pd.DataFrame:
 def sample_market_data() -> Dict[str, Any]:
     """Generate sample market data dictionary"""
     return {
-        'symbol': 'BTC/USDT:USDT',
-        'timeframe': '3m',
-        'current_price': Decimal('50000'),
-        'ohlcv': None,  # Will be set in tests
+        "symbol": "BTC/USDT:USDT",
+        "timeframe": "3m",
+        "current_price": Decimal("50000"),
+        "ohlcv": None,  # Will be set in tests
     }
 
 
@@ -56,39 +58,42 @@ def sample_market_data() -> Dict[str, Any]:
 def trading_config() -> Dict[str, Any]:
     """Generate trading configuration"""
     return {
-        'starting_balance_chf': Decimal('2626.96'),
-        'max_daily_loss_chf': Decimal('-183.89'),
-        'max_concurrent_positions': 6,
-        'max_position_size_pct': Decimal('0.20'),
-        'max_total_exposure_pct': Decimal('0.80'),
-        'min_confidence': Decimal('0.60'),
+        "starting_balance_chf": Decimal("2626.96"),
+        "max_daily_loss_chf": Decimal("-183.89"),
+        "max_concurrent_positions": 6,
+        "max_position_size_pct": Decimal("0.20"),
+        "max_total_exposure_pct": Decimal("0.80"),
+        "min_confidence": Decimal("0.60"),
     }
 
 
 @pytest.fixture
 def mock_exchange_client():
     """Mock exchange client for testing"""
+
     class MockExchange:
         def __init__(self):
             self.orders = {}
             self.positions = {}
-            self.balance = Decimal('2626.96')
+            self.balance = Decimal("2626.96")
 
         async def fetch_ticker(self, symbol: str):
             """Mock fetch ticker"""
-            return {'last': 50000.0}
+            return {"last": 50000.0}
 
-        async def create_order(self, symbol: str, type: str, side: str, amount: float, **params):
+        async def create_order(
+            self, symbol: str, type: str, side: str, amount: float, **params
+        ):
             """Mock create order"""
             order_id = f"order_{len(self.orders) + 1}"
             order = {
-                'id': order_id,
-                'symbol': symbol,
-                'type': type,
-                'side': side,
-                'amount': amount,
-                'price': params.get('price', 50000.0),
-                'status': 'open',
+                "id": order_id,
+                "symbol": symbol,
+                "type": type,
+                "side": side,
+                "amount": amount,
+                "price": params.get("price", 50000.0),
+                "status": "open",
             }
             self.orders[order_id] = order
             return order
@@ -96,16 +101,16 @@ def mock_exchange_client():
         async def cancel_order(self, order_id: str, symbol: str):
             """Mock cancel order"""
             if order_id in self.orders:
-                self.orders[order_id]['status'] = 'canceled'
+                self.orders[order_id]["status"] = "canceled"
             return self.orders.get(order_id)
 
         async def fetch_balance(self):
             """Mock fetch balance"""
             return {
-                'USDT': {
-                    'free': float(self.balance),
-                    'used': 0.0,
-                    'total': float(self.balance),
+                "USDT": {
+                    "free": float(self.balance),
+                    "used": 0.0,
+                    "total": float(self.balance),
                 }
             }
 
@@ -115,6 +120,7 @@ def mock_exchange_client():
 @pytest.fixture
 def mock_trade_executor():
     """Mock trade executor for testing"""
+
     class MockTradeExecutor:
         def __init__(self):
             self.positions = []
@@ -123,23 +129,27 @@ def mock_trade_executor():
         async def execute_signal(self, signal):
             """Mock execute signal"""
             position = {
-                'id': f"pos_{len(self.positions) + 1}",
-                'symbol': signal.symbol,
-                'entry_price': signal.entry_price if hasattr(signal, 'entry_price') else Decimal('50000'),
-                'size_pct': signal.size_pct,
-                'stop_loss_pct': signal.stop_loss_pct,
-                'side': signal.decision.lower(),
+                "id": f"pos_{len(self.positions) + 1}",
+                "symbol": signal.symbol,
+                "entry_price": signal.entry_price
+                if hasattr(signal, "entry_price")
+                else Decimal("50000"),
+                "size_pct": signal.size_pct,
+                "stop_loss_pct": signal.stop_loss_pct,
+                "side": signal.decision.lower(),
             }
             self.positions.append(position)
             return position
 
-        async def close_position(self, position_id: str, reason: str = None, force: bool = False):
+        async def close_position(
+            self, position_id: str, reason: str = None, force: bool = False
+        ):
             """Mock close position"""
             for i, pos in enumerate(self.positions):
-                if pos['id'] == position_id:
+                if pos["id"] == position_id:
                     closed = self.positions.pop(i)
                     self.closed_positions.append(closed)
-                    return {'status': 'closed', 'position': closed}
+                    return {"status": "closed", "position": closed}
             return None
 
         async def get_open_positions(self):
@@ -152,6 +162,7 @@ def mock_trade_executor():
 @pytest.fixture
 def mock_position_tracker():
     """Mock position tracker for testing"""
+
     class MockPositionTracker:
         def __init__(self):
             self.positions = []
@@ -163,14 +174,14 @@ def mock_position_tracker():
         async def get_position(self, position_id: str):
             """Mock get position"""
             for pos in self.positions:
-                if pos.get('id') == position_id:
+                if pos.get("id") == position_id:
                     return pos
             return None
 
         async def update_position(self, position_id: str, updates: dict):
             """Mock update position"""
             for pos in self.positions:
-                if pos.get('id') == position_id:
+                if pos.get("id") == position_id:
                     pos.update(updates)
                     return pos
             return None
@@ -181,6 +192,7 @@ def mock_position_tracker():
 # ============================================================================
 # Market Data Snapshot Helpers
 # ============================================================================
+
 
 def create_ticker(last_price: Decimal = Decimal("50000.00")):
     """Create a ticker with required fields"""

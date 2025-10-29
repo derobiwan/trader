@@ -15,12 +15,10 @@ Date: 2025-10-28
 import pytest
 import pytest_asyncio
 from decimal import Decimal
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from workspace.features.trading_loop import TradingSignal, TradingDecision
-from workspace.features.trade_executor import TradeExecutor, ExecutionResult, OrderSide
-from workspace.features.risk_manager import RiskManager
+from workspace.features.trade_executor import TradeExecutor, OrderSide
 
 
 class TestExecuteSignalIntegration:
@@ -30,19 +28,21 @@ class TestExecuteSignalIntegration:
     def mock_exchange(self):
         """Create mock exchange with necessary methods"""
         exchange = AsyncMock()
-        exchange.fetch_ticker = AsyncMock(return_value={'last': 50000.0})
-        exchange.create_order = AsyncMock(return_value={
-            'id': 'test_order_123',
-            'status': 'closed',
-            'filled': 0.002,
-            'average': 50000.0,
-            'fee': {'cost': 0.1},
-        })
-        exchange.fetch_balance = AsyncMock(return_value={
-            'USDT': {'free': 2500.0, 'used': 0.0, 'total': 2500.0}
-        })
+        exchange.fetch_ticker = AsyncMock(return_value={"last": 50000.0})
+        exchange.create_order = AsyncMock(
+            return_value={
+                "id": "test_order_123",
+                "status": "closed",
+                "filled": 0.002,
+                "average": 50000.0,
+                "fee": {"cost": 0.1},
+            }
+        )
+        exchange.fetch_balance = AsyncMock(
+            return_value={"USDT": {"free": 2500.0, "used": 0.0, "total": 2500.0}}
+        )
         exchange.load_markets = AsyncMock()
-        exchange.markets = {'BTC/USDT:USDT': {}}
+        exchange.markets = {"BTC/USDT:USDT": {}}
         exchange.set_sandbox_mode = MagicMock()
         return exchange
 
@@ -51,7 +51,7 @@ class TestExecuteSignalIntegration:
         """Create mock position service"""
         service = AsyncMock()
         service.get_open_positions = AsyncMock(return_value=[])
-        service.create_position = AsyncMock(return_value=MagicMock(id='pos_123'))
+        service.create_position = AsyncMock(return_value=MagicMock(id="pos_123"))
         service.close_position = AsyncMock()
         return service
 
@@ -59,8 +59,8 @@ class TestExecuteSignalIntegration:
     async def executor(self, mock_exchange, mock_position_service):
         """Create TradeExecutor with mocked dependencies"""
         executor = TradeExecutor(
-            api_key='test_key',
-            api_secret='test_secret',
+            api_key="test_key",
+            api_secret="test_secret",
             testnet=True,
             exchange=mock_exchange,
             position_service=mock_position_service,
@@ -71,36 +71,36 @@ class TestExecuteSignalIntegration:
     def buy_signal(self):
         """Create a BUY signal for testing"""
         return TradingSignal(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             decision=TradingDecision.BUY,
-            confidence=Decimal('0.75'),
-            size_pct=Decimal('0.15'),
-            stop_loss_pct=Decimal('0.02'),
-            take_profit_pct=Decimal('0.05'),
-            reasoning='Strong bullish momentum with RSI oversold',
+            confidence=Decimal("0.75"),
+            size_pct=Decimal("0.15"),
+            stop_loss_pct=Decimal("0.02"),
+            take_profit_pct=Decimal("0.05"),
+            reasoning="Strong bullish momentum with RSI oversold",
         )
 
     @pytest.fixture
     def sell_signal(self):
         """Create a SELL signal for testing"""
         return TradingSignal(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             decision=TradingDecision.SELL,
-            confidence=Decimal('0.70'),
-            size_pct=Decimal('0.12'),
-            stop_loss_pct=Decimal('0.02'),
-            reasoning='Bearish divergence on MACD',
+            confidence=Decimal("0.70"),
+            size_pct=Decimal("0.12"),
+            stop_loss_pct=Decimal("0.02"),
+            reasoning="Bearish divergence on MACD",
         )
 
     @pytest.fixture
     def hold_signal(self):
         """Create a HOLD signal for testing"""
         return TradingSignal(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             decision=TradingDecision.HOLD,
-            confidence=Decimal('0.50'),
-            size_pct=Decimal('0.0'),
-            reasoning='Neutral market conditions',
+            confidence=Decimal("0.50"),
+            size_pct=Decimal("0.0"),
+            reasoning="Neutral market conditions",
         )
 
     # ========================================================================
@@ -110,12 +110,12 @@ class TestExecuteSignalIntegration:
     @pytest.mark.asyncio
     async def test_execute_signal_buy_success(self, executor, buy_signal):
         """Test successful BUY signal execution"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,
             account_balance_chf=account_balance_chf,
-            chf_to_usd_rate=Decimal('1.10'),
+            chf_to_usd_rate=Decimal("1.10"),
             risk_manager=None,  # No risk manager for this test
         )
 
@@ -123,7 +123,7 @@ class TestExecuteSignalIntegration:
         assert result.success is True
         assert result.order is not None
         assert result.order.side == OrderSide.BUY
-        assert result.order.symbol == 'BTC/USDT:USDT'
+        assert result.order.symbol == "BTC/USDT:USDT"
         assert result.latency_ms is not None
         assert result.latency_ms > 0
 
@@ -132,20 +132,20 @@ class TestExecuteSignalIntegration:
 
         # Verify market order was placed
         call_args = executor.exchange.create_order.call_args_list[0]
-        assert call_args[1]['symbol'] == 'BTC/USDT:USDT'
-        assert call_args[1]['type'] == 'market'
-        assert call_args[1]['side'] == 'buy'
-        assert call_args[1]['amount'] > 0  # Position size calculated
+        assert call_args[1]["symbol"] == "BTC/USDT:USDT"
+        assert call_args[1]["type"] == "market"
+        assert call_args[1]["side"] == "buy"
+        assert call_args[1]["amount"] > 0  # Position size calculated
 
         # Verify stop-loss order was placed
         stop_loss_call = executor.exchange.create_order.call_args_list[1]
-        assert stop_loss_call[1]['type'] == 'stop_market'
-        assert stop_loss_call[1]['side'] == 'sell'
+        assert stop_loss_call[1]["type"] == "stop_market"
+        assert stop_loss_call[1]["side"] == "sell"
 
     @pytest.mark.asyncio
     async def test_execute_signal_buy_with_stop_loss(self, executor, buy_signal):
         """Test BUY signal execution places stop-loss order"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,
@@ -161,15 +161,15 @@ class TestExecuteSignalIntegration:
         calls = executor.exchange.create_order.call_args_list
         stop_loss_call = calls[1]
 
-        assert stop_loss_call[1]['type'] == 'stop_market'
-        assert stop_loss_call[1]['side'] == 'sell'  # Opposite of entry
-        assert 'stopPrice' in stop_loss_call[1]['params']
+        assert stop_loss_call[1]["type"] == "stop_market"
+        assert stop_loss_call[1]["side"] == "sell"  # Opposite of entry
+        assert "stopPrice" in stop_loss_call[1]["params"]
 
     @pytest.mark.asyncio
     async def test_execute_signal_buy_position_sizing(self, executor, buy_signal):
         """Test position sizing calculation for BUY signal"""
-        account_balance_chf = Decimal('2626.96')
-        chf_to_usd_rate = Decimal('1.10')
+        account_balance_chf = Decimal("2626.96")
+        chf_to_usd_rate = Decimal("1.10")
 
         # Expected calculation:
         # capital_usd = 2626.96 / 1.10 = 2388.15 USD
@@ -186,10 +186,12 @@ class TestExecuteSignalIntegration:
 
         # Check the quantity in the order
         call_args = executor.exchange.create_order.call_args_list[0]
-        quantity = call_args[1]['amount']
+        quantity = call_args[1]["amount"]
 
         # Should be approximately 0.0071644 BTC
-        expected_quantity = (account_balance_chf / chf_to_usd_rate * buy_signal.size_pct) / 50000
+        expected_quantity = (
+            account_balance_chf / chf_to_usd_rate * buy_signal.size_pct
+        ) / 50000
         assert abs(quantity - float(expected_quantity)) < 0.0001
 
     # ========================================================================
@@ -199,7 +201,7 @@ class TestExecuteSignalIntegration:
     @pytest.mark.asyncio
     async def test_execute_signal_sell_success(self, executor, sell_signal):
         """Test successful SELL signal execution"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=sell_signal,
@@ -212,12 +214,14 @@ class TestExecuteSignalIntegration:
 
         # Verify SELL order was created
         call_args = executor.exchange.create_order.call_args_list[0]
-        assert call_args[1]['side'] == 'sell'
+        assert call_args[1]["side"] == "sell"
 
     @pytest.mark.asyncio
-    async def test_execute_signal_sell_with_stop_loss_above_entry(self, executor, sell_signal):
+    async def test_execute_signal_sell_with_stop_loss_above_entry(
+        self, executor, sell_signal
+    ):
         """Test SELL signal places stop-loss ABOVE entry price (short protection)"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=sell_signal,
@@ -231,11 +235,13 @@ class TestExecuteSignalIntegration:
         assert len(calls) == 2
 
         stop_loss_call = calls[1]
-        assert stop_loss_call[1]['type'] == 'stop_market'
-        assert stop_loss_call[1]['side'] == 'buy'  # Opposite of entry (buy to close short)
+        assert stop_loss_call[1]["type"] == "stop_market"
+        assert (
+            stop_loss_call[1]["side"] == "buy"
+        )  # Opposite of entry (buy to close short)
 
         # Stop price should be ABOVE entry price for shorts
-        stop_price = stop_loss_call[1]['params']['stopPrice']
+        stop_price = stop_loss_call[1]["params"]["stopPrice"]
         entry_price = 50000.0
         assert stop_price > entry_price
 
@@ -246,7 +252,7 @@ class TestExecuteSignalIntegration:
     @pytest.mark.asyncio
     async def test_execute_signal_hold_no_action(self, executor, hold_signal):
         """Test HOLD signal takes no action"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=hold_signal,
@@ -267,24 +273,26 @@ class TestExecuteSignalIntegration:
     async def test_execute_signal_close_existing_position(self, executor):
         """Test CLOSE signal closes existing position"""
         close_signal = TradingSignal(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             decision=TradingDecision.CLOSE,
-            confidence=Decimal('0.80'),
-            size_pct=Decimal('0.0'),
-            reasoning='Take profit at target',
+            confidence=Decimal("0.80"),
+            size_pct=Decimal("0.0"),
+            reasoning="Take profit at target",
         )
 
         # Mock existing position
         mock_position = MagicMock()
-        mock_position.id = 'pos_123'
-        mock_position.symbol = 'BTC/USDT:USDT'
-        mock_position.side = 'long'
-        mock_position.quantity = Decimal('0.01')
+        mock_position.id = "pos_123"
+        mock_position.symbol = "BTC/USDT:USDT"
+        mock_position.side = "long"
+        mock_position.quantity = Decimal("0.01")
 
-        executor.position_service.get_open_positions = AsyncMock(return_value=[mock_position])
+        executor.position_service.get_open_positions = AsyncMock(
+            return_value=[mock_position]
+        )
         executor.position_service.get_position = AsyncMock(return_value=mock_position)
 
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=close_signal,
@@ -295,25 +303,25 @@ class TestExecuteSignalIntegration:
 
         # Verify close_position was called
         executor.position_service.close_position.assert_called_once_with(
-            position_id='pos_123',
-            close_price=Decimal('50000.0'),
-            reason='signal_close',
+            position_id="pos_123",
+            close_price=Decimal("50000.0"),
+            reason="signal_close",
         )
 
     @pytest.mark.asyncio
     async def test_execute_signal_close_no_position(self, executor):
         """Test CLOSE signal when no position exists"""
         close_signal = TradingSignal(
-            symbol='BTC/USDT:USDT',
+            symbol="BTC/USDT:USDT",
             decision=TradingDecision.CLOSE,
-            confidence=Decimal('0.80'),
-            size_pct=Decimal('0.0'),
+            confidence=Decimal("0.80"),
+            size_pct=Decimal("0.0"),
         )
 
         # No positions exist
         executor.position_service.get_open_positions = AsyncMock(return_value=[])
 
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=close_signal,
@@ -329,7 +337,9 @@ class TestExecuteSignalIntegration:
     # ========================================================================
 
     @pytest.mark.asyncio
-    async def test_execute_signal_with_risk_manager_approval(self, executor, buy_signal):
+    async def test_execute_signal_with_risk_manager_approval(
+        self, executor, buy_signal
+    ):
         """Test signal execution with Risk Manager approval"""
         # Mock risk manager that approves signal
         mock_risk_manager = AsyncMock()
@@ -338,7 +348,7 @@ class TestExecuteSignalIntegration:
         mock_validation.rejection_reasons = []
         mock_risk_manager.validate_signal = AsyncMock(return_value=mock_validation)
 
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,
@@ -355,16 +365,21 @@ class TestExecuteSignalIntegration:
         executor.exchange.create_order.assert_called()
 
     @pytest.mark.asyncio
-    async def test_execute_signal_with_risk_manager_rejection(self, executor, buy_signal):
+    async def test_execute_signal_with_risk_manager_rejection(
+        self, executor, buy_signal
+    ):
         """Test signal execution with Risk Manager rejection"""
         # Mock risk manager that rejects signal
         mock_risk_manager = AsyncMock()
         mock_validation = MagicMock()
         mock_validation.approved = False
-        mock_validation.rejection_reasons = ["Confidence too low", "Position limit exceeded"]
+        mock_validation.rejection_reasons = [
+            "Confidence too low",
+            "Position limit exceeded",
+        ]
         mock_risk_manager.validate_signal = AsyncMock(return_value=mock_validation)
 
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,
@@ -391,7 +406,7 @@ class TestExecuteSignalIntegration:
             side_effect=Exception("Exchange API error: Insufficient margin")
         )
 
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,
@@ -407,17 +422,17 @@ class TestExecuteSignalIntegration:
         """Test handling of invalid symbol format"""
         # Signal with invalid symbol (missing settlement currency)
         invalid_signal = TradingSignal(
-            symbol='BTC/USDT',  # Missing :USDT suffix
+            symbol="BTC/USDT",  # Missing :USDT suffix
             decision=TradingDecision.BUY,
-            confidence=Decimal('0.75'),
-            size_pct=Decimal('0.15'),
+            confidence=Decimal("0.75"),
+            size_pct=Decimal("0.15"),
         )
 
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         # Note: execute_signal currently imports TradingDecision
         # We need to call it to see if it validates symbol format
-        with patch('workspace.features.trade_executor.executor_service.OrderSide'):
+        with patch("workspace.features.trade_executor.executor_service.OrderSide"):
             result = await executor.execute_signal(
                 signal=invalid_signal,
                 account_balance_chf=account_balance_chf,
@@ -429,7 +444,7 @@ class TestExecuteSignalIntegration:
     @pytest.mark.asyncio
     async def test_execute_signal_metadata_preservation(self, executor, buy_signal):
         """Test that signal metadata is preserved in order"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,
@@ -449,7 +464,7 @@ class TestExecuteSignalIntegration:
     @pytest.mark.asyncio
     async def test_execute_signal_latency_tracking(self, executor, buy_signal):
         """Test that latency is tracked correctly"""
-        account_balance_chf = Decimal('2626.96')
+        account_balance_chf = Decimal("2626.96")
 
         result = await executor.execute_signal(
             signal=buy_signal,

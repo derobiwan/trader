@@ -63,7 +63,7 @@ class DatabasePool:
         max_size: int = 50,
         command_timeout: float = 10.0,
         max_queries: int = 50000,
-        max_inactive_connection_lifetime: float = 300.0
+        max_inactive_connection_lifetime: float = 300.0,
     ):
         """
         Initialize database pool configuration.
@@ -90,7 +90,7 @@ class DatabasePool:
             "max_size": max_size,
             "command_timeout": command_timeout,
             "max_queries": max_queries,
-            "max_inactive_connection_lifetime": max_inactive_connection_lifetime
+            "max_inactive_connection_lifetime": max_inactive_connection_lifetime,
         }
         self.pool: Optional[Pool] = None
         self.is_initialized: bool = False
@@ -123,7 +123,9 @@ class DatabasePool:
                 max_size=self.config["max_size"],
                 command_timeout=self.config["command_timeout"],
                 max_queries=self.config["max_queries"],
-                max_inactive_connection_lifetime=self.config["max_inactive_connection_lifetime"]
+                max_inactive_connection_lifetime=self.config[
+                    "max_inactive_connection_lifetime"
+                ],
             )
 
             # Verify connection
@@ -169,7 +171,9 @@ class DatabasePool:
                 result = await conn.fetch("SELECT * FROM positions")
         """
         if not self.is_initialized or not self.pool:
-            raise RuntimeError("Database pool not initialized. Call initialize() first.")
+            raise RuntimeError(
+                "Database pool not initialized. Call initialize() first."
+            )
 
         async with self.pool.acquire() as connection:
             yield connection
@@ -213,7 +217,9 @@ class DatabasePool:
         async with self.acquire() as conn:
             return await conn.fetch(query, *args, timeout=timeout)
 
-    async def fetchrow(self, query: str, *args, timeout: Optional[float] = None) -> Optional[asyncpg.Record]:
+    async def fetchrow(
+        self, query: str, *args, timeout: Optional[float] = None
+    ) -> Optional[asyncpg.Record]:
         """
         Fetch a single row from a query.
 
@@ -231,7 +237,9 @@ class DatabasePool:
         async with self.acquire() as conn:
             return await conn.fetchrow(query, *args, timeout=timeout)
 
-    async def fetchval(self, query: str, *args, column: int = 0, timeout: Optional[float] = None) -> Any:
+    async def fetchval(
+        self, query: str, *args, column: int = 0, timeout: Optional[float] = None
+    ) -> Any:
         """
         Fetch a single value from a query.
 
@@ -266,7 +274,7 @@ class DatabasePool:
             return {
                 "healthy": False,
                 "error": "Pool not initialized",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
         try:
@@ -288,7 +296,7 @@ class DatabasePool:
                 "pool_size": pool_size,
                 "pool_free": pool_free,
                 "pool_used": pool_size - pool_free,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
         except Exception as e:
@@ -296,7 +304,7 @@ class DatabasePool:
             return {
                 "healthy": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
     async def _periodic_health_check(self) -> None:
@@ -390,7 +398,7 @@ async def init_pool(
     database: str = "trading_system",
     user: str = "postgres",
     password: str = "",
-    **kwargs
+    **kwargs,
 ) -> DatabasePool:
     """
     Initialize global database pool.
@@ -422,12 +430,7 @@ async def init_pool(
         return _global_pool
 
     _global_pool = DatabasePool(
-        host=host,
-        port=port,
-        database=database,
-        user=user,
-        password=password,
-        **kwargs
+        host=host, port=port, database=database, user=user, password=password, **kwargs
     )
     await _global_pool.initialize()
 
@@ -462,7 +465,7 @@ async def test_connection():
         port=int(os.getenv("DB_PORT", "5432")),
         database=os.getenv("DB_NAME", "trading_system"),
         user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "")
+        password=os.getenv("DB_PASSWORD", ""),
     )
 
     try:
@@ -470,7 +473,7 @@ async def test_connection():
 
         # Health check
         health = await pool.health_check()
-        print(f"\n✓ Database connection successful!")
+        print("\n✓ Database connection successful!")
         print(f"  Latency: {health['latency_ms']}ms")
         print(f"  Pool size: {health['pool_size']}")
         print(f"  Free connections: {health['pool_free']}")

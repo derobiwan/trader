@@ -33,7 +33,9 @@ class TestStrategyMarketDataIntegration:
         assert isinstance(signal.size_pct, Decimal)
         assert signal.size_pct > 0
 
-    def test_mean_reversion_with_overbought_conditions(self, market_snapshot_overbought):
+    def test_mean_reversion_with_overbought_conditions(
+        self, market_snapshot_overbought
+    ):
         """Test mean reversion strategy detects overbought conditions"""
         strategy = MeanReversionStrategy()
 
@@ -54,7 +56,11 @@ class TestStrategyMarketDataIntegration:
 
         # Should likely be HOLD or low confidence
         assert signal is not None
-        assert signal.decision in [TradingDecision.HOLD, TradingDecision.BUY, TradingDecision.SELL]
+        assert signal.decision in [
+            TradingDecision.HOLD,
+            TradingDecision.BUY,
+            TradingDecision.SELL,
+        ]
 
     def test_trend_following_with_bullish_trend(self):
         """Test trend following strategy detects bullish trend"""
@@ -81,7 +87,11 @@ class TestStrategyMarketDataIntegration:
 
         # Should produce valid signal
         assert signal is not None
-        assert signal.decision in [TradingDecision.BUY, TradingDecision.SELL, TradingDecision.HOLD]
+        assert signal.decision in [
+            TradingDecision.BUY,
+            TradingDecision.SELL,
+            TradingDecision.HOLD,
+        ]
         assert isinstance(signal.confidence, Decimal)
 
     def test_multiple_strategies_same_snapshot(self, market_snapshot_oversold):
@@ -101,7 +111,11 @@ class TestStrategyMarketDataIntegration:
         assert len(signals) == 3
         for signal in signals:
             assert signal is not None
-            assert signal.decision in [TradingDecision.BUY, TradingDecision.SELL, TradingDecision.HOLD]
+            assert signal.decision in [
+                TradingDecision.BUY,
+                TradingDecision.SELL,
+                TradingDecision.HOLD,
+            ]
             assert isinstance(signal.confidence, Decimal)
             assert 0 <= signal.confidence <= 1
 

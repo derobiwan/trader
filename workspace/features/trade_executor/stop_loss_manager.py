@@ -20,7 +20,6 @@ from .models import (
     StopLossProtection,
     StopLossLayer,
     OrderSide,
-    OrderStatus,
 )
 from .executor_service import TradeExecutor
 from workspace.features.position_manager import PositionService
@@ -154,7 +153,9 @@ class StopLossManager:
                 self._monitor_layer3(position, protection)
             )
             self.monitoring_tasks[f"{position_id}_layer3"] = layer3_task
-            logger.info(f"Layer 3 emergency monitoring started for position {position_id}")
+            logger.info(
+                f"Layer 3 emergency monitoring started for position {position_id}"
+            )
 
             # Store protection
             await self._store_protection(protection)
@@ -210,7 +211,7 @@ class StopLossManager:
         """
         try:
             # Determine order side (opposite of position)
-            order_side = OrderSide.SELL if position.side == 'long' else OrderSide.BUY
+            order_side = OrderSide.SELL if position.side == "long" else OrderSide.BUY
 
             # Place stop-market order with reduceOnly=True
             result = await self.executor.create_stop_market_order(
@@ -220,7 +221,7 @@ class StopLossManager:
                 stop_price=stop_price,
                 reduce_only=True,  # CRITICAL: Only close position, don't open opposite
                 position_id=position.id,
-                metadata={'layer': 'layer1', 'protection_type': 'stop_loss'},
+                metadata={"layer": "layer1", "protection_type": "stop_loss"},
             )
 
             if result.success:
@@ -266,23 +267,27 @@ class StopLossManager:
 
                 # Check if position still exists
                 current_position = await self.position_service.get_position(position.id)
-                if not current_position or current_position.status != 'open':
-                    logger.info(f"Layer 2: Position {position.id} no longer open, stopping monitoring")
+                if not current_position or current_position.status != "open":
+                    logger.info(
+                        f"Layer 2: Position {position.id} no longer open, stopping monitoring"
+                    )
                     break
 
                 # Fetch current price
                 try:
                     ticker = await self.executor.exchange.fetch_ticker(position.symbol)
-                    current_price = Decimal(str(ticker['last']))
+                    current_price = Decimal(str(ticker["last"]))
                 except Exception as e:
-                    logger.warning(f"Layer 2: Failed to fetch price for {position.symbol}: {e}")
+                    logger.warning(
+                        f"Layer 2: Failed to fetch price for {position.symbol}: {e}"
+                    )
                     continue
 
                 # Check if stop-loss should trigger
                 should_trigger = False
-                if position.side == 'long' and current_price <= stop_price:
+                if position.side == "long" and current_price <= stop_price:
                     should_trigger = True
-                elif position.side == 'short' and current_price >= stop_price:
+                elif position.side == "short" and current_price >= stop_price:
                     should_trigger = True
 
                 if should_trigger:
@@ -335,7 +340,7 @@ class StopLossManager:
         """
         logger.info(
             f"Layer 3 emergency monitoring started for {position.id} "
-            f"(interval: {self.layer3_interval}s, threshold: {self.emergency_threshold*100:.0f}%)"
+            f"(interval: {self.layer3_interval}s, threshold: {self.emergency_threshold * 100:.0f}%)"
         )
 
         try:
@@ -344,29 +349,35 @@ class StopLossManager:
 
                 # Check if position still exists
                 current_position = await self.position_service.get_position(position.id)
-                if not current_position or current_position.status != 'open':
-                    logger.info(f"Layer 3: Position {position.id} no longer open, stopping monitoring")
+                if not current_position or current_position.status != "open":
+                    logger.info(
+                        f"Layer 3: Position {position.id} no longer open, stopping monitoring"
+                    )
                     break
 
                 # Fetch current price
                 try:
                     ticker = await self.executor.exchange.fetch_ticker(position.symbol)
-                    current_price = Decimal(str(ticker['last']))
+                    current_price = Decimal(str(ticker["last"]))
                 except Exception as e:
                     logger.warning(f"Layer 3: Failed to fetch price: {e}")
                     continue
 
                 # Calculate current loss percentage
-                if position.side == 'long':
-                    loss_pct = (position.entry_price - current_price) / position.entry_price
+                if position.side == "long":
+                    loss_pct = (
+                        position.entry_price - current_price
+                    ) / position.entry_price
                 else:  # short
-                    loss_pct = (current_price - position.entry_price) / position.entry_price
+                    loss_pct = (
+                        current_price - position.entry_price
+                    ) / position.entry_price
 
                 # Check if emergency threshold exceeded
                 if loss_pct > self.emergency_threshold:
                     logger.critical(
                         f"Layer 3 EMERGENCY TRIGGERED for {position.id}: "
-                        f"Loss {loss_pct*100:.2f}% exceeds threshold {self.emergency_threshold*100:.0f}%"
+                        f"Loss {loss_pct * 100:.2f}% exceeds threshold {self.emergency_threshold * 100:.0f}%"
                     )
 
                     # Send alert (placeholder for now)
@@ -416,7 +427,7 @@ class StopLossManager:
     ):
         """Send emergency alert (placeholder)"""
         alert_message = (
-            f"EMERGENCY: Position {position_id} loss {loss_pct*100:.2f}% "
+            f"EMERGENCY: Position {position_id} loss {loss_pct * 100:.2f}% "
             f"(price: {current_price})"
         )
         logger.critical(f"ALERT: {alert_message}")
@@ -442,7 +453,9 @@ class StopLossManager:
                     protection.stop_price,
                     protection.created_at,
                     protection.triggered_at,
-                    protection.triggered_layer.value if protection.triggered_layer else None,
+                    protection.triggered_layer.value
+                    if protection.triggered_layer
+                    else None,
                     protection.metadata,
                 )
             logger.debug(f"Stop-loss protection stored: {protection.position_id}")
@@ -463,7 +476,9 @@ class StopLossManager:
                     WHERE position_id = $4
                     """,
                     protection.triggered_at,
-                    protection.triggered_layer.value if protection.triggered_layer else None,
+                    protection.triggered_layer.value
+                    if protection.triggered_layer
+                    else None,
                     protection.metadata,
                     protection.position_id,
                 )

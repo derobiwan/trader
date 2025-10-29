@@ -8,7 +8,6 @@ Author: Decision Engine Implementation Team
 Date: 2025-10-28
 """
 
-import asyncio
 import logging
 import json
 from typing import Dict, List, Optional
@@ -28,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class LLMProvider(str, Enum):
     """Supported LLM providers"""
+
     OPENROUTER = "openrouter"
     ANTHROPIC = "anthropic"  # Direct Anthropic API (future)
     OPENAI = "openai"  # Direct OpenAI API (future)
@@ -36,6 +36,7 @@ class LLMProvider(str, Enum):
 @dataclass
 class LLMConfig:
     """LLM configuration"""
+
     provider: LLMProvider
     model: str
     api_key: str
@@ -143,6 +144,7 @@ class LLMDecisionEngine:
             Exception: If LLM API call fails or response parsing fails
         """
         import time
+
         start_time = time.time()
 
         logger.info(f"Generating trading signals for {len(snapshots)} symbols")
@@ -158,7 +160,9 @@ class LLMDecisionEngine:
             )
 
             prompt_tokens = len(prompt.split())  # Rough estimate
-            logger.debug(f"Prompt length: {len(prompt)} characters (~{prompt_tokens} tokens)")
+            logger.debug(
+                f"Prompt length: {len(prompt)} characters (~{prompt_tokens} tokens)"
+            )
 
             # Call LLM and capture usage data
             response_text, usage_data = await self._call_llm(prompt)
@@ -174,16 +178,16 @@ class LLMDecisionEngine:
             # Add observability fields to all signals
             for signal in signals.values():
                 signal.model_used = self.config.model
-                signal.tokens_input = usage_data.get('prompt_tokens', prompt_tokens)
-                signal.tokens_output = usage_data.get('completion_tokens', len(response_text.split()))
+                signal.tokens_input = usage_data.get("prompt_tokens", prompt_tokens)
+                signal.tokens_output = usage_data.get(
+                    "completion_tokens", len(response_text.split())
+                )
                 signal.generation_time_ms = generation_time_ms
 
                 # Calculate cost based on provider/model
                 if signal.tokens_input and signal.tokens_output:
                     signal.cost_usd = self._calculate_cost(
-                        signal.tokens_input,
-                        signal.tokens_output,
-                        self.config.model
+                        signal.tokens_input, signal.tokens_output, self.config.model
                     )
 
             logger.info(
@@ -217,7 +221,9 @@ class LLMDecisionEngine:
         if self.config.provider == LLMProvider.OPENROUTER:
             return await self._call_openrouter(prompt)
         else:
-            raise NotImplementedError(f"Provider {self.config.provider} not implemented")
+            raise NotImplementedError(
+                f"Provider {self.config.provider} not implemented"
+            )
 
     async def _call_openrouter(self, prompt: str) -> tuple[str, Dict[str, int]]:
         """
@@ -298,7 +304,9 @@ class LLMDecisionEngine:
                 raise ValueError("Invalid response structure from OpenRouter")
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+            logger.error(
+                f"OpenRouter API error: {e.response.status_code} - {e.response.text}"
+            )
             raise Exception(f"OpenRouter API error: {e.response.status_code}")
 
         except Exception as e:
@@ -341,7 +349,9 @@ class LLMDecisionEngine:
                     if signal and signal.symbol in snapshots:
                         signals[signal.symbol] = signal
                     else:
-                        logger.warning(f"Invalid or unknown symbol in signal: {data.get('symbol')}")
+                        logger.warning(
+                            f"Invalid or unknown symbol in signal: {data.get('symbol')}"
+                        )
 
                 except json.JSONDecodeError as e:
                     logger.warning(f"Failed to parse JSON block: {e}")
@@ -385,7 +395,8 @@ class LLMDecisionEngine:
 
         # Method 1: Extract from ```json code blocks
         import re
-        pattern = r'```json\s*(\{.*?\})\s*```'
+
+        pattern = r"```json\s*(\{.*?\})\s*```"
         matches = re.findall(pattern, text, re.DOTALL)
         json_blocks.extend(matches)
 
@@ -437,7 +448,9 @@ class LLMDecisionEngine:
                 confidence=Decimal(str(confidence)),
                 size_pct=Decimal(str(size_pct)),
                 stop_loss_pct=Decimal(str(stop_loss_pct)) if stop_loss_pct else None,
-                take_profit_pct=Decimal(str(take_profit_pct)) if take_profit_pct else None,
+                take_profit_pct=Decimal(str(take_profit_pct))
+                if take_profit_pct
+                else None,
                 reasoning=reasoning,
             )
 
@@ -476,7 +489,9 @@ class LLMDecisionEngine:
 
         return signals
 
-    def _calculate_cost(self, input_tokens: int, output_tokens: int, model: str) -> Decimal:
+    def _calculate_cost(
+        self, input_tokens: int, output_tokens: int, model: str
+    ) -> Decimal:
         """
         Calculate estimated cost in USD for LLM API call
 
@@ -501,15 +516,12 @@ class LLMDecisionEngine:
             "anthropic/claude-3-sonnet": {"input": 3.00, "output": 15.00},
             "anthropic/claude-3-haiku": {"input": 0.25, "output": 1.25},
             "anthropic/claude-3-opus": {"input": 15.00, "output": 75.00},
-
             # GPT models
             "openai/gpt-4-turbo": {"input": 10.00, "output": 30.00},
             "openai/gpt-4": {"input": 30.00, "output": 60.00},
             "openai/gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
-
             # DeepSeek models (if available)
             "deepseek/deepseek-chat": {"input": 0.27, "output": 1.10},
-
             # Default pricing if model not found
             "default": {"input": 1.00, "output": 3.00},
         }

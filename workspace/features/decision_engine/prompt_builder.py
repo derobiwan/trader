@@ -7,7 +7,7 @@ Author: Decision Engine Implementation Team
 Date: 2025-10-28
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime
 from decimal import Decimal
 
@@ -69,11 +69,13 @@ class PromptBuilder:
         prompt_parts.append(self._build_system_context())
 
         # Trading capital and risk limits
-        prompt_parts.append(self._build_capital_context(
-            capital_chf=capital_chf,
-            max_position_size_chf=max_position_size_chf,
-            risk_context=risk_context,
-        ))
+        prompt_parts.append(
+            self._build_capital_context(
+                capital_chf=capital_chf,
+                max_position_size_chf=max_position_size_chf,
+                risk_context=risk_context,
+            )
+        )
 
         # Current positions (if any)
         if current_positions:
@@ -196,7 +198,9 @@ Focus on:
         lines.append(f"- High: ${ohlcv.high:,.2f}")
         lines.append(f"- Low: ${ohlcv.low:,.2f}")
         lines.append(f"- Close: ${ohlcv.close:,.2f}")
-        lines.append(f"- Direction: {'🟢 Bullish' if ohlcv.is_bullish else '🔴 Bearish'}")
+        lines.append(
+            f"- Direction: {'🟢 Bullish' if ohlcv.is_bullish else '🔴 Bearish'}"
+        )
         lines.append(f"- Change: {ohlcv.price_change_pct:+.2f}%")
         lines.append(f"- Volume: ${ohlcv.quote_volume:,.0f}")
         lines.append("")
@@ -216,7 +220,9 @@ Focus on:
 
         if snapshot.macd:
             macd = snapshot.macd
-            lines.append(f"- **MACD**: {macd.value:.2f}, Signal: {macd.signal:.2f}, Histogram: {macd.histogram:.2f}")
+            lines.append(
+                f"- **MACD**: {macd.value:.2f}, Signal: {macd.signal:.2f}, Histogram: {macd.histogram:.2f}"
+            )
             if macd.is_bullish:
                 lines.append("  - Trend: Bullish (MACD > Signal)")
             else:
@@ -235,14 +241,16 @@ Focus on:
 
         if snapshot.bollinger:
             bb = snapshot.bollinger
-            lines.append(f"- **Bollinger Bands**:")
+            lines.append("- **Bollinger Bands**:")
             lines.append(f"  - Upper: ${bb.upper:,.2f}")
             lines.append(f"  - Middle: ${bb.middle:,.2f}")
             lines.append(f"  - Lower: ${bb.lower:,.2f}")
             lines.append(f"  - Bandwidth: {bb.bandwidth:.4f}")
 
             if bb.is_squeeze:
-                lines.append("  - Status: Squeeze detected (low volatility) - Potential breakout")
+                lines.append(
+                    "  - Status: Squeeze detected (low volatility) - Potential breakout"
+                )
 
             # Price position relative to bands
             current_price = ticker.last

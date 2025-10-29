@@ -7,7 +7,6 @@ Author: Trading Loop Implementation Team
 Date: 2025-10-28
 """
 
-import asyncio
 import logging
 from datetime import datetime
 from decimal import Decimal
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class TradingDecision(str, Enum):
     """Trading decision from decision engine"""
+
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
@@ -56,6 +56,7 @@ class TradingSignal:
         cost_usd: Estimated cost in USD for this signal generation
         generation_time_ms: Time taken to generate signal in milliseconds
     """
+
     # Core signal fields
     symbol: str
     decision: TradingDecision
@@ -106,6 +107,7 @@ class TradingCycleResult:
 
     Contains all information about market data, decisions, and execution results.
     """
+
     cycle_number: int
     timestamp: datetime
     symbols: List[str]
@@ -315,7 +317,9 @@ class TradingEngine:
                 logger.debug(f"Snapshot fetched: {symbol} @ {snapshot.ohlcv.close}")
 
             except Exception as e:
-                logger.error(f"Error fetching snapshot for {symbol}: {e}", exc_info=True)
+                logger.error(
+                    f"Error fetching snapshot for {symbol}: {e}", exc_info=True
+                )
 
         return snapshots
 
@@ -419,10 +423,9 @@ class TradingEngine:
             logger.debug(f"Reasoning: {signal.reasoning}")
 
         try:
-            # Get account balance from exchange
-            # TODO: In production, fetch actual balance from exchange
-            # For now, use a reasonable default value
-            account_balance_chf = Decimal("2626.96")  # ~$2900 USD
+            # Get account balance from exchange (real-time with 60s caching)
+            account_balance_chf = await self.trade_executor.get_account_balance()
+            # TODO: In production, fetch real-time CHF/USD rate from forex API
             chf_to_usd_rate = Decimal("1.10")
 
             # Execute the signal via TradeExecutor

@@ -16,23 +16,25 @@ from pydantic import BaseModel, Field
 
 class TradeType(str, Enum):
     """Type of trade action"""
-    ENTRY_LONG = "entry_long"     # Opening long position
-    ENTRY_SHORT = "entry_short"   # Opening short position
-    EXIT_LONG = "exit_long"       # Closing long position
-    EXIT_SHORT = "exit_short"     # Closing short position
-    STOP_LOSS = "stop_loss"       # Stop-loss triggered
-    TAKE_PROFIT = "take_profit"   # Take-profit triggered
-    LIQUIDATION = "liquidation"   # Force liquidation
+
+    ENTRY_LONG = "entry_long"  # Opening long position
+    ENTRY_SHORT = "entry_short"  # Opening short position
+    EXIT_LONG = "exit_long"  # Closing long position
+    EXIT_SHORT = "exit_short"  # Closing short position
+    STOP_LOSS = "stop_loss"  # Stop-loss triggered
+    TAKE_PROFIT = "take_profit"  # Take-profit triggered
+    LIQUIDATION = "liquidation"  # Force liquidation
 
 
 class TradeStatus(str, Enum):
     """Status of trade execution"""
-    PENDING = "pending"           # Order submitted, not filled
-    PARTIAL = "partial"           # Partially filled
-    FILLED = "filled"             # Completely filled
-    CANCELLED = "cancelled"       # Order cancelled
-    FAILED = "failed"             # Execution failed
-    REJECTED = "rejected"         # Order rejected by exchange
+
+    PENDING = "pending"  # Order submitted, not filled
+    PARTIAL = "partial"  # Partially filled
+    FILLED = "filled"  # Completely filled
+    CANCELLED = "cancelled"  # Order cancelled
+    FAILED = "failed"  # Execution failed
+    REJECTED = "rejected"  # Order rejected by exchange
 
 
 class TradeHistoryEntry(BaseModel):
@@ -73,68 +75,59 @@ class TradeHistoryEntry(BaseModel):
 
     # Order details
     order_id: str = Field(description="Exchange order ID")
-    position_id: Optional[str] = Field(default=None, description="Associated position ID")
+    position_id: Optional[str] = Field(
+        default=None, description="Associated position ID"
+    )
     side: str = Field(description="Order side: 'buy' or 'sell'")
 
     # Quantity and pricing
     quantity: Decimal = Field(description="Trade quantity in base currency")
     entry_price: Decimal = Field(description="Average entry price")
-    exit_price: Optional[Decimal] = Field(default=None, description="Average exit price")
+    exit_price: Optional[Decimal] = Field(
+        default=None, description="Average exit price"
+    )
 
     # Financial metrics
     fees: Decimal = Field(default=Decimal("0"), description="Total fees paid")
     realized_pnl: Optional[Decimal] = Field(
-        default=None,
-        description="Realized P&L in quote currency (for exits)"
+        default=None, description="Realized P&L in quote currency (for exits)"
     )
     unrealized_pnl: Optional[Decimal] = Field(
-        default=None,
-        description="Unrealized P&L at time of entry"
+        default=None, description="Unrealized P&L at time of entry"
     )
 
     # Timestamps
     timestamp: datetime = Field(description="Trade execution timestamp")
     signal_timestamp: Optional[datetime] = Field(
-        default=None,
-        description="When signal was generated"
+        default=None, description="When signal was generated"
     )
 
     # Signal metadata
     signal_confidence: Optional[Decimal] = Field(
-        default=None,
-        description="Confidence level of signal (0.0-1.0)"
+        default=None, description="Confidence level of signal (0.0-1.0)"
     )
     signal_reasoning: Optional[str] = Field(
-        default=None,
-        description="LLM reasoning for the trade"
+        default=None, description="LLM reasoning for the trade"
     )
 
     # Performance metrics
     execution_latency_ms: Optional[Decimal] = Field(
-        default=None,
-        description="Latency from signal to execution"
+        default=None, description="Latency from signal to execution"
     )
     slippage_pct: Optional[Decimal] = Field(
-        default=None,
-        description="Price slippage percentage"
+        default=None, description="Price slippage percentage"
     )
 
     # Risk metrics
     position_size_pct: Optional[Decimal] = Field(
-        default=None,
-        description="Position size as % of capital"
+        default=None, description="Position size as % of capital"
     )
-    leverage: Optional[Decimal] = Field(
-        default=None,
-        description="Leverage used"
-    )
+    leverage: Optional[Decimal] = Field(default=None, description="Leverage used")
     stop_loss_price: Optional[Decimal] = Field(
-        default=None,
-        description="Stop-loss price set"
+        default=None, description="Stop-loss price set"
     )
     take_profit_price: Optional[Decimal] = Field(
-        default=None,
-        description="Take-profit price set"
+        default=None, description="Take-profit price set"
     )
 
     # Additional context
@@ -172,8 +165,7 @@ class TradeStatistics(BaseModel):
 
     # Risk metrics
     profit_factor: Decimal = Field(
-        default=Decimal("0"),
-        description="Gross profit / Gross loss"
+        default=Decimal("0"), description="Gross profit / Gross loss"
     )
     sharpe_ratio: Optional[Decimal] = Field(default=None)
     max_drawdown: Optional[Decimal] = Field(default=None)
@@ -207,12 +199,10 @@ class DailyTradeReport(BaseModel):
 
     # Daily specifics
     trades_by_hour: Dict[int, int] = Field(
-        default_factory=dict,
-        description="Trade count by hour (0-23)"
+        default_factory=dict, description="Trade count by hour (0-23)"
     )
     trades_by_symbol: Dict[str, int] = Field(
-        default_factory=dict,
-        description="Trade count by symbol"
+        default_factory=dict, description="Trade count by symbol"
     )
 
     # Performance
@@ -222,8 +212,7 @@ class DailyTradeReport(BaseModel):
     # Risk
     max_position_size: Decimal = Field(description="Largest position size")
     circuit_breaker_triggered: bool = Field(
-        default=False,
-        description="Was circuit breaker triggered"
+        default=False, description="Was circuit breaker triggered"
     )
 
     class Config:

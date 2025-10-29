@@ -10,9 +10,8 @@ Run with: pytest workspace/shared/database/tests/test_schema.py -v
 import asyncio
 import os
 import time
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from decimal import Decimal
-from typing import List
 from uuid import uuid4
 
 import pytest
@@ -20,22 +19,32 @@ import asyncpg
 
 # Import models
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..')))
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+)
 
 from workspace.shared.database.connection import DatabasePool
 from workspace.shared.database.models import (
-    Position, PositionSide, PositionStatus,
-    TradingSignal, SignalType, SignalAction,
-    Order, OrderSide, OrderType, OrderStatus,
-    MarketData, DailyPerformance, RiskEvent, RiskEventSeverity,
-    LLMRequest, CircuitBreakerState, PositionReconciliation,
-    datetime_to_microseconds
+    Position,
+    PositionSide,
+    TradingSignal,
+    SignalType,
+    SignalAction,
+    Order,
+    OrderSide,
+    OrderType,
+    OrderStatus,
+    MarketData,
+    CircuitBreakerState,
+    datetime_to_microseconds,
 )
 
 
 # ============================================================================
 # Test Configuration
 # ============================================================================
+
 
 @pytest.fixture(scope="session")
 def db_config():
@@ -45,7 +54,7 @@ def db_config():
         "port": int(os.getenv("DB_PORT", "5432")),
         "database": os.getenv("DB_NAME", "trading_system_test"),
         "user": os.getenv("DB_USER", "postgres"),
-        "password": os.getenv("DB_PASSWORD", "")
+        "password": os.getenv("DB_PASSWORD", ""),
     }
 
 
@@ -63,21 +72,21 @@ async def clean_tables(pool):
     """Clean all tables before each test."""
     # Order matters due to foreign keys
     tables = [
-        'position_reconciliation',
-        'orders',
-        'risk_events',
-        'trading_signals',
-        'positions',
-        'market_data',
-        'daily_performance',
-        'llm_requests',
-        'audit_log',
-        'circuit_breaker_state'
+        "position_reconciliation",
+        "orders",
+        "risk_events",
+        "trading_signals",
+        "positions",
+        "market_data",
+        "daily_performance",
+        "llm_requests",
+        "audit_log",
+        "circuit_breaker_state",
     ]
 
     for table in tables:
         try:
-            await pool.execute(f'DELETE FROM {table}')
+            await pool.execute(f"DELETE FROM {table}")
         except Exception:
             pass  # Table might not exist yet
 
@@ -87,6 +96,7 @@ async def clean_tables(pool):
 # ============================================================================
 # Connection Pool Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_pool_initialization(db_config):
@@ -138,27 +148,28 @@ async def test_pool_health_check(pool):
 # Table Creation Tests
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_all_tables_exist(pool):
     """Test that all 11 tables exist."""
     expected_tables = [
-        'positions',
-        'trading_signals',
-        'orders',
-        'market_data',
-        'daily_performance',
-        'risk_events',
-        'llm_requests',
-        'system_config',
-        'audit_log',
-        'circuit_breaker_state',
-        'position_reconciliation'
+        "positions",
+        "trading_signals",
+        "orders",
+        "market_data",
+        "daily_performance",
+        "risk_events",
+        "llm_requests",
+        "system_config",
+        "audit_log",
+        "circuit_breaker_state",
+        "position_reconciliation",
     ]
 
     for table in expected_tables:
         exists = await pool.fetchval(
             "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = $1)",
-            table
+            table,
         )
         assert exists, f"Table {table} does not exist"
 
@@ -166,12 +177,12 @@ async def test_all_tables_exist(pool):
 @pytest.mark.asyncio
 async def test_timescaledb_hypertables(pool):
     """Test that TimescaleDB hypertables are created."""
-    hypertables = ['market_data', 'daily_performance', 'risk_events']
+    hypertables = ["market_data", "daily_performance", "risk_events"]
 
     for table in hypertables:
         is_hypertable = await pool.fetchval(
             "SELECT COUNT(*) FROM timescaledb_information.hypertables WHERE hypertable_name = $1",
-            table
+            table,
         )
         assert is_hypertable > 0, f"Table {table} is not a hypertable"
 
@@ -181,11 +192,11 @@ async def test_indexes_exist(pool):
     """Test that critical indexes exist."""
     # Check a few critical indexes
     critical_indexes = [
-        ('positions', 'idx_positions_symbol'),
-        ('positions', 'idx_positions_status'),
-        ('trading_signals', 'idx_trading_signals_symbol'),
-        ('orders', 'idx_orders_position_id'),
-        ('market_data', 'idx_market_data_symbol_timestamp')
+        ("positions", "idx_positions_symbol"),
+        ("positions", "idx_positions_status"),
+        ("trading_signals", "idx_trading_signals_symbol"),
+        ("orders", "idx_orders_position_id"),
+        ("market_data", "idx_market_data_symbol_timestamp"),
     ]
 
     for table, index in critical_indexes:
@@ -196,7 +207,8 @@ async def test_indexes_exist(pool):
                 WHERE tablename = $1 AND indexname = $2
             )
             """,
-            table, index
+            table,
+            index,
         )
         assert exists, f"Index {index} on {table} does not exist"
 
@@ -204,6 +216,7 @@ async def test_indexes_exist(pool):
 # ============================================================================
 # Position Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_create_position(pool):
@@ -216,7 +229,7 @@ async def test_create_position(pool):
         current_price=Decimal("46000.00"),
         leverage=10,
         stop_loss=Decimal("44000.00"),
-        take_profit=Decimal("47000.00")
+        take_profit=Decimal("47000.00"),
     )
 
     await pool.execute(
@@ -225,17 +238,24 @@ async def test_create_position(pool):
                               leverage, stop_loss, take_profit, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         """,
-        position.id, position.symbol, position.side.value, position.quantity,
-        position.entry_price, position.current_price, position.leverage,
-        position.stop_loss, position.take_profit, position.status.value
+        position.id,
+        position.symbol,
+        position.side.value,
+        position.quantity,
+        position.entry_price,
+        position.current_price,
+        position.leverage,
+        position.stop_loss,
+        position.take_profit,
+        position.status.value,
     )
 
     # Verify insertion
     row = await pool.fetchrow("SELECT * FROM positions WHERE id = $1", position.id)
     assert row is not None
-    assert row['symbol'] == "BTCUSDT"
-    assert row['side'] == "LONG"
-    assert row['leverage'] == 10
+    assert row["symbol"] == "BTCUSDT"
+    assert row["side"] == "LONG"
+    assert row["leverage"] == 10
 
 
 @pytest.mark.asyncio
@@ -248,7 +268,7 @@ async def test_position_unrealized_pnl(pool):
         quantity=Decimal("0.1"),
         entry_price=Decimal("40000.00"),
         current_price=Decimal("41000.00"),
-        leverage=10
+        leverage=10,
     )
 
     pnl = long_position.calculate_unrealized_pnl_usd()
@@ -262,7 +282,7 @@ async def test_position_unrealized_pnl(pool):
         quantity=Decimal("1.0"),
         entry_price=Decimal("3000.00"),
         current_price=Decimal("2900.00"),
-        leverage=5
+        leverage=5,
     )
 
     pnl = short_position.calculate_unrealized_pnl_usd()
@@ -281,7 +301,11 @@ async def test_position_constraints(pool):
             INSERT INTO positions (symbol, side, quantity, entry_price, leverage)
             VALUES ($1, $2, $3, $4, $5)
             """,
-            "BTCUSDT", "LONG", Decimal("0.1"), Decimal("45000"), 50  # Invalid: > 40
+            "BTCUSDT",
+            "LONG",
+            Decimal("0.1"),
+            Decimal("45000"),
+            50,  # Invalid: > 40
         )
 
     # Test invalid side
@@ -291,13 +315,18 @@ async def test_position_constraints(pool):
             INSERT INTO positions (symbol, side, quantity, entry_price, leverage)
             VALUES ($1, $2, $3, $4, $5)
             """,
-            "BTCUSDT", "MIDDLE", Decimal("0.1"), Decimal("45000"), 10
+            "BTCUSDT",
+            "MIDDLE",
+            Decimal("0.1"),
+            Decimal("45000"),
+            10,
         )
 
 
 # ============================================================================
 # Trading Signal Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_create_trading_signal(pool):
@@ -311,7 +340,7 @@ async def test_create_trading_signal(pool):
         reasoning="Strong bullish momentum with RSI oversold",
         llm_model="anthropic/claude-3.5-sonnet",
         llm_tokens=1500,
-        llm_cost_usd=Decimal("0.015")
+        llm_cost_usd=Decimal("0.015"),
     )
 
     await pool.execute(
@@ -320,21 +349,29 @@ async def test_create_trading_signal(pool):
                                      risk_usd, reasoning, llm_model, llm_tokens, llm_cost_usd)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         """,
-        signal.id, signal.symbol, signal.signal_type.value, signal.action.value,
-        signal.confidence, signal.risk_usd, signal.reasoning, signal.llm_model,
-        signal.llm_tokens, signal.llm_cost_usd
+        signal.id,
+        signal.symbol,
+        signal.signal_type.value,
+        signal.action.value,
+        signal.confidence,
+        signal.risk_usd,
+        signal.reasoning,
+        signal.llm_model,
+        signal.llm_tokens,
+        signal.llm_cost_usd,
     )
 
     # Verify
     row = await pool.fetchrow("SELECT * FROM trading_signals WHERE id = $1", signal.id)
     assert row is not None
-    assert row['confidence'] == Decimal("0.8500")
-    assert row['executed'] is False
+    assert row["confidence"] == Decimal("0.8500")
+    assert row["executed"] is False
 
 
 # ============================================================================
 # Order Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_create_order_with_position(pool):
@@ -346,7 +383,12 @@ async def test_create_order_with_position(pool):
         INSERT INTO positions (id, symbol, side, quantity, entry_price, leverage)
         VALUES ($1, $2, $3, $4, $5, $6)
         """,
-        position_id, "BTCUSDT", "LONG", Decimal("0.1"), Decimal("45000"), 10
+        position_id,
+        "BTCUSDT",
+        "LONG",
+        Decimal("0.1"),
+        Decimal("45000"),
+        10,
     )
 
     # Create order
@@ -359,7 +401,7 @@ async def test_create_order_with_position(pool):
         quantity=Decimal("0.1"),
         filled_quantity=Decimal("0.1"),
         status=OrderStatus.FILLED,
-        fee_chf=Decimal("5.00")
+        fee_chf=Decimal("5.00"),
     )
 
     await pool.execute(
@@ -368,14 +410,21 @@ async def test_create_order_with_position(pool):
                            quantity, filled_quantity, status, fee_chf)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         """,
-        order.id, order.position_id, order.exchange_order_id, order.symbol,
-        order.side.value, order.order_type.value, order.quantity,
-        order.filled_quantity, order.status.value, order.fee_chf
+        order.id,
+        order.position_id,
+        order.exchange_order_id,
+        order.symbol,
+        order.side.value,
+        order.order_type.value,
+        order.quantity,
+        order.filled_quantity,
+        order.status.value,
+        order.fee_chf,
     )
 
     # Verify foreign key relationship
     row = await pool.fetchrow("SELECT * FROM orders WHERE id = $1", order.id)
-    assert row['position_id'] == position_id
+    assert row["position_id"] == position_id
 
 
 @pytest.mark.asyncio
@@ -388,7 +437,12 @@ async def test_order_cascade_delete(pool):
         INSERT INTO positions (id, symbol, side, quantity, entry_price, leverage)
         VALUES ($1, $2, $3, $4, $5, $6)
         """,
-        position_id, "BTCUSDT", "LONG", Decimal("0.1"), Decimal("45000"), 10
+        position_id,
+        "BTCUSDT",
+        "LONG",
+        Decimal("0.1"),
+        Decimal("45000"),
+        10,
     )
 
     order_id = uuid4()
@@ -397,20 +451,28 @@ async def test_order_cascade_delete(pool):
         INSERT INTO orders (id, position_id, symbol, side, order_type, quantity)
         VALUES ($1, $2, $3, $4, $5, $6)
         """,
-        order_id, position_id, "BTCUSDT", "BUY", "MARKET", Decimal("0.1")
+        order_id,
+        position_id,
+        "BTCUSDT",
+        "BUY",
+        "MARKET",
+        Decimal("0.1"),
     )
 
     # Delete position
     await pool.execute("DELETE FROM positions WHERE id = $1", position_id)
 
     # Verify order was also deleted
-    order_exists = await pool.fetchval("SELECT EXISTS(SELECT 1 FROM orders WHERE id = $1)", order_id)
+    order_exists = await pool.fetchval(
+        "SELECT EXISTS(SELECT 1 FROM orders WHERE id = $1)", order_id
+    )
     assert not order_exists
 
 
 # ============================================================================
 # Market Data (TimescaleDB) Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_market_data_hypertable_insert(pool):
@@ -426,7 +488,7 @@ async def test_market_data_hypertable_insert(pool):
         low=Decimal("44800.00"),
         close=Decimal("45200.00"),
         volume=Decimal("1000.5"),
-        indicators={"rsi": 55.5, "macd": 120.3}
+        indicators={"rsi": 55.5, "macd": 120.3},
     )
 
     await pool.execute(
@@ -434,18 +496,25 @@ async def test_market_data_hypertable_insert(pool):
         INSERT INTO market_data (symbol, timestamp, open, high, low, close, volume, indicators)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         """,
-        data.symbol, data.timestamp, data.open, data.high, data.low,
-        data.close, data.volume, data.indicators
+        data.symbol,
+        data.timestamp,
+        data.open,
+        data.high,
+        data.low,
+        data.close,
+        data.volume,
+        data.indicators,
     )
 
     # Query back
     row = await pool.fetchrow(
         "SELECT * FROM market_data WHERE symbol = $1 AND timestamp = $2",
-        data.symbol, data.timestamp
+        data.symbol,
+        data.timestamp,
     )
     assert row is not None
-    assert row['close'] == Decimal("45200.00")
-    assert row['indicators']['rsi'] == 55.5
+    assert row["close"] == Decimal("45200.00")
+    assert row["indicators"]["rsi"] == 55.5
 
 
 @pytest.mark.asyncio
@@ -460,13 +529,20 @@ async def test_market_data_ohlc_constraint(pool):
             INSERT INTO market_data (symbol, timestamp, open, high, low, close, volume)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             """,
-            "BTCUSDT", now, Decimal("45000"), Decimal("44000"), Decimal("45000"), Decimal("44500"), Decimal("100")
+            "BTCUSDT",
+            now,
+            Decimal("45000"),
+            Decimal("44000"),
+            Decimal("45000"),
+            Decimal("44500"),
+            Decimal("100"),
         )
 
 
 # ============================================================================
 # Circuit Breaker Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_tracking(pool):
@@ -475,9 +551,7 @@ async def test_circuit_breaker_tracking(pool):
 
     # Insert circuit breaker state
     cb = CircuitBreakerState(
-        date=today,
-        current_pnl_chf=Decimal("-150.00"),
-        triggered=False
+        date=today, current_pnl_chf=Decimal("-150.00"), triggered=False
     )
 
     await pool.execute(
@@ -485,7 +559,9 @@ async def test_circuit_breaker_tracking(pool):
         INSERT INTO circuit_breaker_state (date, current_pnl_chf, triggered)
         VALUES ($1, $2, $3)
         """,
-        cb.date, cb.current_pnl_chf, cb.triggered
+        cb.date,
+        cb.current_pnl_chf,
+        cb.triggered,
     )
 
     # Test should_trigger
@@ -501,9 +577,9 @@ async def test_circuit_breaker_function(pool):
     """Test get_circuit_breaker_status() function."""
     # Test with no data (should return defaults)
     row = await pool.fetchrow("SELECT * FROM get_circuit_breaker_status()")
-    assert row['is_triggered'] is False
-    assert row['current_pnl_chf'] == Decimal("0")
-    assert row['threshold_chf'] == Decimal("-183.89")
+    assert row["is_triggered"] is False
+    assert row["current_pnl_chf"] == Decimal("0")
+    assert row["threshold_chf"] == Decimal("-183.89")
 
     # Insert triggered state
     today = date.today()
@@ -512,18 +588,22 @@ async def test_circuit_breaker_function(pool):
         INSERT INTO circuit_breaker_state (date, current_pnl_chf, triggered, trigger_reason)
         VALUES ($1, $2, $3, $4)
         """,
-        today, Decimal("-200.00"), True, "Daily loss exceeded -7%"
+        today,
+        Decimal("-200.00"),
+        True,
+        "Daily loss exceeded -7%",
     )
 
     # Test function returns triggered state
     row = await pool.fetchrow("SELECT * FROM get_circuit_breaker_status()")
-    assert row['is_triggered'] is True
-    assert row['current_pnl_chf'] == Decimal("-200.00")
+    assert row["is_triggered"] is True
+    assert row["current_pnl_chf"] == Decimal("-200.00")
 
 
 # ============================================================================
 # Performance Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_query_performance(pool):
@@ -535,7 +615,13 @@ async def test_query_performance(pool):
         INSERT INTO positions (id, symbol, side, quantity, entry_price, leverage, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
-        position_id, "BTCUSDT", "LONG", Decimal("0.1"), Decimal("45000"), 10, "OPEN"
+        position_id,
+        "BTCUSDT",
+        "LONG",
+        Decimal("0.1"),
+        Decimal("45000"),
+        10,
+        "OPEN",
     )
 
     # Test queries
@@ -567,12 +653,17 @@ async def test_bulk_insert_performance(pool):
             INSERT INTO market_data (symbol, timestamp, open, high, low, close, volume)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             """,
-            "BTCUSDT", now + i, Decimal("45000"), Decimal("45100"),
-            Decimal("44900"), Decimal("45000"), Decimal("100")
+            "BTCUSDT",
+            now + i,
+            Decimal("45000"),
+            Decimal("45100"),
+            Decimal("44900"),
+            Decimal("45000"),
+            Decimal("100"),
         )
 
     duration = time.perf_counter() - start
-    print(f"\nInserted 1000 rows in {duration:.2f}s ({1000/duration:.0f} rows/sec)")
+    print(f"\nInserted 1000 rows in {duration:.2f}s ({1000 / duration:.0f} rows/sec)")
 
     # Should be reasonably fast
     assert duration < 5.0, f"Bulk insert too slow: {duration:.2f}s"
@@ -581,6 +672,7 @@ async def test_bulk_insert_performance(pool):
 # ============================================================================
 # View Tests
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_open_positions_view(pool):
@@ -591,14 +683,20 @@ async def test_open_positions_view(pool):
         INSERT INTO positions (symbol, side, quantity, entry_price, current_price, leverage, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
-        "BTCUSDT", "LONG", Decimal("0.1"), Decimal("45000"), Decimal("46000"), 10, "OPEN"
+        "BTCUSDT",
+        "LONG",
+        Decimal("0.1"),
+        Decimal("45000"),
+        Decimal("46000"),
+        10,
+        "OPEN",
     )
 
     # Query view
     rows = await pool.fetch("SELECT * FROM v_open_positions")
     assert len(rows) == 1
-    assert rows[0]['symbol'] == "BTCUSDT"
-    assert rows[0]['unrealized_pnl_usd'] > 0  # Should have profit
+    assert rows[0]["symbol"] == "BTCUSDT"
+    assert rows[0]["unrealized_pnl_usd"] > 0  # Should have profit
 
 
 @pytest.mark.asyncio
@@ -617,10 +715,10 @@ async def test_portfolio_summary_view(pool):
 
     # Query view
     row = await pool.fetchrow("SELECT * FROM v_portfolio_summary")
-    assert row['open_positions'] == 1
-    assert row['closed_positions'] == 2
-    assert row['winning_trades'] == 1
-    assert row['losing_trades'] == 1
+    assert row["open_positions"] == 1
+    assert row["closed_positions"] == 2
+    assert row["winning_trades"] == 1
+    assert row["losing_trades"] == 1
 
 
 # ============================================================================

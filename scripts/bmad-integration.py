@@ -92,7 +92,9 @@ class BMADIntegration:
         print(f"✅ Architecture imported to {arch_path}")
 
         if contracts_prp:
-            contracts_path = self.prps_dir / "contracts" / f"{output_name}-api-contracts.md"
+            contracts_path = (
+                self.prps_dir / "contracts" / f"{output_name}-api-contracts.md"
+            )
             contracts_path.parent.mkdir(parents=True, exist_ok=True)
             contracts_path.write_text(contracts_prp)
             print(f"✅ API contracts extracted to {contracts_path}")
@@ -123,10 +125,10 @@ class BMADIntegration:
         tasks_file = self.agent_system / "registry" / "tasks.json"
         stories_file = self.agent_system / "registry" / "stories.json"
 
-        with open(tasks_file, 'r') as f:
+        with open(tasks_file, "r") as f:
             task_registry = json.load(f)
 
-        with open(stories_file, 'r') as f:
+        with open(stories_file, "r") as f:
             story_registry = json.load(f)
 
         synced = 0
@@ -139,45 +141,48 @@ class BMADIntegration:
                 story_id = f"STORY-{story['number']:03d}"
 
                 # Check if already synced
-                if story_id in story_registry['stories'] and story_id != "STORY-EXAMPLE":
+                if (
+                    story_id in story_registry["stories"]
+                    and story_id != "STORY-EXAMPLE"
+                ):
                     print(f"  ⏭️  {story_id} already synced")
                     continue
 
                 # Create corresponding task
-                task_num = task_registry['statistics']['total'] + 1
+                task_num = task_registry["statistics"]["total"] + 1
                 task_id = f"TASK-{task_num:03d}"
 
-                task_registry['tasks'][task_id] = {
+                task_registry["tasks"][task_id] = {
                     "title": f"Story-{story['number']}: {story['title']}",
-                    "description": story['description'],
+                    "description": story["description"],
                     "story_reference": str(story_file.relative_to(BASE_DIR)),
-                    "bmad_epic": story.get('epic'),
+                    "bmad_epic": story.get("epic"),
                     "status": "pending",
-                    "priority": story.get('priority', 'medium'),
-                    "estimated_hours": story.get('estimate', 8),
+                    "priority": story.get("priority", "medium"),
+                    "estimated_hours": story.get("estimate", 8),
                     "created_at": datetime.now().isoformat(),
                     "dependencies": [],
                     "files": [],
-                    "acceptance_criteria": story.get('acceptance_criteria', [])
+                    "acceptance_criteria": story.get("acceptance_criteria", []),
                 }
 
                 # Update task statistics
-                task_registry['statistics']['total'] += 1
-                task_registry['statistics']['pending'] += 1
+                task_registry["statistics"]["total"] += 1
+                task_registry["statistics"]["pending"] += 1
 
                 # Add to story registry
-                story_registry['stories'][story_id] = {
+                story_registry["stories"][story_id] = {
                     "file": str(story_file.relative_to(BASE_DIR)),
                     "task_id": task_id,
-                    "epic_id": story.get('epic'),
-                    "title": story['title'],
+                    "epic_id": story.get("epic"),
+                    "title": story["title"],
                     "status": "pending",
-                    "created_at": datetime.now().isoformat()
+                    "created_at": datetime.now().isoformat(),
                 }
 
                 # Update story statistics
-                story_registry['statistics']['total'] += 1
-                story_registry['statistics']['pending'] += 1
+                story_registry["statistics"]["total"] += 1
+                story_registry["statistics"]["pending"] += 1
 
                 print(f"  ✅ {story_id} → {task_id}: {story['title']}")
                 synced += 1
@@ -187,13 +192,13 @@ class BMADIntegration:
                 errors += 1
 
         # Save updated registries
-        task_registry['updated'] = datetime.now().isoformat()
-        story_registry['updated'] = datetime.now().isoformat()
+        task_registry["updated"] = datetime.now().isoformat()
+        story_registry["updated"] = datetime.now().isoformat()
 
-        with open(tasks_file, 'w') as f:
+        with open(tasks_file, "w") as f:
             json.dump(task_registry, f, indent=2)
 
-        with open(stories_file, 'w') as f:
+        with open(stories_file, "w") as f:
             json.dump(story_registry, f, indent=2)
 
         print(f"\n📊 Synced: {synced}, Errors: {errors}")
@@ -233,7 +238,7 @@ class BMADIntegration:
         """Show BMAD integration status"""
         sync_file = self.agent_system / "sync" / "bmad-sync.json"
 
-        with open(sync_file, 'r') as f:
+        with open(sync_file, "r") as f:
             sync_status = json.load(f)
 
         print("\n📊 BMAD Integration Status")
@@ -242,22 +247,42 @@ class BMADIntegration:
         print(f"Last Sync: {sync_status['bmad_integration'].get('last_sync', 'Never')}")
         print()
         print("Import Status:")
-        print(f"  PRD:          {'✅' if sync_status['bmad_integration']['prd_imported'] else '⏸️'}")
-        print(f"  Architecture: {'✅' if sync_status['bmad_integration']['architecture_imported'] else '⏸️'}")
-        print(f"  Epics:        {'✅' if sync_status['bmad_integration']['epics_generated'] else '⏸️'}")
-        print(f"  Stories:      {'✅' if sync_status['bmad_integration']['stories_generated'] else '⏸️'}")
+        print(
+            f"  PRD:          {'✅' if sync_status['bmad_integration']['prd_imported'] else '⏸️'}"
+        )
+        print(
+            f"  Architecture: {'✅' if sync_status['bmad_integration']['architecture_imported'] else '⏸️'}"
+        )
+        print(
+            f"  Epics:        {'✅' if sync_status['bmad_integration']['epics_generated'] else '⏸️'}"
+        )
+        print(
+            f"  Stories:      {'✅' if sync_status['bmad_integration']['stories_generated'] else '⏸️'}"
+        )
 
         # Check file existence
         print()
         print("Files:")
         prd = self.bmad_docs / "prd.md"
         arch = self.bmad_docs / "architecture.md"
-        print(f"  docs/prd.md:          {'✅ Exists' if prd.exists() else '❌ Missing'}")
-        print(f"  docs/architecture.md: {'✅ Exists' if arch.exists() else '❌ Missing'}")
+        print(
+            f"  docs/prd.md:          {'✅ Exists' if prd.exists() else '❌ Missing'}"
+        )
+        print(
+            f"  docs/architecture.md: {'✅ Exists' if arch.exists() else '❌ Missing'}"
+        )
 
         # Count stories and epics
-        stories_count = len(list((self.bmad_docs / "stories").glob("STORY-*.md"))) if (self.bmad_docs / "stories").exists() else 0
-        epics_count = len(list((self.bmad_docs / "epics").glob("EPIC-*.md"))) if (self.bmad_docs / "epics").exists() else 0
+        stories_count = (
+            len(list((self.bmad_docs / "stories").glob("STORY-*.md")))
+            if (self.bmad_docs / "stories").exists()
+            else 0
+        )
+        epics_count = (
+            len(list((self.bmad_docs / "epics").glob("EPIC-*.md")))
+            if (self.bmad_docs / "epics").exists()
+            else 0
+        )
 
         print()
         print(f"Epics:   {epics_count}")
@@ -297,7 +322,9 @@ class BMADIntegration:
         print()
 
         # Generate views
-        if (self.bmad_docs / "stories").exists() and list((self.bmad_docs / "stories").glob("STORY-*.md")):
+        if (self.bmad_docs / "stories").exists() and list(
+            (self.bmad_docs / "stories").glob("STORY-*.md")
+        ):
             self.generate_story_views()
 
         if success:
@@ -313,41 +340,41 @@ class BMADIntegration:
         """Convert BMAD PRD format to PRP requirements format"""
         prp = f"""# Product Requirements - PRP Format
 
-*Imported from BMAD PRD on {datetime.now().strftime('%Y-%m-%d')}*
+*Imported from BMAD PRD on {datetime.now().strftime("%Y-%m-%d")}*
 
 ---
 
 ## 📋 Goal
 
-{self._extract_section(prd_content, ['Goal', 'Overview', 'Introduction'])}
+{self._extract_section(prd_content, ["Goal", "Overview", "Introduction"])}
 
 ## 💡 Why
 
 ### Business Value
-{self._extract_section(prd_content, ['Business Value', 'Why', 'Rationale'])}
+{self._extract_section(prd_content, ["Business Value", "Why", "Rationale"])}
 
 ### User Impact
-{self._extract_section(prd_content, ['User Impact', 'User Benefits', 'Value Proposition'])}
+{self._extract_section(prd_content, ["User Impact", "User Benefits", "Value Proposition"])}
 
 ## ✅ What (Success Criteria)
 
 ### Functional Requirements
-{self._extract_section(prd_content, ['Functional Requirements', 'Features', 'Requirements'])}
+{self._extract_section(prd_content, ["Functional Requirements", "Features", "Requirements"])}
 
 ### Success Metrics
-{self._extract_section(prd_content, ['Success Metrics', 'KPIs', 'Metrics'])}
+{self._extract_section(prd_content, ["Success Metrics", "KPIs", "Metrics"])}
 
 ## 📚 Context
 
 ### Market Context
-{self._extract_section(prd_content, ['Market', 'Context', 'Background'])}
+{self._extract_section(prd_content, ["Market", "Context", "Background"])}
 
 ### Technical Context
-{self._extract_section(prd_content, ['Technical', 'Technology', 'Platform'])}
+{self._extract_section(prd_content, ["Technical", "Technology", "Platform"])}
 
 ## 🎯 User Stories
 
-{self._extract_section(prd_content, ['User Stories', 'Stories', 'Scenarios'])}
+{self._extract_section(prd_content, ["User Stories", "Stories", "Scenarios"])}
 
 ## 📝 Notes
 
@@ -364,7 +391,7 @@ class BMADIntegration:
         """Extract main architecture content"""
         return f"""# System Architecture
 
-*Imported from BMAD Architecture on {datetime.now().strftime('%Y-%m-%d')}*
+*Imported from BMAD Architecture on {datetime.now().strftime("%Y-%m-%d")}*
 
 ---
 
@@ -378,12 +405,14 @@ class BMADIntegration:
 
     def _extract_api_contracts(self, arch_content: str) -> str:
         """Extract API contracts from architecture"""
-        api_section = self._extract_section(arch_content, ['API', 'APIs', 'Endpoints', 'Contracts'])
+        api_section = self._extract_section(
+            arch_content, ["API", "APIs", "Endpoints", "Contracts"]
+        )
 
         if api_section and api_section.strip():
             return f"""# API Contracts
 
-*Extracted from BMAD Architecture on {datetime.now().strftime('%Y-%m-%d')}*
+*Extracted from BMAD Architecture on {datetime.now().strftime("%Y-%m-%d")}*
 
 ---
 
@@ -398,12 +427,14 @@ class BMADIntegration:
 
     def _extract_security(self, arch_content: str) -> str:
         """Extract security requirements from architecture"""
-        security_section = self._extract_section(arch_content, ['Security', 'Authentication', 'Authorization', 'Compliance'])
+        security_section = self._extract_section(
+            arch_content, ["Security", "Authentication", "Authorization", "Compliance"]
+        )
 
         if security_section and security_section.strip():
             return f"""# Security Requirements
 
-*Extracted from BMAD Architecture on {datetime.now().strftime('%Y-%m-%d')}*
+*Extracted from BMAD Architecture on {datetime.now().strftime("%Y-%m-%d")}*
 
 ---
 
@@ -420,8 +451,8 @@ class BMADIntegration:
         """Extract content under specific headers"""
         for header in headers:
             # Try different header levels
-            for level in ['##', '###', '####']:
-                pattern = f"{level}\\s+{header}\\s*\\n(.*?)(?=\\n#{2,}|$)"
+            for level in ["##", "###", "####"]:
+                pattern = f"{level}\\s+{header}\\s*\\n(.*?)(?=\\n#{(2,)}|$)"
                 match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
                 if match:
                     return match.group(1).strip()
@@ -432,35 +463,53 @@ class BMADIntegration:
         content = story_file.read_text()
 
         # Extract story number from filename
-        number_match = re.search(r'STORY-(\d+)', story_file.name)
+        number_match = re.search(r"STORY-(\d+)", story_file.name)
         number = int(number_match.group(1)) if number_match else 0
 
         # Extract title (first # heading)
-        title_match = re.search(r'^#\s+Story\s+\d+:?\s*(.+)$', content, re.MULTILINE | re.IGNORECASE)
+        title_match = re.search(
+            r"^#\s+Story\s+\d+:?\s*(.+)$", content, re.MULTILINE | re.IGNORECASE
+        )
         title = title_match.group(1).strip() if title_match else "Untitled Story"
 
         # Extract description
-        desc_match = re.search(r'##\s+Description\s*\n(.*?)(?=\n##|$)', content, re.DOTALL | re.IGNORECASE)
+        desc_match = re.search(
+            r"##\s+Description\s*\n(.*?)(?=\n##|$)", content, re.DOTALL | re.IGNORECASE
+        )
         description = desc_match.group(1).strip() if desc_match else ""
 
         # Extract epic reference
-        epic_match = re.search(r'(?:Epic|EPIC)[:\s]+([A-Z]+-\d+)', content, re.IGNORECASE)
+        epic_match = re.search(
+            r"(?:Epic|EPIC)[:\s]+([A-Z]+-\d+)", content, re.IGNORECASE
+        )
         epic = epic_match.group(1) if epic_match else None
 
         # Extract priority
-        priority_match = re.search(r'(?:Priority|PRIORITY)[:\s]+(\w+)', content, re.IGNORECASE)
+        priority_match = re.search(
+            r"(?:Priority|PRIORITY)[:\s]+(\w+)", content, re.IGNORECASE
+        )
         priority = priority_match.group(1).lower() if priority_match else "medium"
 
         # Extract estimate
-        estimate_match = re.search(r'(?:Estimate|ESTIMATE)[:\s]+(\d+)', content, re.IGNORECASE)
+        estimate_match = re.search(
+            r"(?:Estimate|ESTIMATE)[:\s]+(\d+)", content, re.IGNORECASE
+        )
         estimate = int(estimate_match.group(1)) if estimate_match else 8
 
         # Extract acceptance criteria
         criteria = []
-        criteria_section = re.search(r'##\s+Acceptance Criteria\s*\n(.*?)(?=\n##|$)', content, re.DOTALL | re.IGNORECASE)
+        criteria_section = re.search(
+            r"##\s+Acceptance Criteria\s*\n(.*?)(?=\n##|$)",
+            content,
+            re.DOTALL | re.IGNORECASE,
+        )
         if criteria_section:
             criteria_text = criteria_section.group(1)
-            criteria = [line.strip('- [ ] ').strip() for line in criteria_text.split('\n') if line.strip().startswith('- [')]
+            criteria = [
+                line.strip("- [ ] ").strip()
+                for line in criteria_text.split("\n")
+                if line.strip().startswith("- [")
+            ]
 
         return {
             "number": number,
@@ -469,48 +518,48 @@ class BMADIntegration:
             "epic": epic,
             "priority": priority,
             "estimate": estimate,
-            "acceptance_criteria": criteria
+            "acceptance_criteria": criteria,
         }
 
     def _generate_implementation_view(self, story: Dict) -> str:
         """Generate implementation specialist view of story"""
-        return f"""# Story {story['number']:03d}: {story['title']} - Implementation View
+        return f"""# Story {story["number"]:03d}: {story["title"]} - Implementation View
 
-**Priority**: {story['priority']}
-**Estimate**: {story['estimate']} hours
+**Priority**: {story["priority"]}
+**Estimate**: {story["estimate"]} hours
 
 ## What to Build
 
-{story['description']}
+{story["description"]}
 
 ## Acceptance Criteria
 
-{chr(10).join(f"- [ ] {criterion}" for criterion in story['acceptance_criteria'])}
+{chr(10).join(f"- [ ] {criterion}" for criterion in story["acceptance_criteria"])}
 
 ## Next Actions
 
-1. Review technical context in full story: docs/stories/STORY-{story['number']:03d}.md
-2. Claim task: python scripts/agent-task-manager.py claim --agent implementation-specialist --task TASK-{story['number']:03d}
+1. Review technical context in full story: docs/stories/STORY-{story["number"]:03d}.md
+2. Claim task: python scripts/agent-task-manager.py claim --agent implementation-specialist --task TASK-{story["number"]:03d}
 3. Implement with tests
 4. Run validations
 
 ---
 
 *Optimized view for Implementation Specialist*
-*Full story*: docs/stories/STORY-{story['number']:03d}.md
+*Full story*: docs/stories/STORY-{story["number"]:03d}.md
 """
 
     def _generate_validation_view(self, story: Dict) -> str:
         """Generate validation engineer view of story"""
-        return f"""# Story {story['number']:03d}: {story['title']} - Validation View
+        return f"""# Story {story["number"]:03d}: {story["title"]} - Validation View
 
-**Priority**: {story['priority']}
+**Priority**: {story["priority"]}
 
 ## Test Requirements
 
 ### Acceptance Criteria to Validate
 
-{chr(10).join(f"{i+1}. {criterion}" for i, criterion in enumerate(story['acceptance_criteria']))}
+{chr(10).join(f"{i + 1}. {criterion}" for i, criterion in enumerate(story["acceptance_criteria"]))}
 
 ### Required Test Types
 
@@ -538,27 +587,27 @@ ruff check src/
 ---
 
 *Optimized view for Validation Engineer*
-*Full story*: docs/stories/STORY-{story['number']:03d}.md
+*Full story*: docs/stories/STORY-{story["number"]:03d}.md
 """
 
     def _update_sync_status(self, key: str, value):
         """Update BMAD sync status"""
         sync_file = self.agent_system / "sync" / "bmad-sync.json"
 
-        with open(sync_file, 'r') as f:
+        with open(sync_file, "r") as f:
             sync_status = json.load(f)
 
-        sync_status['bmad_integration'][key] = value
-        sync_status['bmad_integration']['last_sync'] = datetime.now().isoformat()
-        sync_status['updated'] = datetime.now().isoformat()
+        sync_status["bmad_integration"][key] = value
+        sync_status["bmad_integration"]["last_sync"] = datetime.now().isoformat()
+        sync_status["updated"] = datetime.now().isoformat()
 
-        with open(sync_file, 'w') as f:
+        with open(sync_file, "w") as f:
             json.dump(sync_status, f, indent=2)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='BMAD-PRPs Integration Manager',
+        description="BMAD-PRPs Integration Manager",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -579,31 +628,39 @@ Examples:
 
   # Check status
   python scripts/bmad-integration.py status
-        """
+        """,
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Import PRD
-    prd_parser = subparsers.add_parser('import-prd', help='Import BMAD PRD to PRPs')
-    prd_parser.add_argument('--output', help='Output filename (default: project-requirements.md)')
+    prd_parser = subparsers.add_parser("import-prd", help="Import BMAD PRD to PRPs")
+    prd_parser.add_argument(
+        "--output", help="Output filename (default: project-requirements.md)"
+    )
 
     # Import Architecture
-    arch_parser = subparsers.add_parser('import-architecture', help='Import BMAD architecture to PRPs')
-    arch_parser.add_argument('--output', help='Output filename base (default: project-architecture)')
+    arch_parser = subparsers.add_parser(
+        "import-architecture", help="Import BMAD architecture to PRPs"
+    )
+    arch_parser.add_argument(
+        "--output", help="Output filename base (default: project-architecture)"
+    )
 
     # Sync stories
-    subparsers.add_parser('sync-stories', help='Sync BMAD stories to PRP tasks')
+    subparsers.add_parser("sync-stories", help="Sync BMAD stories to PRP tasks")
 
     # Generate views
-    subparsers.add_parser('generate-views', help='Generate agent views from stories')
+    subparsers.add_parser("generate-views", help="Generate agent views from stories")
 
     # Import all
-    all_parser = subparsers.add_parser('import-all', help='Import all BMAD artifacts')
-    all_parser.add_argument('--project', default='project', help='Project name for output files')
+    all_parser = subparsers.add_parser("import-all", help="Import all BMAD artifacts")
+    all_parser.add_argument(
+        "--project", default="project", help="Project name for output files"
+    )
 
     # Status
-    subparsers.add_parser('status', help='Show BMAD integration status')
+    subparsers.add_parser("status", help="Show BMAD integration status")
 
     args = parser.parse_args()
 
@@ -613,17 +670,17 @@ Examples:
 
     integration = BMADIntegration()
 
-    if args.command == 'import-prd':
+    if args.command == "import-prd":
         success = integration.import_prd(args.output)
-    elif args.command == 'import-architecture':
+    elif args.command == "import-architecture":
         success = integration.import_architecture(args.output)
-    elif args.command == 'sync-stories':
+    elif args.command == "sync-stories":
         success = integration.sync_stories_to_tasks()
-    elif args.command == 'generate-views':
+    elif args.command == "generate-views":
         success = integration.generate_story_views()
-    elif args.command == 'import-all':
+    elif args.command == "import-all":
         success = integration.import_all(args.project)
-    elif args.command == 'status':
+    elif args.command == "status":
         integration.status()
         success = True
     else:

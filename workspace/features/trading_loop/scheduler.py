@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 class SchedulerState(str, Enum):
     """Scheduler state"""
+
     IDLE = "idle"
     RUNNING = "running"
     PAUSED = "paused"
@@ -180,7 +181,9 @@ class TradingScheduler:
             logger.info("Resuming Trading Scheduler")
             self.state = SchedulerState.RUNNING
             # Recalculate next cycle time
-            self.next_cycle_time = datetime.utcnow() + timedelta(seconds=self.interval_seconds)
+            self.next_cycle_time = datetime.utcnow() + timedelta(
+                seconds=self.interval_seconds
+            )
 
     def get_status(self) -> dict:
         """
@@ -195,8 +198,12 @@ class TradingScheduler:
             "state": self.state.value,
             "cycle_count": self.cycle_count,
             "error_count": self.error_count,
-            "last_cycle": self.last_cycle_time.isoformat() if self.last_cycle_time else None,
-            "next_cycle": self.next_cycle_time.isoformat() if self.next_cycle_time else None,
+            "last_cycle": self.last_cycle_time.isoformat()
+            if self.last_cycle_time
+            else None,
+            "next_cycle": self.next_cycle_time.isoformat()
+            if self.next_cycle_time
+            else None,
         }
 
         if self.next_cycle_time and self.state == SchedulerState.RUNNING:
@@ -212,7 +219,9 @@ class TradingScheduler:
         try:
             # Wait for first cycle if aligned
             if self.align_to_interval and self.next_cycle_time:
-                wait_seconds = (self.next_cycle_time - datetime.utcnow()).total_seconds()
+                wait_seconds = (
+                    self.next_cycle_time - datetime.utcnow()
+                ).total_seconds()
                 if wait_seconds > 0:
                     await asyncio.sleep(wait_seconds)
 
@@ -235,7 +244,9 @@ class TradingScheduler:
                     self.last_cycle_time = cycle_start
 
                 except Exception as e:
-                    logger.error(f"Trading cycle #{self.cycle_count} failed: {e}", exc_info=True)
+                    logger.error(
+                        f"Trading cycle #{self.cycle_count} failed: {e}", exc_info=True
+                    )
                     self.error_count += 1
                     self.state = SchedulerState.ERROR
                     # Try to recover on next cycle
@@ -249,10 +260,14 @@ class TradingScheduler:
                 )
 
                 # Calculate next cycle time
-                self.next_cycle_time = cycle_start + timedelta(seconds=self.interval_seconds)
+                self.next_cycle_time = cycle_start + timedelta(
+                    seconds=self.interval_seconds
+                )
 
                 # Wait until next cycle
-                wait_seconds = (self.next_cycle_time - datetime.utcnow()).total_seconds()
+                wait_seconds = (
+                    self.next_cycle_time - datetime.utcnow()
+                ).total_seconds()
 
                 if wait_seconds > 0:
                     logger.debug(f"Waiting {wait_seconds:.1f}s until next cycle")
@@ -296,7 +311,7 @@ class TradingScheduler:
                     # Final attempt failed
                     logger.error(
                         f"Cycle execution failed after {self.max_retries} attempts: {e}",
-                        exc_info=True
+                        exc_info=True,
                     )
                     raise
 

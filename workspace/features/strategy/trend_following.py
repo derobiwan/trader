@@ -58,16 +58,16 @@ class TrendFollowingStrategy(BaseStrategy):
     """
 
     DEFAULT_CONFIG = {
-        'ema_fast_period': 12,
-        'ema_slow_period': 26,
-        'min_ema_distance_pct': 0.5,  # 0.5% minimum distance
-        'use_macd': True,
-        'use_rsi_filter': True,
-        'rsi_extreme_low': 20,  # Don't sell below this
-        'rsi_extreme_high': 80,  # Don't buy above this
-        'position_size_pct': 0.15,
-        'stop_loss_pct': 0.025,
-        'take_profit_pct': 0.06,
+        "ema_fast_period": 12,
+        "ema_slow_period": 26,
+        "min_ema_distance_pct": 0.5,  # 0.5% minimum distance
+        "use_macd": True,
+        "use_rsi_filter": True,
+        "rsi_extreme_low": 20,  # Don't sell below this
+        "rsi_extreme_high": 80,  # Don't buy above this
+        "position_size_pct": 0.15,
+        "stop_loss_pct": 0.025,
+        "take_profit_pct": 0.06,
     }
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -85,16 +85,16 @@ class TrendFollowingStrategy(BaseStrategy):
         super().__init__(merged_config)
 
         # Extract config values
-        self.ema_fast_period = self.config['ema_fast_period']
-        self.ema_slow_period = self.config['ema_slow_period']
-        self.min_ema_distance_pct = Decimal(str(self.config['min_ema_distance_pct']))
-        self.use_macd = self.config['use_macd']
-        self.use_rsi_filter = self.config['use_rsi_filter']
-        self.rsi_extreme_low = Decimal(str(self.config['rsi_extreme_low']))
-        self.rsi_extreme_high = Decimal(str(self.config['rsi_extreme_high']))
-        self.position_size_pct = Decimal(str(self.config['position_size_pct']))
-        self.stop_loss_pct = Decimal(str(self.config['stop_loss_pct']))
-        self.take_profit_pct = Decimal(str(self.config['take_profit_pct']))
+        self.ema_fast_period = self.config["ema_fast_period"]
+        self.ema_slow_period = self.config["ema_slow_period"]
+        self.min_ema_distance_pct = Decimal(str(self.config["min_ema_distance_pct"]))
+        self.use_macd = self.config["use_macd"]
+        self.use_rsi_filter = self.config["use_rsi_filter"]
+        self.rsi_extreme_low = Decimal(str(self.config["rsi_extreme_low"]))
+        self.rsi_extreme_high = Decimal(str(self.config["rsi_extreme_high"]))
+        self.position_size_pct = Decimal(str(self.config["position_size_pct"]))
+        self.stop_loss_pct = Decimal(str(self.config["stop_loss_pct"]))
+        self.take_profit_pct = Decimal(str(self.config["take_profit_pct"]))
 
     def get_name(self) -> str:
         """Get strategy name"""
@@ -134,7 +134,7 @@ class TrendFollowingStrategy(BaseStrategy):
         if ema_distance_pct < self.min_ema_distance_pct:
             return self._generate_hold_signal(
                 snapshot.symbol,
-                f"EMA distance too small ({ema_distance_pct:.2f}%), potential whipsaw"
+                f"EMA distance too small ({ema_distance_pct:.2f}%), potential whipsaw",
             )
 
         # Determine trend direction
@@ -184,11 +184,11 @@ class TrendFollowingStrategy(BaseStrategy):
             reasoning=reasoning,
             strategy_name=self.get_name(),
             metadata={
-                'ema_fast': float(ema_fast),
-                'ema_slow': float(ema_slow),
-                'ema_distance_pct': float(ema_distance_pct),
-                'price': float(current_price),
-            }
+                "ema_fast": float(ema_fast),
+                "ema_slow": float(ema_slow),
+                "ema_distance_pct": float(ema_distance_pct),
+                "price": float(current_price),
+            },
         )
 
         self._record_signal(signal)
@@ -232,12 +232,16 @@ class TrendFollowingStrategy(BaseStrategy):
         if decision == TradingDecision.BUY:
             # Don't buy if RSI is extremely overbought
             if rsi_value > self.rsi_extreme_high:
-                return f"RSI too high ({rsi_value:.1f}), avoiding BUY in overbought market"
+                return (
+                    f"RSI too high ({rsi_value:.1f}), avoiding BUY in overbought market"
+                )
 
         elif decision == TradingDecision.SELL:
             # Don't sell if RSI is extremely oversold
             if rsi_value < self.rsi_extreme_low:
-                return f"RSI too low ({rsi_value:.1f}), avoiding SELL in oversold market"
+                return (
+                    f"RSI too low ({rsi_value:.1f}), avoiding SELL in oversold market"
+                )
 
         return None
 
