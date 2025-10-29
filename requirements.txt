@@ -1,0 +1,49 @@
+# Core Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+python-multipart>=0.0.20
+
+# Web & HTTP
+httpx>=0.28.1
+websockets>=13.1
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
+
+# Cache & Message Queue
+redis>=5.1.0
+
+# Trading & Market Data
+ccxt>=4.4.0
+
+# Data Processing
+pandas>=2.2.0
+numpy>=2.0.0
+
+# System Monitoring
+psutil>=6.1.1
+
+# Testing
+pytest>=8.3.4
+pytest-asyncio>=0.24.0
+pytest-cov>=5.0.0
+pytest-timeout>=2.3.1
+pytest-xdist>=3.6.0
+pytest-benchmark>=4.0.0
+
+# Code Quality
+black>=24.8.0
+isort>=5.13.0
+flake8>=7.1.0
+mypy>=1.11.0
+pylint>=3.2.0
+bandit[toml]>=1.7.0
+
+# Security
+safety>=3.2.0
+pip-audit>=2.7.0
