@@ -18,6 +18,7 @@ from enum import Enum
 from workspace.features.market_data import MarketDataService, MarketDataSnapshot
 from workspace.features.trade_executor import TradeExecutor
 from workspace.features.position_manager import PositionManager
+from workspace.features.paper_trading import PaperTradingExecutor
 
 
 logger = logging.getLogger(__name__)
@@ -193,26 +194,55 @@ class TradingEngine:
     def __init__(
         self,
         market_data_service: MarketDataService,
-        trade_executor: TradeExecutor,
-        position_manager: PositionManager,
-        symbols: List[str],
+        trade_executor: Optional[TradeExecutor] = None,
+        position_manager: Optional[PositionManager] = None,
+        symbols: Optional[List[str]] = None,
         decision_engine: Optional[Any] = None,  # To be implemented in TASK-008
+        paper_trading: bool = False,
+        paper_trading_initial_balance: Decimal = Decimal("10000"),
+        api_key: Optional[str] = None,
+        api_secret: Optional[str] = None,
     ):
         """
         Initialize Trading Engine
 
         Args:
             market_data_service: Market data service instance
-            trade_executor: Trade executor instance
-            position_manager: Position manager instance
-            symbols: List of trading pairs
+            trade_executor: Trade executor instance (optional if paper_trading=True)
+            position_manager: Position manager instance (optional)
+            symbols: List of trading pairs (optional)
             decision_engine: Decision engine instance (optional, for TASK-008)
+            paper_trading: Enable paper trading mode (default: False)
+            paper_trading_initial_balance: Initial balance for paper trading (default: 10000 USDT)
+            api_key: Bybit API key (required for paper trading)
+            api_secret: Bybit API secret (required for paper trading)
         """
         self.market_data_service = market_data_service
-        self.trade_executor = trade_executor
-        self.position_manager = position_manager
-        self.symbols = symbols
+        self.symbols = symbols or []
         self.decision_engine = decision_engine
+        self.paper_trading = paper_trading
+
+        # Initialize trade executor based on mode
+        if paper_trading:
+            if not api_key or not api_secret:
+                raise ValueError("API key and secret required for paper trading")
+
+            logger.info(
+                f"Initializing Paper Trading Mode with ${paper_trading_initial_balance} USDT"
+            )
+            self.trade_executor = PaperTradingExecutor(
+                initial_balance=paper_trading_initial_balance,
+                api_key=api_key,
+                api_secret=api_secret,
+                testnet=True,
+            )
+        else:
+            if trade_executor is None:
+                raise ValueError("trade_executor required when paper_trading=False")
+            self.trade_executor = trade_executor
+
+        # Position manager (optional)
+        self.position_manager = position_manager
 
         # State
         self.cycle_count = 0
@@ -467,13 +497,48 @@ class TradingEngine:
         Returns:
             Dictionary with engine metrics
         """
-        return {
+        status = {
             "cycle_count": self.cycle_count,
             "total_orders": self.total_orders,
             "total_errors": self.total_errors,
             "symbols": self.symbols,
             "has_decision_engine": self.decision_engine is not None,
+            "paper_trading": self.paper_trading,
         }
+
+        # Add paper trading specific info
+        if self.paper_trading and isinstance(self.trade_executor, PaperTradingExecutor):
+            status["paper_trading_report"] = self.trade_executor.get_performance_report()
+
+        return status
+
+    def get_paper_trading_report(self) -> Optional[Dict[str, Any]]:
+        """
+        Get paper trading performance report
+
+        Returns:
+            Performance report or None if not in paper trading mode
+        """
+        if not self.paper_trading or not isinstance(self.trade_executor, PaperTradingExecutor):
+            return None
+
+        return self.trade_executor.get_performance_report()
+
+    async def reset_paper_trading(self, initial_balance: Optional[Decimal] = None):
+        """
+        Reset paper trading state
+
+        Args:
+            initial_balance: New initial balance (optional)
+
+        Raises:
+            ValueError: If not in paper trading mode
+        """
+        if not self.paper_trading or not isinstance(self.trade_executor, PaperTradingExecutor):
+            raise ValueError("Not in paper trading mode")
+
+        await self.trade_executor.reset(initial_balance=initial_balance)
+        logger.info("Paper trading reset complete")
 
 
 # Export
