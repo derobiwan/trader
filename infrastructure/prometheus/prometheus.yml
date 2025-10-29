@@ -1,0 +1,59 @@
+# Prometheus Configuration
+# Trading System - Sprint 1 Stream C
+#
+# Scrapes metrics from the trading system API and services.
+#
+# Author: Infrastructure Specialist
+# Date: 2025-10-28
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'trading-system'
+    environment: 'development'
+
+# Alerting configuration (placeholder)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - 'alertmanager:9093'
+
+# Rule files (placeholder for future alerts)
+rule_files:
+  # - 'alerts/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # Trading system API (FastAPI metrics endpoint)
+  - job_name: 'trading-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+        labels:
+          service: 'trading-api'
+          environment: 'development'
+
+  # PostgreSQL exporter (if added later)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: []
+        # - 'postgres-exporter:9187'
+        labels:
+          service: 'postgres'
+
+  # Redis exporter (if added later)
+  - job_name: 'redis'
+    static_configs:
+      - targets: []
+        # - 'redis-exporter:9121'
+        labels:
+          service: 'redis'
