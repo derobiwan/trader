@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-trader-prod
+  labels:
+    name: llm-trader-prod
+    environment: production
+    app: llm-crypto-trader
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm-trader-staging
+  labels:
+    name: llm-trader-staging
+    environment: staging
+    app: llm-crypto-trader

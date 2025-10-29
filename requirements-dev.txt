@@ -1,0 +1,65 @@
+# ============================================================================
+# Development Dependencies Only
+# ============================================================================
+# These dependencies are not needed in production
+# Install with: pip install -r requirements-dev.txt
+# ============================================================================
+
+# Base requirements
+-r requirements.txt
+
+# Development & Debugging Tools
+ipython>=8.29.0             # Enhanced REPL
+ipdb>=0.13.13               # Interactive debugger
+rich>=13.9.0                # Beautiful terminal output
+jupyter>=1.1.0              # Jupyter notebooks for analysis
+notebook>=7.2.0             # Jupyter notebook interface
+
+# Testing Tools (additional)
+pytest-watch>=4.2.0         # Auto-run tests on changes
+pytest-html>=4.1.0          # HTML test reports
+coverage[toml]>=7.6.0       # Coverage reporting
+hypothesis>=6.119.0         # Property-based testing
+
+# Code Quality & Analysis
+pylint>=3.2.0               # Advanced linting
+vulture>=2.13               # Dead code detection
+radon>=6.0.0                # Code complexity metrics
+interrogate>=1.7.0          # Docstring coverage
+pydocstyle>=6.3.0           # Docstring style checker
+
+# Formatting & Pre-commit
+pre-commit>=4.0.0           # Git hooks framework
+autopep8>=2.3.0             # Auto-formatting
+
+# Performance Profiling
+py-spy>=0.3.14              # Sampling profiler
+memory-profiler>=0.61.0     # Memory usage profiler
+line-profiler>=4.1.0        # Line-by-line profiling
+
+# API Development Tools
+httpie>=3.2.0               # Better curl
+tavern>=2.11.0              # API testing framework
+
+# Documentation Development
+mkdocs>=1.6.0               # Documentation generator
+mkdocs-material>=9.5.0      # Material theme
+mkdocstrings[python]>=0.27.0  # Auto API docs
+mike>=2.1.0                 # Version management for docs
+
+# Database Tools
+alembic-utils>=0.8.0        # Alembic helpers
+pgcli>=4.1.0                # PostgreSQL CLI with autocomplete
+
+# Mock & Fixtures
+responses>=0.25.0           # Mock HTTP requests
+factory-boy>=3.3.0          # Test fixtures
+faker>=33.1.0               # Fake data generation
+freezegun>=1.5.0            # Time mocking
+
+# Load Testing (local)
+locust>=2.32.0              # Load testing framework
+
+# Environment & Configuration
+python-dotenv>=1.0.0        # .env file support
+dynaconf>=3.2.0             # Advanced configuration management
