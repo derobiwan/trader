@@ -220,9 +220,10 @@ class CircuitBreaker:
 
             return result
 
-        except self.expected_exception:
-            # Record failure
-            self._record_failure()
+        except Exception as e:
+            # Record failure only if it's the expected exception type
+            if isinstance(e, self.expected_exception):
+                self._record_failure()
             raise
 
     def reset(self):

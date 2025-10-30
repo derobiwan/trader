@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 # Import components
 from workspace.features.market_data import MarketDataService, MarketDataSnapshot
@@ -189,6 +189,8 @@ class TradingEngine:
         print(f"Cycle complete: {result.success}")
         ```
     """
+
+    trade_executor: Union[TradeExecutor, PaperTradingExecutor]
 
     def __init__(
         self,

@@ -277,63 +277,110 @@ class TradeHistoryService:
                 )
 
             # Volume
-            total_volume = sum(t.quantity * t.entry_price for t in trades)
+            total_volume = sum(t.quantity * t.entry_price for t in trades) or Decimal(
+                "0"
+            )
 
             # Win/loss
-            winning_trades = [t for t in exit_trades if t.realized_pnl > 0]
-            losing_trades = [t for t in exit_trades if t.realized_pnl < 0]
+            winning_trades = [
+                t
+                for t in exit_trades
+                if t.realized_pnl is not None and t.realized_pnl > 0
+            ]
+            losing_trades = [
+                t
+                for t in exit_trades
+                if t.realized_pnl is not None and t.realized_pnl < 0
+            ]
 
             win_count = len(winning_trades)
             loss_count = len(losing_trades)
-            win_rate = Decimal(win_count) / Decimal(total_trades) * Decimal("100")
+            win_rate = (
+                Decimal(win_count) / Decimal(total_trades) * Decimal("100")
+                if total_trades > 0
+                else Decimal("0")
+            )
 
             # P&L
-            total_pnl = sum(t.realized_pnl for t in exit_trades)
+            total_pnl = sum(
+                (t.realized_pnl for t in exit_trades if t.realized_pnl is not None),
+                Decimal("0"),
+            )
 
             average_win = (
-                sum(t.realized_pnl for t in winning_trades) / Decimal(win_count)
+                sum(
+                    (
+                        t.realized_pnl
+                        for t in winning_trades
+                        if t.realized_pnl is not None
+                    ),
+                    Decimal("0"),
+                )
+                / Decimal(win_count)
                 if win_count > 0
                 else Decimal("0")
             )
 
             average_loss = (
-                sum(t.realized_pnl for t in losing_trades) / Decimal(loss_count)
+                sum(
+                    (
+                        t.realized_pnl
+                        for t in losing_trades
+                        if t.realized_pnl is not None
+                    ),
+                    Decimal("0"),
+                )
+                / Decimal(loss_count)
                 if loss_count > 0
                 else Decimal("0")
             )
 
             largest_win = max(
-                (t.realized_pnl for t in winning_trades), default=Decimal("0")
+                (t.realized_pnl for t in winning_trades if t.realized_pnl is not None),
+                default=Decimal("0"),
             )
 
             largest_loss = min(
-                (t.realized_pnl for t in losing_trades), default=Decimal("0")
+                (t.realized_pnl for t in losing_trades if t.realized_pnl is not None),
+                default=Decimal("0"),
             )
 
             # Profit factor
-            gross_profit = sum(t.realized_pnl for t in winning_trades)
-            gross_loss = abs(sum(t.realized_pnl for t in losing_trades))
-            profit_factor = (
+            gross_profit = sum(
+                (t.realized_pnl for t in winning_trades if t.realized_pnl is not None),
+                Decimal("0"),
+            )
+            gross_loss = abs(
+                sum(
+                    (
+                        t.realized_pnl
+                        for t in losing_trades
+                        if t.realized_pnl is not None
+                    ),
+                    Decimal("0"),
+                )
+            )
+            profit_factor = Decimal(
                 gross_profit / gross_loss if gross_loss > 0 else Decimal("0")
             )
 
             # Fees
-            total_fees = sum(t.fees for t in trades)
+            total_fees = sum(t.fees for t in trades) or Decimal("0")
 
             # Create statistics object
             stats = TradeStatistics(
                 total_trades=total_trades,
-                total_volume=total_volume,
+                total_volume=Decimal(total_volume),
                 winning_trades=win_count,
                 losing_trades=loss_count,
                 win_rate=win_rate,
-                total_pnl=total_pnl,
+                total_pnl=Decimal(total_pnl),
                 average_win=average_win,
                 average_loss=average_loss,
-                largest_win=largest_win,
-                largest_loss=largest_loss,
-                profit_factor=profit_factor,
-                total_fees=total_fees,
+                largest_win=Decimal(largest_win) if largest_win else Decimal("0"),
+                largest_loss=Decimal(largest_loss) if largest_loss else Decimal("0"),
+                profit_factor=Decimal(profit_factor),
+                total_fees=Decimal(total_fees),
                 period_start=start_date,
                 period_end=end_date,
             )
@@ -382,20 +429,23 @@ class TradeHistoryService:
             stats = await self.calculate_statistics(start_date, end_date)
 
             # Trades by hour
-            trades_by_hour = {}
+            trades_by_hour: dict[int, int] = {}
             for trade in trades:
                 hour = trade.timestamp.hour
                 trades_by_hour[hour] = trades_by_hour.get(hour, 0) + 1
 
             # Trades by symbol
-            trades_by_symbol = {}
+            trades_by_symbol: dict[str, int] = {}
             for trade in trades:
                 symbol = trade.symbol
                 trades_by_symbol[symbol] = trades_by_symbol.get(symbol, 0) + 1
 
             # Daily P&L (from exit trades only)
             exit_trades = [t for t in trades if t.realized_pnl is not None]
-            daily_pnl = sum(t.realized_pnl for t in exit_trades)
+            daily_pnl = sum(
+                (t.realized_pnl for t in exit_trades if t.realized_pnl is not None),
+                Decimal("0"),
+            )
 
             # Create report
             report = DailyTradeReport(

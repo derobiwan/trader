@@ -6,7 +6,7 @@ Shared fixtures for integration testing.
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -24,10 +24,10 @@ def sample_ohlcv_data() -> pd.DataFrame:
 
     # Generate realistic-looking price data
     base_price = 50000
-    prices = [base_price]
+    prices: list[int] = [base_price]
     for _ in range(periods - 1):
         change = np.random.normal(0, 100)
-        prices.append(prices[-1] + change)
+        prices.append(int(prices[-1] + change))
 
     data = {
         "timestamp": dates,
@@ -145,7 +145,7 @@ def mock_trade_executor():
             return position
 
         async def close_position(
-            self, position_id: str, reason: str = None, force: bool = False
+            self, position_id: str, reason: Optional[str] = None, force: bool = False
         ):
             """Mock close position"""
             for i, pos in enumerate(self.positions):
@@ -289,7 +289,7 @@ def create_bollinger_bands(upper: Decimal, middle: Decimal, lower: Decimal):
 
 def create_snapshot(
     price: Decimal = Decimal("50000.00"),
-    rsi_value: Decimal = None,
+    rsi_value: Optional[Decimal] = None,
     is_bullish: bool = True,
 ):
     """Create a market data snapshot with optional indicators"""

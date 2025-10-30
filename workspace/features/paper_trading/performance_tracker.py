@@ -200,7 +200,7 @@ class PaperTradingPerformanceTracker:
         Returns:
             Performance report dictionary
         """
-        report = {
+        report: Dict[str, Any] = {
             "summary": {
                 "total_trades": self.metrics["total_trades"],
                 "winning_trades": self.metrics["winning_trades"],

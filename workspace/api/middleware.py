@@ -47,7 +47,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         # Add to response headers
-        response = await call_next(request)
+        response: Response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
 
         return response
@@ -70,7 +70,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Log request and response with timing."""
         if not settings.enable_request_logging:
-            return await call_next(request)
+            result: Response = await call_next(request)
+            return result
 
         # Get request ID (from RequestContextMiddleware)
         request_id = getattr(request.state, "request_id", "unknown")
@@ -94,7 +95,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         try:
-            response = await call_next(request)
+            response: Response = await call_next(request)
             duration = time.time() - start_time
 
             # Log response
@@ -146,7 +147,8 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Catch and format unhandled exceptions."""
         try:
-            return await call_next(request)
+            response: Response = await call_next(request)
+            return response
 
         except Exception as exc:
             # Get request ID for tracking
@@ -204,13 +206,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Apply rate limiting based on client IP."""
         # Skip rate limiting for health checks
         if request.url.path.startswith("/health"):
-            return await call_next(request)
+            result: Response = await call_next(request)
+            return result
 
         # Get client IP
         client_ip = request.client.host if request.client else "unknown"
         if client_ip == "unknown":
             # Can't rate limit without IP
-            return await call_next(request)
+            no_ip_response: Response = await call_next(request)
+            return no_ip_response
 
         # Get current time
         now = datetime.utcnow()
@@ -252,7 +256,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         history.append(now)
 
         # Process request
-        response = await call_next(request)
+        response: Response = await call_next(request)
 
         # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(self.max_requests)

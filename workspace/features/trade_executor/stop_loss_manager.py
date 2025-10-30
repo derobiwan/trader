@@ -15,9 +15,10 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, Optional
+from uuid import UUID
 
 from workspace.features.position_manager import PositionService
-from workspace.shared.database.connection import DatabasePool
+from workspace.shared.database.connection import get_pool
 
 from .executor_service import TradeExecutor
 from .models import OrderSide, StopLossLayer, StopLossProtection
@@ -74,7 +75,8 @@ class StopLossManager:
             emergency_threshold: Emergency loss threshold (15% = 0.15)
         """
         self.executor = executor
-        self.position_service = position_service or PositionService()
+        self.position_service = position_service
+        self._position_service_provided = position_service is not None
         self.layer2_interval = layer2_interval
         self.layer3_interval = layer3_interval
         self.emergency_threshold = emergency_threshold
@@ -110,8 +112,20 @@ class StopLossManager:
             ```
         """
         try:
+            # Initialize PositionService if not provided
+            if not self._position_service_provided:
+                pool = await get_pool()
+                self.position_service = PositionService(pool=pool)
+                logger.info(
+                    "StopLossManager: PositionService initialized with global pool"
+                )
+                self._position_service_provided = True  # Only initialize once
+
             # Get position details
-            position = await self.position_service.get_position(position_id)
+            if self.position_service is None:
+                raise RuntimeError("Position service not initialized")
+            position_uuid = UUID(position_id)
+            position = await self.position_service.get_position_by_id(position_uuid)
             if not position:
                 raise ValueError(f"Position {position_id} not found")
 
@@ -221,10 +235,15 @@ class StopLossManager:
             )
 
             if result.success:
-                logger.info(
-                    f"Layer 1 stop-loss order placed: {result.order.exchange_order_id} "
-                    f"(trigger: {stop_price})"
-                )
+                if result.order is not None:
+                    logger.info(
+                        f"Layer 1 stop-loss order placed: {result.order.exchange_order_id} "
+                        f"(trigger: {stop_price})"
+                    )
+                else:
+                    logger.info(
+                        f"Layer 1 stop-loss order placed (trigger: {stop_price})"
+                    )
                 return result
             else:
                 logger.error(
@@ -262,7 +281,11 @@ class StopLossManager:
                 await asyncio.sleep(self.layer2_interval)
 
                 # Check if position still exists
-                current_position = await self.position_service.get_position(position.id)
+                if self.position_service is None:
+                    raise RuntimeError("Position service not initialized")
+                current_position = await self.position_service.get_position_by_id(
+                    position.id
+                )
                 if not current_position or current_position.status != "open":
                     logger.info(
                         f"Layer 2: Position {position.id} no longer open, stopping monitoring"
@@ -299,10 +322,15 @@ class StopLossManager:
                     )
 
                     if close_result.success:
-                        logger.info(
-                            f"Layer 2: Position {position.id} closed successfully "
-                            f"(Order: {close_result.order.exchange_order_id})"
-                        )
+                        if close_result.order is not None:
+                            logger.info(
+                                f"Layer 2: Position {position.id} closed successfully "
+                                f"(Order: {close_result.order.exchange_order_id})"
+                            )
+                        else:
+                            logger.info(
+                                f"Layer 2: Position {position.id} closed successfully"
+                            )
 
                         # Update protection
                         protection.triggered_at = datetime.utcnow()
@@ -344,7 +372,11 @@ class StopLossManager:
                 await asyncio.sleep(self.layer3_interval)
 
                 # Check if position still exists
-                current_position = await self.position_service.get_position(position.id)
+                if self.position_service is None:
+                    raise RuntimeError("Position service not initialized")
+                current_position = await self.position_service.get_position_by_id(
+                    position.id
+                )
                 if not current_position or current_position.status != "open":
                     logger.info(
                         f"Layer 3: Position {position.id} no longer open, stopping monitoring"
@@ -390,10 +422,15 @@ class StopLossManager:
                     )
 
                     if close_result.success:
-                        logger.critical(
-                            f"Layer 3: EMERGENCY CLOSE successful for {position.id} "
-                            f"(Order: {close_result.order.exchange_order_id})"
-                        )
+                        if close_result.order is not None:
+                            logger.critical(
+                                f"Layer 3: EMERGENCY CLOSE successful for {position.id} "
+                                f"(Order: {close_result.order.exchange_order_id})"
+                            )
+                        else:
+                            logger.critical(
+                                f"Layer 3: EMERGENCY CLOSE successful for {position.id}"
+                            )
 
                         # Update protection
                         protection.triggered_at = datetime.utcnow()
@@ -432,7 +469,8 @@ class StopLossManager:
     async def _store_protection(self, protection: StopLossProtection):
         """Store stop-loss protection in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO stop_loss_protections (
@@ -464,7 +502,8 @@ class StopLossManager:
     async def _update_protection(self, protection: StopLossProtection):
         """Update stop-loss protection in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     UPDATE stop_loss_protections SET

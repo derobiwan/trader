@@ -170,7 +170,7 @@ class SecurityScanner:
         """
         logger.info("Scanning dependencies for vulnerabilities...")
         start_time = datetime.utcnow()
-        issues = []
+        issues: List[SecurityIssue] = []
 
         try:
             # Check if pyproject.toml exists
@@ -463,8 +463,8 @@ class SecurityScanner:
         issues = []
 
         try:
-            # Run bandit
-            result = subprocess.run(
+            # Run bandit (result unused, reads from output file instead)
+            _result = subprocess.run(  # noqa: F841
                 [
                     "bandit",
                     "-r",

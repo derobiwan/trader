@@ -197,7 +197,8 @@ class DatabasePool:
             )
         """
         async with self.acquire() as conn:
-            return await conn.execute(query, *args, timeout=timeout)
+            result = await conn.execute(query, *args, timeout=timeout)
+            return str(result)
 
     async def fetch(self, query: str, *args, timeout: Optional[float] = None) -> list:
         """
@@ -215,7 +216,8 @@ class DatabasePool:
             positions = await pool.fetch("SELECT * FROM positions WHERE status = $1", "OPEN")
         """
         async with self.acquire() as conn:
-            return await conn.fetch(query, *args, timeout=timeout)
+            result = await conn.fetch(query, *args, timeout=timeout)
+            return list(result)
 
     async def fetchrow(
         self, query: str, *args, timeout: Optional[float] = None

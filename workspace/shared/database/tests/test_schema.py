@@ -24,8 +24,9 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 )
 
-from workspace.shared.database.connection import DatabasePool
-from workspace.shared.database.models import (
+# Imports after path setup to ensure correct module resolution
+from workspace.shared.database.connection import DatabasePool  # noqa: E402
+from workspace.shared.database.models import (  # noqa: E402
     CircuitBreakerState,
     MarketData,
     Order,

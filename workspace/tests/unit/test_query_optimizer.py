@@ -87,7 +87,7 @@ async def test_create_all_indexes_partial_failure(optimizer, mock_connection):
 
     # Assert
     assert isinstance(results, dict)
-    success_count = sum(1 for v in results.values() if v)
+    _success_count = sum(1 for v in results.values() if v)  # noqa: F841
     failure_count = sum(1 for v in results.values() if not v)
     assert failure_count > 0  # Some failures occurred
 

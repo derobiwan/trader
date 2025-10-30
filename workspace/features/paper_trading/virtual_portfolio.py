@@ -226,7 +226,7 @@ class VirtualPortfolio:
             }
         )
 
-        return pnl
+        return Decimal(str(pnl))
 
     def get_unrealized_pnl(self, current_prices: Dict[str, Decimal]) -> Decimal:
         """
@@ -276,9 +276,11 @@ class VirtualPortfolio:
         pos = self.positions[symbol]
 
         if pos["side"] == "long":
-            return (current_price - pos["entry_price"]) * pos["quantity"]
+            pnl = (current_price - pos["entry_price"]) * pos["quantity"]
+            return Decimal(str(pnl))
         else:
-            return (pos["entry_price"] - current_price) * pos["quantity"]
+            pnl = (pos["entry_price"] - current_price) * pos["quantity"]
+            return Decimal(str(pnl))
 
     def get_total_equity(self, current_prices: Dict[str, Decimal]) -> Decimal:
         """
@@ -305,7 +307,7 @@ class VirtualPortfolio:
         Returns:
             Portfolio summary with balance, positions, and P&L
         """
-        summary = {
+        summary: Dict[str, Any] = {
             "initial_balance": float(self.initial_balance),
             "current_balance": float(self.balance),
             "open_positions": len(self.positions),
@@ -336,12 +338,15 @@ class VirtualPortfolio:
                 "quantity": float(pos["quantity"]),
                 "entry_price": float(pos["entry_price"]),
                 "unrealized_pnl": (
-                    float(
-                        self.get_position_pnl(
+                    float(pnl)
+                    if current_prices
+                    and pos["symbol"] in current_prices
+                    and (
+                        pnl := self.get_position_pnl(
                             pos["symbol"], current_prices[pos["symbol"]]
                         )
                     )
-                    if current_prices and pos["symbol"] in current_prices
+                    is not None
                     else None
                 ),
             }

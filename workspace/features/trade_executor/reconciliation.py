@@ -12,11 +12,12 @@ import asyncio
 import logging
 from decimal import Decimal
 from typing import Dict, List, Optional
+from uuid import UUID
 
 import ccxt.async_support as ccxt
 
 from workspace.features.position_manager import PositionService
-from workspace.shared.database.connection import DatabasePool
+from workspace.shared.database.connection import get_pool
 
 from .models import PositionSnapshot, ReconciliationResult
 
@@ -60,15 +61,28 @@ class ReconciliationService:
             discrepancy_threshold: Minimum discrepancy to flag (0.001%)
         """
         self.exchange = exchange
-        self.position_service = position_service or PositionService()
+        self.position_service = position_service
+        self._position_service_provided = position_service is not None
         self.periodic_interval = periodic_interval
         self.discrepancy_threshold = discrepancy_threshold
 
         # Periodic reconciliation task
         self.reconciliation_task: Optional[asyncio.Task] = None
 
+    async def _ensure_position_service(self) -> None:
+        """Ensure PositionService is initialized"""
+        if self.position_service is None:
+            pool = await get_pool()
+            self.position_service = PositionService(pool=pool)
+            logger.info(
+                "ReconciliationService: PositionService initialized with global pool"
+            )
+
     async def start_periodic_reconciliation(self):
         """Start periodic reconciliation task"""
+        # Initialize PositionService if not provided
+        await self._ensure_position_service()
+
         if self.reconciliation_task and not self.reconciliation_task.done():
             logger.warning("Periodic reconciliation already running")
             return
@@ -103,10 +117,11 @@ class ReconciliationService:
             List of ReconciliationResult objects
         """
         try:
+            await self._ensure_position_service()
             logger.info("Starting full position reconciliation")
 
             # Get all active positions from system
-            system_positions = await self.position_service.get_active_positions()
+            system_positions = await self.position_service.get_active_positions()  # type: ignore[union-attr]
 
             # Get all positions from exchange
             exchange_positions = await self._fetch_exchange_positions()
@@ -135,7 +150,7 @@ class ReconciliationService:
                         f"{symbol}"
                     )
                     result = ReconciliationResult(
-                        position_id=sys_pos.id,
+                        position_id=str(sys_pos.id),
                         system_quantity=sys_pos.quantity,
                         exchange_quantity=Decimal("0"),
                         discrepancy=sys_pos.quantity,
@@ -147,6 +162,8 @@ class ReconciliationService:
                     results.append(result)
 
                     # Close position in system
+                    if self.position_service is None:
+                        raise RuntimeError("Position service not initialized")
                     await self.position_service.close_position(
                         position_id=sys_pos.id,
                         close_price=sys_pos.current_price or sys_pos.entry_price,
@@ -180,14 +197,18 @@ class ReconciliationService:
         Reconcile a specific position
 
         Args:
-            position_id: Position ID to reconcile
+            position_id: Position ID to reconcile (string UUID)
 
         Returns:
             ReconciliationResult or None if position not found
         """
         try:
+            await self._ensure_position_service()
             # Get system position
-            sys_pos = await self.position_service.get_position(position_id)
+            if self.position_service is None:
+                raise RuntimeError("Position service not initialized")
+            position_uuid = UUID(position_id)
+            sys_pos = await self.position_service.get_position_by_id(position_uuid)
             if not sys_pos:
                 logger.error(f"Position {position_id} not found in system")
                 return None
@@ -270,6 +291,8 @@ class ReconciliationService:
                 )
 
                 # Recalculate P&L with corrected quantity
+                if self.position_service is None:
+                    raise RuntimeError("Position service not initialized")
                 await self.position_service.update_position_price(
                     position_id=sys_pos.id,
                     current_price=sys_pos.current_price or sys_pos.entry_price,
@@ -347,7 +370,8 @@ class ReconciliationService:
     async def _update_position_quantity(self, position_id: str, new_quantity: Decimal):
         """Update position quantity in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     UPDATE positions
@@ -366,7 +390,8 @@ class ReconciliationService:
     async def _store_reconciliation_result(self, result: ReconciliationResult):
         """Store reconciliation result in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO position_reconciliation (
@@ -401,18 +426,22 @@ class ReconciliationService:
             PositionSnapshot or None if position not found
         """
         try:
-            position = await self.position_service.get_position(position_id)
+            await self._ensure_position_service()
+            if self.position_service is None:
+                raise RuntimeError("Position service not initialized")
+            position_uuid = UUID(position_id)
+            position = await self.position_service.get_position_by_id(position_uuid)
             if not position:
                 return None
 
             snapshot = PositionSnapshot(
-                position_id=position.id,
+                position_id=str(position.id),
                 symbol=position.symbol,
                 side=position.side,
                 quantity=position.quantity,
                 entry_price=position.entry_price,
                 current_price=position.current_price or position.entry_price,
-                unrealized_pnl=position.pnl_chf,
+                unrealized_pnl=position.pnl_chf or Decimal("0"),
             )
 
             # Store snapshot in database
@@ -427,7 +456,8 @@ class ReconciliationService:
     async def _store_position_snapshot(self, snapshot: PositionSnapshot):
         """Store position snapshot in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO position_snapshots (

@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 # Optional redis import (only needed for production)
 try:
@@ -80,7 +80,9 @@ class CacheService:
         storage_mode = (
             "redis"
             if (use_redis and enabled)
-            else "in-memory" if enabled else "disabled"
+            else "in-memory"
+            if enabled
+            else "disabled"
         )
         logger.info(f"Cache Service initialized ({storage_mode} mode)")
 
@@ -282,7 +284,7 @@ class CacheService:
     async def get_or_set(
         self,
         key: str,
-        fetch_func: callable,
+        fetch_func: Callable,
         ttl_seconds: Optional[int] = None,
     ) -> Any:
         """
@@ -302,7 +304,10 @@ class CacheService:
             return value
 
         # Fetch value
-        value = await fetch_func()
+        if callable(fetch_func):
+            value = await fetch_func()
+        else:
+            raise TypeError("fetch_func must be callable")
 
         # Cache it
         await self.set(key, value, ttl_seconds)

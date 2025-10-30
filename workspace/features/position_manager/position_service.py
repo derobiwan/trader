@@ -289,6 +289,9 @@ class PositionService:
                     ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))  # Exponential backoff
 
+        # Should not reach here due to raise above, but mypy needs explicit return
+        raise ConnectionError("Failed to create position - unexpected error")
+
     # ========================================================================
     # Position Updates
     # ========================================================================
@@ -379,6 +382,9 @@ class PositionService:
                         f"Failed to update position after {self._max_retries} attempts"
                     ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))
+
+        # Should not reach here due to raise above, but mypy needs explicit return
+        raise ConnectionError("Failed to update position - unexpected error")
 
     # ========================================================================
     # Position Closure
@@ -554,6 +560,9 @@ class PositionService:
                         f"Failed to close position after {self._max_retries} attempts"
                     ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))
+
+        # Should not reach here due to raise above, but mypy needs explicit return
+        raise ConnectionError("Failed to close position - unexpected error")
 
     # ========================================================================
     # Position Queries

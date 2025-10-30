@@ -27,6 +27,7 @@ from uuid import uuid4
 
 from workspace.features.trade_executor.executor_service import TradeExecutor
 from workspace.features.trade_executor.models import (
+    ExecutionResult,
     Order,
     OrderSide,
     OrderStatus,
@@ -187,8 +188,8 @@ class PaperTradingExecutor(TradeExecutor):
         quantity: Decimal,
         reduce_only: bool = False,
         position_id: Optional[str] = None,
-        **kwargs,
-    ) -> Order:
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> ExecutionResult:
         """
         Simulate market order execution
 
@@ -201,7 +202,7 @@ class PaperTradingExecutor(TradeExecutor):
             **kwargs: Additional order parameters
 
         Returns:
-            Simulated Order object
+            ExecutionResult with simulated Order object
         """
         start_time = time.time()
 
@@ -303,12 +304,11 @@ class PaperTradingExecutor(TradeExecutor):
 
             # Record metrics
             latency_ms = (time.time() - start_time) * 1000
-            self.metrics_service.record_order_execution(
-                symbol=symbol,
-                side=side.value,
-                order_type=OrderType.MARKET.value,
+            self.metrics_service.record_trade(
                 success=True,
-                latency_ms=latency_ms,
+                realized_pnl=pnl if reduce_only else None,
+                fees=fees,
+                latency_ms=Decimal(str(latency_ms)),
             )
 
             logger.info(
@@ -316,22 +316,25 @@ class PaperTradingExecutor(TradeExecutor):
                 f"{symbol} @ ${execution_price:.2f} (fees: ${fees:.4f})"
             )
 
-            return order
+            return ExecutionResult(
+                success=True,
+                order=order,
+                latency_ms=Decimal(str(latency_ms)),
+            )
 
         except Exception as e:
             logger.error(f"Paper market order failed: {e}", exc_info=True)
 
             # Record failure metrics
             latency_ms = (time.time() - start_time) * 1000
-            self.metrics_service.record_order_execution(
-                symbol=symbol,
-                side=side.value,
-                order_type=OrderType.MARKET.value,
-                success=False,
-                latency_ms=latency_ms,
-            )
+            # Note: We don't record failed trades in metrics
 
-            raise
+            return ExecutionResult(
+                success=False,
+                error_code="PAPER_TRADING_ERROR",
+                error_message=str(e),
+                latency_ms=Decimal(str(latency_ms)),
+            )
 
     async def create_stop_loss_order(
         self,
@@ -384,9 +387,12 @@ class PaperTradingExecutor(TradeExecutor):
 
         return order
 
-    async def get_account_balance(self) -> Decimal:
+    async def get_account_balance(self, cache_ttl_seconds: int = 60) -> Decimal:
         """
         Get virtual account balance
+
+        Args:
+            cache_ttl_seconds: Cache TTL (unused in paper trading)
 
         Returns:
             Virtual balance in USDT

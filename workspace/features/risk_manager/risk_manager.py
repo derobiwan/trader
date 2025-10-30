@@ -436,7 +436,8 @@ class RiskManager:
     async def _get_open_positions(self) -> List[Any]:
         """Get list of currently open positions"""
         if self.position_tracker:
-            return await self.position_tracker.get_open_positions()
+            positions = await self.position_tracker.get_open_positions()
+            return list(positions) if positions else []
         return []
 
     async def _calculate_total_exposure(self) -> Decimal:
@@ -450,7 +451,7 @@ class RiskManager:
             getattr(pos, "size_pct", Decimal("0")) for pos in positions
         )
 
-        return total_exposure
+        return Decimal(str(total_exposure))
 
     async def _get_daily_pnl(self) -> Decimal:
         """Get today's P&L in CHF"""

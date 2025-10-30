@@ -171,7 +171,8 @@ class LLMDecisionEngine:
                 if hasattr(snapshot.rsi, "value"):
                     rsi = float(snapshot.rsi.value)
                 else:
-                    rsi = float(snapshot.rsi)
+                    # RSI object, extract numeric value
+                    rsi = float(str(snapshot.rsi))  # type: ignore
                 rounded_rsi = round(rsi / 5) * 5  # Nearest 5
             else:
                 rounded_rsi = 0
@@ -180,7 +181,8 @@ class LLMDecisionEngine:
                 if hasattr(snapshot.macd, "macd_line"):
                     macd = float(snapshot.macd.macd_line)
                 else:
-                    macd = float(snapshot.macd)
+                    # MACD object, extract numeric value
+                    macd = float(str(snapshot.macd))  # type: ignore
                 rounded_macd = round(macd, 2)  # 2 decimals
             else:
                 rounded_macd = 0

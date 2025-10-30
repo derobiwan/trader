@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 
 from workspace.features.caching import CacheService
-from workspace.shared.database.connection import DatabasePool
+from workspace.shared.database.connection import get_pool
 
 from .indicators import IndicatorCalculator
 from .models import OHLCV, MarketDataSnapshot, Ticker, Timeframe
@@ -400,7 +400,8 @@ class MarketDataService:
             formatted_symbol = self._format_symbol(symbol)
 
             try:
-                async with DatabasePool.get_connection() as conn:
+                pool = await get_pool()
+                async with pool.acquire() as conn:
                     # Load last N candles
                     rows = await conn.fetch(
                         """
@@ -527,7 +528,8 @@ class MarketDataService:
     async def _store_ohlcv(self, ohlcv: OHLCV):
         """Store OHLCV data to database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO market_data (

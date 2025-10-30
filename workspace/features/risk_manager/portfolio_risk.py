@@ -44,11 +44,11 @@ class PositionInfo:
     unrealized_pnl: Decimal
     leverage: int
     position_value_chf: Decimal  # Position size in CHF
-    timestamp: datetime = None
+    timestamp: Optional[datetime] = None
 
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            object.__setattr__(self, "timestamp", datetime.utcnow())
 
 
 @dataclass
@@ -301,7 +301,9 @@ class PortfolioRiskManager:
         Returns:
             Total exposure across all positions
         """
-        return sum(pos.position_value_chf for pos in self.positions.values())
+        return sum(
+            pos.position_value_chf for pos in self.positions.values()
+        ) or Decimal("0")
 
     def calculate_total_unrealized_pnl(self) -> Decimal:
         """
@@ -310,7 +312,9 @@ class PortfolioRiskManager:
         Returns:
             Total unrealized P&L in CHF
         """
-        return sum(pos.unrealized_pnl for pos in self.positions.values())
+        return sum(pos.unrealized_pnl for pos in self.positions.values()) or Decimal(
+            "0"
+        )
 
     def get_largest_position(self) -> Tuple[Optional[PositionInfo], Decimal, float]:
         """
@@ -394,7 +398,7 @@ class PortfolioRiskManager:
         # Check single position concentration
         largest_pos, largest_value, largest_pct = self.get_largest_position()
 
-        if largest_pct > max_concentration_pct * 100:
+        if largest_pos is not None and largest_pct > max_concentration_pct * 100:
             warnings.append(
                 f"Largest position ({largest_pos.symbol}) is {largest_pct:.1f}% "
                 f"of portfolio (limit: {max_concentration_pct:.1%})"

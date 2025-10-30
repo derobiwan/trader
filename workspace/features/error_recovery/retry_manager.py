@@ -117,7 +117,7 @@ class RetryManager:
             jitter_amount = delay * 0.1 * random.random()
             delay += jitter_amount
 
-        return delay
+        return float(delay)
 
     @staticmethod
     def _fibonacci(n: int) -> int:

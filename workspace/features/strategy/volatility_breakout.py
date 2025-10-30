@@ -223,6 +223,8 @@ class VolatilityBreakoutStrategy(BaseStrategy):
     def _calculate_buy_confidence(self, snapshot: MarketDataSnapshot) -> Decimal:
         """Calculate confidence for BUY signal"""
         bb = snapshot.bollinger
+        if bb is None:
+            return Decimal("0.65")  # Default confidence
 
         # Base confidence from squeeze strength
         # Tighter squeeze = higher confidence
@@ -239,6 +241,8 @@ class VolatilityBreakoutStrategy(BaseStrategy):
         """Calculate confidence for SELL signal"""
         # Same logic as buy (symmetric)
         bb = snapshot.bollinger
+        if bb is None:
+            return Decimal("0.65")  # Default confidence
 
         squeeze_strength = (
             self.squeeze_threshold - bb.bandwidth

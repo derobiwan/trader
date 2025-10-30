@@ -172,7 +172,6 @@ class LoadTester:
             1.0 / requests_per_second if requests_per_second > 0 else 0
         )
 
-        tasks = []
         request_id = 0
         start_time = time.time()
 

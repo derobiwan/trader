@@ -252,7 +252,7 @@ class CorrelationAnalyzer:
             logger.debug(f"{symbol}: {len(returns)} return points")
 
         # Calculate correlation matrix
-        matrix = {}
+        matrix: dict[str, dict[str, float]] = {}
         for symbol1 in symbols:
             matrix[symbol1] = {}
             for symbol2 in symbols:

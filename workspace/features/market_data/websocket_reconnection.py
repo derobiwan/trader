@@ -112,7 +112,7 @@ class WebSocketReconnectionManager:
         # Jitter range: +/- (jitter_range * delay)
         jitter = random.uniform(-delay * self.jitter_range, delay * self.jitter_range)
 
-        return max(0, delay + jitter)  # Ensure non-negative
+        return float(max(0, delay + jitter))  # Ensure non-negative
 
     async def connect_with_retry(
         self,
@@ -204,6 +204,9 @@ class WebSocketReconnectionManager:
 
                 logger.info(f"Retrying in {delay:.2f}s...")
                 await asyncio.sleep(delay)
+
+        # Should not reach here, but return False as fallback
+        return False
 
     def mark_disconnected(self):
         """Mark connection as disconnected and record disconnect time"""

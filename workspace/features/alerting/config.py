@@ -99,6 +99,13 @@ def load_alerting_config() -> AlertingConfig:
     if email_enabled and all(
         [smtp_host, smtp_username, smtp_password, email_from, email_to]
     ):
+        # Type narrowing: all() ensures none of these are None
+        assert smtp_host is not None
+        assert smtp_username is not None
+        assert smtp_password is not None
+        assert email_from is not None
+        assert email_to is not None
+
         config.email = EmailConfig(
             enabled=True,
             smtp_host=smtp_host,

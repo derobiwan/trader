@@ -46,7 +46,7 @@ class BybitWebSocketClient:
     def __init__(
         self,
         symbols: List[str],
-        timeframes: List[Timeframe] = None,
+        timeframes: Optional[List[Timeframe]] = None,
         testnet: bool = True,
         on_ticker: Optional[Callable[[Ticker], None]] = None,
         on_kline: Optional[Callable[[OHLCV], None]] = None,
@@ -89,7 +89,7 @@ class BybitWebSocketClient:
         self.running = False
 
         # Subscription tracking
-        self.subscribed_channels = []
+        self.subscribed_channels: list[str] = []
 
         # Connection state
         self.url = self.TESTNET_PUBLIC_URL if testnet else self.MAINNET_PUBLIC_URL

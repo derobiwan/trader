@@ -192,9 +192,11 @@ class TradingScheduler:
         Returns:
             Dictionary with scheduler metrics
         """
+        from typing import Any, Dict
+
         now = datetime.utcnow()
 
-        status = {
+        status: Dict[str, Any] = {
             "state": self.state.value,
             "cycle_count": self.cycle_count,
             "error_count": self.error_count,
@@ -208,7 +210,7 @@ class TradingScheduler:
 
         if self.next_cycle_time and self.state == SchedulerState.RUNNING:
             seconds_until_next = (self.next_cycle_time - now).total_seconds()
-            status["seconds_until_next_cycle"] = max(0, seconds_until_next)
+            status["seconds_until_next_cycle"] = float(max(0, seconds_until_next))
 
         return status
 

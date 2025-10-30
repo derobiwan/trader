@@ -219,7 +219,7 @@ class TestMockAlertChannel:
         def __init__(self, name: str, should_fail: bool = False):
             super().__init__(name)
             self.should_fail = should_fail
-            self.sent_alerts = []
+            self.sent_alerts: list[Alert] = []
 
         async def send(self, alert: Alert) -> bool:
             if self.should_fail:

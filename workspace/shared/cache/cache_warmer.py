@@ -19,7 +19,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ class CacheWarmer:
         )
 
         # Handle exceptions
-        final_results = []
+        final_results: List[CacheWarmingResult] = []
         for result in results:
             if isinstance(result, Exception):
                 logger.error(f"Cache warming error: {result}")
@@ -113,7 +113,7 @@ class CacheWarmer:
                         error_message=str(result),
                     )
                 )
-            else:
+            elif isinstance(result, CacheWarmingResult):
                 final_results.append(result)
 
         total_time = (asyncio.get_event_loop().time() - start_time) * 1000
@@ -419,14 +419,14 @@ class CacheWarmer:
     # Cache Statistics
     # ========================================================================
 
-    def get_cache_stats(self) -> Dict:
+    def get_cache_stats(self) -> Dict[str, Any]:
         """
         Get cache statistics from all services.
 
         Returns:
             Dictionary with cache statistics
         """
-        stats = {
+        stats: Dict[str, Any] = {
             "timestamp": datetime.utcnow(),
             "services": {},
         }
@@ -435,9 +435,9 @@ class CacheWarmer:
         if self.market_data_service and hasattr(
             self.market_data_service, "get_cache_stats"
         ):
-            stats["services"][
-                "market_data"
-            ] = self.market_data_service.get_cache_stats()
+            stats["services"]["market_data"] = (
+                self.market_data_service.get_cache_stats()
+            )
 
         # Account service cache stats
         if self.account_service and hasattr(self.account_service, "get_cache_stats"):

@@ -366,7 +366,7 @@ class StopLossManager:
         else:
             loss = current_price - entry_price
 
-        return (loss / entry_price).abs()
+        return abs(loss / entry_price)
 
     async def _close_position_market(self, protection: Protection):
         """Close position at market (Layer 2)"""

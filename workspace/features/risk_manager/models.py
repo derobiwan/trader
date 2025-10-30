@@ -256,7 +256,7 @@ class CircuitBreakerStatus:
             f"Trades Today: {self.daily_trade_count} (W: {self.daily_winning_trades}, L: {self.daily_losing_trades})",
         ]
 
-        if self.is_tripped():
+        if self.is_tripped() and self.tripped_at is not None:
             lines.append(f"⚠️ TRIPPED at {self.tripped_at.strftime('%H:%M:%S UTC')}")
 
         if self.is_manual_reset_required():
