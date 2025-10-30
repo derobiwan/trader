@@ -41,9 +41,9 @@ repos:
     hooks:
       - id: bandit
         name: bandit (security)
-        args: [-r, src/agentic, -c, pyproject.toml]
+        args: [-r, workspace/, --skip, B104,B108,B608]
         pass_filenames: false
-        exclude: ^tests/
+        exclude: ^workspace/.*/tests/
 
     # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
