@@ -24,24 +24,23 @@ import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import Any, List, Optional
 import json
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from workspace.features.trading_loop import TradingEngine
-from workspace.features.market_data import MarketDataService
+# Imports must come after sys.path manipulation
+from workspace.features.trading_loop import TradingEngine  # noqa: E402
+from workspace.features.market_data import MarketDataService  # noqa: E402
 
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('paper_trading_test.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("paper_trading_test.log"), logging.StreamHandler()],
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +60,7 @@ class PaperTradingTestRunner:
         duration_days: int = 7,
         cycles: int = 3360,  # 7 days * 480 cycles/day
         initial_balance: Decimal = Decimal("10000"),
-        symbols: list = None,
+        symbols: Optional[List[Any]] = None,
     ):
         """
         Initialize test runner
@@ -86,15 +85,15 @@ class PaperTradingTestRunner:
         self.engine = None
         self.start_time = None
         self.end_time = None
-        self.results = []
+        self.results: List[Any] = []
 
     async def setup(self):
         """Setup trading engine and services"""
         logger.info(f"Setting up paper trading test ({self.mode} mode)")
 
         # Get API credentials from environment
-        api_key = os.getenv('BYBIT_API_KEY')
-        api_secret = os.getenv('BYBIT_API_SECRET')
+        api_key = os.getenv("BYBIT_API_KEY")
+        api_secret = os.getenv("BYBIT_API_SECRET")
 
         if not api_key or not api_secret:
             raise ValueError(
@@ -226,37 +225,42 @@ class PaperTradingTestRunner:
             return
 
         # Add test metadata
-        report['test_metadata'] = {
-            'mode': self.mode,
-            'duration_days': self.duration_days,
-            'total_cycles': len(self.results),
-            'start_time': self.start_time.isoformat(),
-            'end_time': self.end_time.isoformat(),
-            'elapsed_seconds': (self.end_time - self.start_time).total_seconds(),
-            'symbols': self.symbols,
+        report["test_metadata"] = {
+            "mode": self.mode,
+            "duration_days": self.duration_days,
+            "total_cycles": len(self.results),
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat(),
+            "elapsed_seconds": (self.end_time - self.start_time).total_seconds(),
+            "symbols": self.symbols,
         }
 
         # Add cycle statistics
         successful_cycles = sum(1 for r in self.results if r.success)
-        report['cycle_statistics'] = {
-            'total_cycles': len(self.results),
-            'successful_cycles': successful_cycles,
-            'failed_cycles': len(self.results) - successful_cycles,
-            'success_rate': successful_cycles / len(self.results) * 100 if self.results else 0,
-            'avg_cycle_duration': (
+        report["cycle_statistics"] = {
+            "total_cycles": len(self.results),
+            "successful_cycles": successful_cycles,
+            "failed_cycles": len(self.results) - successful_cycles,
+            "success_rate": (
+                successful_cycles / len(self.results) * 100 if self.results else 0
+            ),
+            "avg_cycle_duration": (
                 sum(r.duration_seconds for r in self.results) / len(self.results)
-                if self.results else 0
+                if self.results
+                else 0
             ),
         }
 
         # Save report to file
-        report_filename = f"paper_trading_report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
-        report_path = Path('reports') / report_filename
+        report_filename = (
+            f"paper_trading_report_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+        )
+        report_path = Path("reports") / report_filename
 
         # Create reports directory if needed
         report_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(report_path, 'w') as f:
+        with open(report_path, "w") as f:
             json.dump(report, f, indent=2, default=str)
 
         logger.info(f"Report saved to {report_path}")
@@ -326,36 +330,34 @@ class PaperTradingTestRunner:
 
 async def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(
-        description="Run 7-day paper trading test"
+    parser = argparse.ArgumentParser(description="Run 7-day paper trading test")
+
+    parser.add_argument(
+        "--mode",
+        choices=["simulated", "realtime"],
+        default="simulated",
+        help="Test mode: simulated (fast) or realtime (actual 7 days)",
     )
 
     parser.add_argument(
-        '--mode',
-        choices=['simulated', 'realtime'],
-        default='simulated',
-        help='Test mode: simulated (fast) or realtime (actual 7 days)'
-    )
-
-    parser.add_argument(
-        '--duration-days',
+        "--duration-days",
         type=int,
         default=7,
-        help='Duration in days (for realtime mode)'
+        help="Duration in days (for realtime mode)",
     )
 
     parser.add_argument(
-        '--cycles',
+        "--cycles",
         type=int,
         default=3360,
-        help='Number of cycles (for simulated mode, default: 3360 = 7 days)'
+        help="Number of cycles (for simulated mode, default: 3360 = 7 days)",
     )
 
     parser.add_argument(
-        '--initial-balance',
+        "--initial-balance",
         type=float,
         default=10000.0,
-        help='Initial balance in USDT (default: 10000)'
+        help="Initial balance in USDT (default: 10000)",
     )
 
     args = parser.parse_args()

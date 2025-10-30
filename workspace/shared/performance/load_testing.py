@@ -732,7 +732,7 @@ class LoadTester:
         report += f"{'Users':<10} {'Req/s':<10} {'Avg(ms)':<12} {'P95(ms)':<12} {'Errors':<10}\n"
         report += "-" * 80 + "\n"
 
-        for i, result in enumerate(results):
+        for _i, result in enumerate(results):
             concurrent_users = result.total_requests // result.total_duration_seconds
             report += (
                 f"{concurrent_users:<10} "

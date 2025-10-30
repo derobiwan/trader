@@ -363,7 +363,6 @@ async def get_redis() -> RedisManager:
         redis = await get_redis()
         await redis.set("key", "value", ttl_seconds=300)
     """
-    global _global_redis
     if _global_redis is None or not _global_redis.is_initialized:
         raise RuntimeError(
             "Global Redis manager not initialized. "

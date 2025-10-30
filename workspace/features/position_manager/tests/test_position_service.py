@@ -840,7 +840,7 @@ async def test_concurrent_price_updates(position_service):
     """Test concurrent price updates on multiple positions."""
     # Create multiple positions
     positions = []
-    for i in range(5):
+    for _i in range(5):
         position = await position_service.create_position(
             symbol="BTCUSDT",
             side="LONG",

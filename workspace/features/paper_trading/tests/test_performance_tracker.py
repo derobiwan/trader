@@ -78,7 +78,7 @@ def test_record_losing_trade(tracker):
 def test_calculate_win_rate(tracker):
     """Test win rate calculation"""
     # Record 3 wins and 2 losses
-    for i in range(3):
+    for _i in range(3):
         tracker.record_trade(
             {
                 "symbol": "BTC/USDT:USDT",
@@ -91,7 +91,7 @@ def test_calculate_win_rate(tracker):
             }
         )
 
-    for i in range(2):
+    for _i in range(2):
         tracker.record_trade(
             {
                 "symbol": "BTC/USDT:USDT",
@@ -205,7 +205,7 @@ def test_daily_pnl_tracking(tracker):
     today = datetime.utcnow()
 
     # Record multiple trades on same day
-    for i in range(3):
+    for _i in range(3):
         tracker.record_trade(
             {
                 "symbol": "BTC/USDT:USDT",

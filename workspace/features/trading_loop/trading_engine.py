@@ -382,7 +382,7 @@ class TradingEngine:
             # Placeholder: Generate HOLD signals for all symbols
             logger.debug("No decision engine configured, generating HOLD signals")
 
-            for symbol, snapshot in snapshots.items():
+            for symbol, _snapshot in snapshots.items():
                 signal = TradingSignal(
                     symbol=symbol,
                     decision=TradingDecision.HOLD,

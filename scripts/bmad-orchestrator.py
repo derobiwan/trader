@@ -70,7 +70,8 @@ class BMADOrchestrator:
         # Phase 1: BMAD Planning
         print("\n📋 Phase 1: BMAD Planning")
         print("-" * 60)
-        print("""
+        print(
+            """
 This phase creates comprehensive specifications:
 
 1. **Analyst Research** (Optional)
@@ -97,13 +98,15 @@ You can do this in:
 
 When ready, run:
   python scripts/bmad-orchestrator.py import-planning --project {project_name}
-        """)
+        """
+        )
 
     def _run_quick_workflow(self, project_name: str):
         """Execute quick workflow for small projects"""
         print("\n⚡ Quick Workflow (Small Projects)")
         print("-" * 60)
-        print("""
+        print(
+            """
 For small projects, skip full BMAD planning:
 
 1. Create minimal docs/prd.md with:
@@ -120,7 +123,8 @@ For small projects, skip full BMAD planning:
 
 5. Start development:
    python scripts/story-dev.py work-on-story STORY-001
-        """)
+        """
+        )
 
     def import_planning(self, project_name: str):
         """Import BMAD planning artifacts to PRPs"""
@@ -143,7 +147,8 @@ For small projects, skip full BMAD planning:
             print("\n✅ Planning imported successfully!")
             print("\n📖 Phase 3: Story Generation")
             print("-" * 60)
-            print("""
+            print(
+                """
 Next: Generate development stories
 
 Option 1: Use Scrum Master agent in Claude Code
@@ -157,7 +162,8 @@ Option 3: Create stories manually using template:
 
 After creating stories, sync them:
   python scripts/bmad-integration.py sync-stories
-            """)
+            """
+            )
         else:
             print("\n⚠️  Import had errors. Check output above.")
 
@@ -167,7 +173,8 @@ After creating stories, sync them:
         """Guide user through story generation"""
         print("\n📖 Story Generation Guide")
         print("=" * 60)
-        print("""
+        print(
+            """
 BMAD stories are detailed development units that include:
 - Clear description
 - Technical context
@@ -208,13 +215,15 @@ python scripts/bmad-integration.py status
 # Start development
 python scripts/story-dev.py work-on-story STORY-001
 ```
-        """)
+        """
+        )
 
     def show_workflow_diagram(self):
         """Show visual workflow diagram"""
         print("\n🎯 BMAD-PRPs Unified Workflow")
         print("=" * 60)
-        print("""
+        print(
+            """
 ┌─────────────────────────────────────────────────────────┐
 │ PHASE 0: INITIALIZATION                                 │
 │ • Run: bmad-orchestrator.py start-project               │
@@ -257,7 +266,8 @@ python scripts/story-dev.py work-on-story STORY-001
   Stories:  bmad-orchestrator.py generate-stories
   Develop:  story-dev.py work-on-story STORY-001
   Status:   bmad-integration.py status
-        """)
+        """
+        )
 
     def check_integration(self):
         """Check if BMAD integration is properly set up"""

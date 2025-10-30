@@ -57,7 +57,7 @@ class TestWebSocketHealthMonitor:
         """Test recording multiple messages"""
         monitor = WebSocketHealthMonitor()
 
-        for i in range(10):
+        for _i in range(10):
             monitor.record_message()
 
         assert monitor.metrics.total_messages == 10
@@ -319,7 +319,7 @@ class TestWebSocketHealthMonitor:
         """Test tracking multiple disconnects"""
         monitor = WebSocketHealthMonitor()
 
-        for i in range(5):
+        for _i in range(5):
             monitor.record_disconnect()
 
         assert monitor.disconnect_count == 5

@@ -385,7 +385,6 @@ async def get_pool() -> DatabasePool:
         pool = await get_pool()
         positions = await pool.fetch("SELECT * FROM positions")
     """
-    global _global_pool
     if _global_pool is None or not _global_pool.is_initialized:
         raise RuntimeError(
             "Global database pool not initialized. "

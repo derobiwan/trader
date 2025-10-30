@@ -760,12 +760,8 @@ class TestStrategyIntegration:
             VolatilityBreakoutStrategy(),
         ]
 
-        # Create snapshots that should trigger signals
-        {
-            "mean_reversion": pytest.lazy_fixture("oversold_snapshot"),
-            "trend_following": pytest.lazy_fixture("bullish_trend_snapshot"),
-            "volatility_breakout": pytest.lazy_fixture("upper_breakout_snapshot"),
-        }
+        # Note: Cannot use pytest.lazy_fixture outside of parametrize decorator
+        # Snapshots would be mapped as: mean_reversion, trend_following, volatility_breakout
 
         for strategy in strategies:
             # Get appropriate snapshot for strategy

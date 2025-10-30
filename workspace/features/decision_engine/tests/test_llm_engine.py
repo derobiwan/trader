@@ -519,7 +519,7 @@ def test_generate_fallback_signals(llm_engine, sample_snapshot):
 
     assert len(signals) == 2
 
-    for symbol, signal in signals.items():
+    for _symbol, signal in signals.items():
         assert signal.decision == TradingDecision.HOLD
         assert signal.confidence == Decimal("0.5")
         assert signal.size_pct == Decimal("0.0")
@@ -582,7 +582,9 @@ async def test_call_openrouter_network_error(llm_engine):
     with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         mock_post.side_effect = Exception("Network timeout")
 
-        with pytest.raises(Exception):
+        with pytest.raises(
+            Exception
+        ):  # noqa: B017 - Testing generic exception handling for network errors
             await llm_engine._call_openrouter("Test prompt")
 
 
