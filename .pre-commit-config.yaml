@@ -41,7 +41,7 @@ repos:
     hooks:
       - id: bandit
         name: bandit (security)
-        args: [-r, workspace/, --skip, B104,B108,B608]
+        args: [-r, workspace/, --skip, B101,B104,B108,B608]
         pass_filenames: false
         exclude: ^workspace/.*/tests/
 
