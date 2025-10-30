@@ -18,11 +18,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from workspace.shared.performance.load_testing import (LoadTestConfig,
-                                                       LoadTester,
-                                                       LoadTestResult,
-                                                       LoadTestType,
-                                                       RequestResult)
+from workspace.shared.performance.load_testing import (
+    LoadTestConfig,
+    LoadTester,
+    LoadTestResult,
+    LoadTestType,
+    RequestResult,
+)
 
 
 @pytest.fixture

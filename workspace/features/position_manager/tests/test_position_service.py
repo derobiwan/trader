@@ -17,6 +17,7 @@ Run with:
 """
 
 import asyncio
+
 # Test database setup
 import os
 from datetime import date as Date
@@ -32,10 +33,16 @@ os.environ["DB_USER"] = os.getenv("TEST_DB_USER", "postgres")
 os.environ["DB_PASSWORD"] = os.getenv("TEST_DB_PASSWORD", "")
 
 from workspace.features.position_manager.models import (
-    CIRCUIT_BREAKER_LOSS_CHF, MAX_TOTAL_EXPOSURE_CHF, PositionNotFoundError,
-    RiskLimitError, ValidationError)
+    CIRCUIT_BREAKER_LOSS_CHF,
+    MAX_TOTAL_EXPOSURE_CHF,
+    PositionNotFoundError,
+    RiskLimitError,
+    ValidationError,
+)
 from workspace.features.position_manager.position_service import (
-    PositionService, bulk_update_prices)
+    PositionService,
+    bulk_update_prices,
+)
 from workspace.shared.database.connection import DatabasePool
 
 # ============================================================================

@@ -16,8 +16,7 @@ import pytest_asyncio
 
 from workspace.features.trade_executor import TradeExecutor
 from workspace.features.trade_executor.models import OrderSide
-from workspace.features.trade_history import (TradeHistoryService, TradeStatus,
-                                              TradeType)
+from workspace.features.trade_history import TradeHistoryService, TradeStatus, TradeType
 from workspace.features.trading_loop import TradingDecision, TradingSignal
 
 

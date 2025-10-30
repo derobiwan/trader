@@ -18,9 +18,11 @@ from decimal import Decimal
 
 import pytest
 
-from workspace.features.risk_manager import (PortfolioLimits,
-                                             PortfolioRiskManager,
-                                             PositionInfo)
+from workspace.features.risk_manager import (
+    PortfolioLimits,
+    PortfolioRiskManager,
+    PositionInfo,
+)
 
 
 @pytest.fixture

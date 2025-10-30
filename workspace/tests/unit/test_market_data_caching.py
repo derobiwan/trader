@@ -13,8 +13,7 @@ from decimal import Decimal
 import pytest
 
 from workspace.features.caching import CacheService
-from workspace.features.market_data import (OHLCV, MarketDataService, Ticker,
-                                            Timeframe)
+from workspace.features.market_data import OHLCV, MarketDataService, Ticker, Timeframe
 
 
 @pytest.mark.asyncio

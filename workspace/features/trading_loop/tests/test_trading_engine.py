@@ -13,13 +13,22 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from workspace.features.market_data import (EMA, MACD, OHLCV, RSI,
-                                            BollingerBands, MarketDataSnapshot,
-                                            Ticker, Timeframe)
-from workspace.features.trading_loop.trading_engine import (TradingCycleResult,
-                                                            TradingDecision,
-                                                            TradingEngine,
-                                                            TradingSignal)
+from workspace.features.market_data import (
+    EMA,
+    MACD,
+    OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
+from workspace.features.trading_loop.trading_engine import (
+    TradingCycleResult,
+    TradingDecision,
+    TradingEngine,
+    TradingSignal,
+)
 
 # ============================================================================
 # Fixtures

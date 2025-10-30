@@ -13,8 +13,13 @@ Date: 2025-10-28
 """
 
 from .metrics_service import MetricsService
-from .models import (AlertRule, MetricSnapshot, MetricType,
-                     PrometheusExportFormat, TradingMetrics)
+from .models import (
+    AlertRule,
+    MetricSnapshot,
+    MetricType,
+    PrometheusExportFormat,
+    TradingMetrics,
+)
 
 __all__ = [
     # Enums

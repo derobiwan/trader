@@ -11,8 +11,13 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 
 from workspace.features.position_reconciliation.models import (
-    DiscrepancySeverity, DiscrepancyType, ExchangePosition,
-    PositionDiscrepancy, ReconciliationResult, SystemPosition)
+    DiscrepancySeverity,
+    DiscrepancyType,
+    ExchangePosition,
+    PositionDiscrepancy,
+    ReconciliationResult,
+    SystemPosition,
+)
 
 logger = logging.getLogger(__name__)
 

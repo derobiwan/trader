@@ -13,9 +13,16 @@ from decimal import Decimal
 import pytest
 
 from workspace.features.decision_engine.prompt_builder import PromptBuilder
-from workspace.features.market_data import (EMA, MACD, OHLCV, RSI,
-                                            BollingerBands, MarketDataSnapshot,
-                                            Ticker, Timeframe)
+from workspace.features.market_data import (
+    EMA,
+    MACD,
+    OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
 
 # ============================================================================
 # Fixtures

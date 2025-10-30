@@ -15,8 +15,7 @@ import pytest
 
 from workspace.features.caching import CacheService
 from workspace.features.decision_engine import LLMDecisionEngine
-from workspace.features.market_data import (OHLCV, MarketDataSnapshot, Ticker,
-                                            Timeframe)
+from workspace.features.market_data import OHLCV, MarketDataSnapshot, Ticker, Timeframe
 from workspace.features.trading_loop import TradingDecision
 
 

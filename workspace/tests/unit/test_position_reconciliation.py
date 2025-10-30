@@ -11,8 +11,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from workspace.features.position_reconciliation import (
-    DiscrepancySeverity, DiscrepancyType, ExchangePosition,
-    PositionReconciliationService, SystemPosition)
+    DiscrepancySeverity,
+    DiscrepancyType,
+    ExchangePosition,
+    PositionReconciliationService,
+    SystemPosition,
+)
 
 
 @pytest.fixture

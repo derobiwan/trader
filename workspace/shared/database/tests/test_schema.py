@@ -9,6 +9,7 @@ Run with: pytest workspace/shared/database/tests/test_schema.py -v
 
 import asyncio
 import os
+
 # Import models
 import sys
 import time
@@ -24,12 +25,20 @@ sys.path.insert(
 )
 
 from workspace.shared.database.connection import DatabasePool
-from workspace.shared.database.models import (CircuitBreakerState, MarketData,
-                                              Order, OrderSide, OrderStatus,
-                                              OrderType, Position,
-                                              PositionSide, SignalAction,
-                                              SignalType, TradingSignal,
-                                              datetime_to_microseconds)
+from workspace.shared.database.models import (
+    CircuitBreakerState,
+    MarketData,
+    Order,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    Position,
+    PositionSide,
+    SignalAction,
+    SignalType,
+    TradingSignal,
+    datetime_to_microseconds,
+)
 
 # ============================================================================
 # Test Configuration

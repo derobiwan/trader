@@ -15,8 +15,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from workspace.features.monitoring.metrics import MetricsService
-from workspace.features.monitoring.metrics.metrics_api import (
-    app, init_metrics_service)
+from workspace.features.monitoring.metrics.metrics_api import app, init_metrics_service
 
 
 class TestMetricsEndpoint:

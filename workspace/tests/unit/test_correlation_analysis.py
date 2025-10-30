@@ -18,9 +18,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from workspace.features.risk_manager import (CorrelationAnalyzer,
-                                             CorrelationMatrix,
-                                             CorrelationPair)
+from workspace.features.risk_manager import (
+    CorrelationAnalyzer,
+    CorrelationMatrix,
+    CorrelationPair,
+)
 
 
 @pytest.fixture

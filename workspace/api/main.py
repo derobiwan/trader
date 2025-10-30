@@ -41,8 +41,11 @@ from datetime import datetime
 from fastapi import FastAPI
 
 from .config import settings
-from .middleware import (not_found_handler, setup_middleware,
-                         validation_exception_handler)
+from .middleware import (
+    not_found_handler,
+    setup_middleware,
+    validation_exception_handler,
+)
 from .routers import register_routers
 
 

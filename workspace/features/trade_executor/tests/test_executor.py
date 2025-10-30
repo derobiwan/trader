@@ -15,13 +15,16 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from workspace.features.trade_executor.executor_service import TradeExecutor
-from workspace.features.trade_executor.models import (Order, OrderSide,
-                                                      OrderStatus, OrderType,
-                                                      ReconciliationResult,
-                                                      StopLossProtection,
-                                                      TimeInForce)
-from workspace.features.trade_executor.reconciliation import \
-    ReconciliationService
+from workspace.features.trade_executor.models import (
+    Order,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    ReconciliationResult,
+    StopLossProtection,
+    TimeInForce,
+)
+from workspace.features.trade_executor.reconciliation import ReconciliationService
 from workspace.features.trade_executor.stop_loss_manager import StopLossManager
 
 # ============================================================================

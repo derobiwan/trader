@@ -12,9 +12,13 @@ from decimal import Decimal
 
 import pytest
 
-from workspace.features.risk_manager import (CircuitBreaker,
-                                             CircuitBreakerState, RiskManager,
-                                             StopLossManager, ValidationStatus)
+from workspace.features.risk_manager import (
+    CircuitBreaker,
+    CircuitBreakerState,
+    RiskManager,
+    StopLossManager,
+    ValidationStatus,
+)
 
 # ============================================================================
 # Mock Classes

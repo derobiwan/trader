@@ -12,8 +12,7 @@ from decimal import Decimal
 
 import pytest
 
-from workspace.shared.database.connection import (DatabasePool, close_pool,
-                                                  init_pool)
+from workspace.shared.database.connection import DatabasePool, close_pool, init_pool
 
 
 @pytest.fixture(scope="module")

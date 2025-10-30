@@ -10,9 +10,11 @@ from decimal import Decimal
 import pytest
 
 from workspace.features.risk_manager import RiskManager, ValidationStatus
-from workspace.features.strategy import (MeanReversionStrategy,
-                                         TrendFollowingStrategy,
-                                         VolatilityBreakoutStrategy)
+from workspace.features.strategy import (
+    MeanReversionStrategy,
+    TrendFollowingStrategy,
+    VolatilityBreakoutStrategy,
+)
 
 
 @dataclass

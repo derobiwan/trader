@@ -14,8 +14,13 @@ from uuid import uuid4
 import pytest
 
 from workspace.features.position_manager.state_machine import (
-    InvalidStateTransition, PositionState, PositionStateMachine,
-    create_state_machine, get_state_flow_diagram, validate_transition_path)
+    InvalidStateTransition,
+    PositionState,
+    PositionStateMachine,
+    create_state_machine,
+    get_state_flow_diagram,
+    validate_transition_path,
+)
 
 # ============================================================================
 # Fixtures

@@ -18,8 +18,11 @@ from decimal import Decimal
 
 import pytest
 
-from workspace.features.risk_manager import (KellyPositionSizer,
-                                             PositionSizingResult, TradeResult)
+from workspace.features.risk_manager import (
+    KellyPositionSizer,
+    PositionSizingResult,
+    TradeResult,
+)
 
 
 @pytest.fixture

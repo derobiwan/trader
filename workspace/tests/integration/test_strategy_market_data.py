@@ -8,9 +8,11 @@ from decimal import Decimal
 
 import pytest
 
-from workspace.features.strategy import (MeanReversionStrategy,
-                                         TrendFollowingStrategy,
-                                         VolatilityBreakoutStrategy)
+from workspace.features.strategy import (
+    MeanReversionStrategy,
+    TrendFollowingStrategy,
+    VolatilityBreakoutStrategy,
+)
 from workspace.features.trading_loop import TradingDecision
 from workspace.tests.integration.conftest import create_snapshot
 

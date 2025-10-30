@@ -13,8 +13,13 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from .models import (DailyTradeReport, TradeHistoryEntry, TradeStatistics,
-                     TradeStatus, TradeType)
+from .models import (
+    DailyTradeReport,
+    TradeHistoryEntry,
+    TradeStatistics,
+    TradeStatus,
+    TradeType,
+)
 
 logger = logging.getLogger(__name__)
 

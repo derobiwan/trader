@@ -13,8 +13,13 @@ from decimal import Decimal
 from typing import Any, List, Optional
 
 from .circuit_breaker import CircuitBreaker
-from .models import (CircuitBreakerStatus, Protection, RiskCheckResult,
-                     RiskValidation, ValidationStatus)
+from .models import (
+    CircuitBreakerStatus,
+    Protection,
+    RiskCheckResult,
+    RiskValidation,
+    ValidationStatus,
+)
 from .stop_loss_manager import StopLossManager
 
 logger = logging.getLogger(__name__)

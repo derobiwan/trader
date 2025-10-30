@@ -13,10 +13,14 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from workspace.features.decision_engine.llm_engine import (LLMDecisionEngine,
-                                                           LLMProvider)
-from workspace.features.market_data import (OHLCV, RSI, MarketDataSnapshot,
-                                            Ticker, Timeframe)
+from workspace.features.decision_engine.llm_engine import LLMDecisionEngine, LLMProvider
+from workspace.features.market_data import (
+    OHLCV,
+    RSI,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
 from workspace.features.trading_loop import TradingDecision
 
 # ============================================================================

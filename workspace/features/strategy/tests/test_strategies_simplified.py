@@ -12,12 +12,22 @@ from decimal import Decimal
 
 import pytest
 
-from workspace.features.market_data import (EMA, MACD, OHLCV, RSI,
-                                            BollingerBands, MarketDataSnapshot,
-                                            Ticker, Timeframe)
-from workspace.features.strategy import (MeanReversionStrategy, StrategyType,
-                                         TrendFollowingStrategy,
-                                         VolatilityBreakoutStrategy)
+from workspace.features.market_data import (
+    EMA,
+    MACD,
+    OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
+from workspace.features.strategy import (
+    MeanReversionStrategy,
+    StrategyType,
+    TrendFollowingStrategy,
+    VolatilityBreakoutStrategy,
+)
 from workspace.features.trading_loop import TradingDecision
 
 # ============================================================================

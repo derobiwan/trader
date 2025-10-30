@@ -19,8 +19,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from .models import (Alert, AlertDeliveryRecord, AlertDeliveryStatus,
-                     AlertSeverity)
+from .models import Alert, AlertDeliveryRecord, AlertDeliveryStatus, AlertSeverity
 
 logger = logging.getLogger(__name__)
 

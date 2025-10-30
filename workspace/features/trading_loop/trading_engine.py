@@ -15,8 +15,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 # Import components
-from workspace.features.market_data import (MarketDataService,
-                                            MarketDataSnapshot)
+from workspace.features.market_data import MarketDataService, MarketDataSnapshot
 from workspace.features.paper_trading import PaperTradingExecutor
 from workspace.features.position_manager import PositionManager
 from workspace.features.trade_executor import TradeExecutor

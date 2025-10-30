@@ -15,12 +15,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from workspace.features.market_data.indicators import IndicatorCalculator
-from workspace.features.market_data.market_data_service import \
-    MarketDataService
-from workspace.features.market_data.models import (MACD, OHLCV, RSI,
-                                                   BollingerBands,
-                                                   MarketDataSnapshot, Ticker,
-                                                   Timeframe)
+from workspace.features.market_data.market_data_service import MarketDataService
+from workspace.features.market_data.models import (
+    MACD,
+    OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
 
 # ============================================================================
 # Fixtures

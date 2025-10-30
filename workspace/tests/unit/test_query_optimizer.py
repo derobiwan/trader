@@ -16,9 +16,11 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from workspace.shared.database.query_optimizer import (IndexRecommendation,
-                                                       QueryOptimizer,
-                                                       SlowQuery)
+from workspace.shared.database.query_optimizer import (
+    IndexRecommendation,
+    QueryOptimizer,
+    SlowQuery,
+)
 
 
 @pytest.fixture

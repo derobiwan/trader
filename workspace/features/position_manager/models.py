@@ -43,9 +43,13 @@ from uuid import UUID
 from pydantic import Field, field_validator
 
 # Import base models from shared database models
-from workspace.shared.database.models import (DatabaseModel, Position,
-                                              PositionSide, PositionStatus,
-                                              usd_to_chf)
+from workspace.shared.database.models import (
+    DatabaseModel,
+    Position,
+    PositionSide,
+    PositionStatus,
+    usd_to_chf,
+)
 
 # ============================================================================
 # Configuration Constants

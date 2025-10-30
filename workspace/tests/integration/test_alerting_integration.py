@@ -12,10 +12,15 @@ import asyncio
 
 import pytest
 
-from workspace.features.alerting import (Alert, AlertCategory, AlertService,
-                                         AlertSeverity, EmailAlertChannel,
-                                         PagerDutyAlertChannel,
-                                         SlackAlertChannel)
+from workspace.features.alerting import (
+    Alert,
+    AlertCategory,
+    AlertService,
+    AlertSeverity,
+    EmailAlertChannel,
+    PagerDutyAlertChannel,
+    SlackAlertChannel,
+)
 
 
 class MockEmailChannel(EmailAlertChannel):

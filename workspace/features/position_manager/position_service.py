@@ -70,12 +70,24 @@ from uuid import UUID, uuid4
 import asyncpg
 
 from workspace.features.position_manager.models import (
-    CIRCUIT_BREAKER_LOSS_CHF, USD_CHF_RATE, CloseReason, DailyPnLSummary,
-    PositionCreateRequest, PositionNotFoundError, PositionStatistics,
-    PositionWithPnL, RiskLimitError, ValidationError)
+    CIRCUIT_BREAKER_LOSS_CHF,
+    USD_CHF_RATE,
+    CloseReason,
+    DailyPnLSummary,
+    PositionCreateRequest,
+    PositionNotFoundError,
+    PositionStatistics,
+    PositionWithPnL,
+    RiskLimitError,
+    ValidationError,
+)
 from workspace.shared.database.connection import DatabasePool
-from workspace.shared.database.models import (Position, PositionSide,
-                                              PositionStatus, usd_to_chf)
+from workspace.shared.database.models import (
+    Position,
+    PositionSide,
+    PositionStatus,
+    usd_to_chf,
+)
 
 logger = logging.getLogger(__name__)
 

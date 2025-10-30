@@ -15,13 +15,29 @@ Usage:
 """
 
 from workspace.features.position_manager.models import (  # Request Models; Response Models; Enums; Exceptions; Constants
-    CAPITAL_CHF, CIRCUIT_BREAKER_LOSS_CHF, MAX_LEVERAGE, MAX_POSITION_SIZE_CHF,
-    MAX_TOTAL_EXPOSURE_CHF, MIN_LEVERAGE, VALID_SYMBOLS, CloseReason,
-    DailyPnLSummary, InsufficientCapitalError, PositionCloseRequest,
-    PositionCreateRequest, PositionNotFoundError, PositionStatistics,
-    PositionUpdateRequest, PositionWithPnL, RiskLimitError, ValidationError)
+    CAPITAL_CHF,
+    CIRCUIT_BREAKER_LOSS_CHF,
+    MAX_LEVERAGE,
+    MAX_POSITION_SIZE_CHF,
+    MAX_TOTAL_EXPOSURE_CHF,
+    MIN_LEVERAGE,
+    VALID_SYMBOLS,
+    CloseReason,
+    DailyPnLSummary,
+    InsufficientCapitalError,
+    PositionCloseRequest,
+    PositionCreateRequest,
+    PositionNotFoundError,
+    PositionStatistics,
+    PositionUpdateRequest,
+    PositionWithPnL,
+    RiskLimitError,
+    ValidationError,
+)
 from workspace.features.position_manager.position_service import (
-    PositionService, bulk_update_prices)
+    PositionService,
+    bulk_update_prices,
+)
 
 # Alias for consistency with other modules
 PositionManager = PositionService

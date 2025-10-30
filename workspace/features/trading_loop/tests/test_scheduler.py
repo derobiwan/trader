@@ -13,8 +13,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from workspace.features.trading_loop.scheduler import (SchedulerState,
-                                                       TradingScheduler)
+from workspace.features.trading_loop.scheduler import SchedulerState, TradingScheduler
 
 # ============================================================================
 # Fixtures

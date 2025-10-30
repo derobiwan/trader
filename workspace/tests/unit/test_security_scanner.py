@@ -19,10 +19,12 @@ from pathlib import Path
 
 import pytest
 
-from workspace.shared.security.security_scanner import (ScanResult,
-                                                        SecurityIssue,
-                                                        SecurityScanner,
-                                                        Severity)
+from workspace.shared.security.security_scanner import (
+    ScanResult,
+    SecurityIssue,
+    SecurityScanner,
+    Severity,
+)
 
 
 @pytest.fixture

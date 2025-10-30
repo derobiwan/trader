@@ -11,12 +11,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from workspace.features.alerting import (Alert, AlertCategory, AlertChannel,
-                                         AlertRoutingRules, AlertService,
-                                         AlertSeverity, AlertThrottler,
-                                         EmailAlertChannel,
-                                         PagerDutyAlertChannel,
-                                         SlackAlertChannel)
+from workspace.features.alerting import (
+    Alert,
+    AlertCategory,
+    AlertChannel,
+    AlertRoutingRules,
+    AlertService,
+    AlertSeverity,
+    AlertThrottler,
+    EmailAlertChannel,
+    PagerDutyAlertChannel,
+    SlackAlertChannel,
+)
 
 
 class TestAlertModels:

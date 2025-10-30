@@ -12,8 +12,7 @@ import asyncio
 import pytest
 
 from workspace.features.caching.cache_service import CacheService
-from workspace.infrastructure.cache import (RedisManager, close_redis,
-                                            init_redis)
+from workspace.infrastructure.cache import RedisManager, close_redis, init_redis
 
 
 @pytest.fixture(scope="module")

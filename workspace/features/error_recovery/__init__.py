@@ -11,8 +11,7 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
-from .circuit_breaker import (CircuitBreaker, CircuitBreakerOpenError,
-                              CircuitState)
+from .circuit_breaker import CircuitBreaker, CircuitBreakerOpenError, CircuitState
 from .retry_manager import RetryManager, RetryStrategy, retry
 
 __all__ = [

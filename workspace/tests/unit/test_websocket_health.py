@@ -11,7 +11,9 @@ from datetime import datetime
 import pytest
 
 from workspace.features.market_data.websocket_health import (
-    HealthMetrics, WebSocketHealthMonitor)
+    HealthMetrics,
+    WebSocketHealthMonitor,
+)
 
 
 class TestHealthMetrics:
