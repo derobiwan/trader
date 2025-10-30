@@ -221,7 +221,7 @@ Focus on:
         if snapshot.macd:
             macd = snapshot.macd
             lines.append(
-                f"- **MACD**: {macd.value:.2f}, Signal: {macd.signal:.2f}, Histogram: {macd.histogram:.2f}"
+                f"- **MACD**: {macd.macd_line:.2f}, Signal: {macd.signal_line:.2f}, Histogram: {macd.histogram:.2f}"
             )
             if macd.is_bullish:
                 lines.append("  - Trend: Bullish (MACD > Signal)")

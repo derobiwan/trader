@@ -180,9 +180,9 @@ async def test_llm_cache_with_similar_prices():
     mock_usage = {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
     engine._call_llm = AsyncMock(return_value=(mock_response_text, mock_usage))
 
-    # Prices within $10 should round to same value
-    snapshot1 = create_test_snapshot("BTC/USDT:USDT", 45123.0, rsi=65.0, macd=100.0)
-    snapshot2 = create_test_snapshot("BTC/USDT:USDT", 45127.0, rsi=65.0, macd=100.0)
+    # Prices that round to the same $10 bucket (45120)
+    snapshot1 = create_test_snapshot("BTC/USDT:USDT", 45121.0, rsi=65.0, macd=100.0)
+    snapshot2 = create_test_snapshot("BTC/USDT:USDT", 45123.0, rsi=65.0, macd=100.0)
 
     # First call
     signals1 = await engine.generate_signals(
