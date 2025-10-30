@@ -435,9 +435,9 @@ class CacheWarmer:
         if self.market_data_service and hasattr(
             self.market_data_service, "get_cache_stats"
         ):
-            stats["services"]["market_data"] = (
-                self.market_data_service.get_cache_stats()
-            )
+            stats["services"][
+                "market_data"
+            ] = self.market_data_service.get_cache_stats()
 
         # Account service cache stats
         if self.account_service and hasattr(self.account_service, "get_cache_stats"):

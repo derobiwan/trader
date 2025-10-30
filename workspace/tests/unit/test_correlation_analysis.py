@@ -43,9 +43,7 @@ def mock_market_data_service():
         side_effect=lambda symbol, **kwargs: (
             create_ohlcv(50000)
             if "BTC" in symbol
-            else create_ohlcv(3000)
-            if "ETH" in symbol
-            else create_ohlcv(100)
+            else create_ohlcv(3000) if "ETH" in symbol else create_ohlcv(100)
         )
     )
 
