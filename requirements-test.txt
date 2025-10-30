@@ -31,7 +31,7 @@ pytest-factoryboy>=2.7.0    # Factory Boy pytest integration
 hypothesis>=6.119.0         # Property-based testing
 
 # Code Quality (for CI/CD checks)
-black>=24.8.0
+black==25.1.0
 isort>=5.13.0
 flake8>=7.1.0
 flake8-docstrings>=1.7.0
