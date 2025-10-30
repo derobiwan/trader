@@ -582,9 +582,9 @@ async def test_call_openrouter_network_error(llm_engine):
     with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         mock_post.side_effect = Exception("Network timeout")
 
-        with pytest.raises(
+        with pytest.raises(  # noqa: B017 - Testing generic exception handling
             Exception
-        ):  # noqa: B017 - Testing generic exception handling
+        ):
             await llm_engine._call_openrouter("Test prompt")
 
 
