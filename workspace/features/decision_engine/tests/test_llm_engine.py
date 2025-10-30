@@ -584,7 +584,7 @@ async def test_call_openrouter_network_error(llm_engine):
 
         with pytest.raises(
             Exception
-        ):  # noqa: B017 - Testing generic exception handling for network errors
+        ):  # noqa: B017 - Testing generic exception handling
             await llm_engine._call_openrouter("Test prompt")
 
 
