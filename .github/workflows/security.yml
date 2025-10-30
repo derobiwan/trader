@@ -145,12 +145,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Kubesec scan
-        uses: controlplaneio/kubesec-action@main
-        with:
-          input: kubernetes/deployments/*.yaml
-          format: json
-          exit-code: 0
+      - name: Run Kubesec scan on each manifest
+        run: |
+          for file in kubernetes/deployments/*.yaml; do
+            echo "Scanning $file"
+            docker run --rm -v $(pwd):/workspace kubesec/kubesec:2.11.0 scan /workspace/$file || true
+          done
 
       - name: Run Checkov scan
         uses: bridgecrewio/checkov-action@master
