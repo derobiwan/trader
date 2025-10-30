@@ -271,7 +271,9 @@ class CacheService:
 
         # Create hash of parts (MD5 used for cache key generation only, not security)
         content = ":".join(parts)
-        hash_suffix = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()[:8]
+        hash_suffix = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()[
+            :8
+        ]
 
         # Construct key
         if prefix:

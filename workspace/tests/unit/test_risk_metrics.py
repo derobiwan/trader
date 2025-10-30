@@ -154,7 +154,7 @@ def test_calculate_max_drawdown_large_decline(calculator):
     equity_curve = [
         Decimal("1000"),
         Decimal("1200"),  # Peak
-        Decimal("900"),   # 25% drawdown
+        Decimal("900"),  # 25% drawdown
         Decimal("1100"),
     ]
 
@@ -173,7 +173,7 @@ def test_calculate_calmar_ratio(calculator):
     """Test Calmar ratio calculation"""
     calmar = calculator.calculate_calmar_ratio(
         annualized_return=0.25,  # 25% return
-        max_drawdown_pct=0.10,   # 10% max drawdown
+        max_drawdown_pct=0.10,  # 10% max drawdown
     )
 
     # Calmar = 0.25 / 0.10 = 2.5
@@ -337,7 +337,9 @@ def test_calculate_all_metrics(calculator, sample_returns, sample_equity_curve):
     assert isinstance(metrics.calculation_timestamp, datetime)
 
 
-def test_calculate_all_metrics_with_trade_stats(calculator, sample_returns, sample_equity_curve):
+def test_calculate_all_metrics_with_trade_stats(
+    calculator, sample_returns, sample_equity_curve
+):
     """Test metrics calculation with provided trade stats"""
     metrics = calculator.calculate_all_metrics(
         returns=sample_returns,

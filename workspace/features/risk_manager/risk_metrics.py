@@ -193,9 +193,9 @@ class RiskMetricsCalculator:
             return 0.0
 
         # Annualize Sortino ratio
-        sortino = (
-            (mean_return - period_rf_rate) / downside_dev
-        ) * np.sqrt(self.trading_days_per_year)
+        sortino = ((mean_return - period_rf_rate) / downside_dev) * np.sqrt(
+            self.trading_days_per_year
+        )
 
         return float(sortino)
 
@@ -420,9 +420,7 @@ class RiskMetricsCalculator:
     # Volatility Metrics
     # ========================================================================
 
-    def calculate_volatility(
-        self, returns: List[float]
-    ) -> float:
+    def calculate_volatility(self, returns: List[float]) -> float:
         """
         Calculate annualized volatility (standard deviation).
 
@@ -443,9 +441,7 @@ class RiskMetricsCalculator:
 
         return float(annualized_vol)
 
-    def calculate_downside_deviation(
-        self, returns: List[float]
-    ) -> float:
+    def calculate_downside_deviation(self, returns: List[float]) -> float:
         """
         Calculate downside deviation (volatility of negative returns).
 
@@ -468,9 +464,7 @@ class RiskMetricsCalculator:
         downside_std = np.std(downside_returns, ddof=1)
 
         # Annualize
-        annualized_downside = downside_std * np.sqrt(
-            self.trading_days_per_year
-        )
+        annualized_downside = downside_std * np.sqrt(self.trading_days_per_year)
 
         return float(annualized_downside)
 
@@ -522,12 +516,8 @@ class RiskMetricsCalculator:
             total_losses = Decimal(str(abs(sum(r for r in returns if r < 0))))
 
         # Calculate averages
-        avg_win = (
-            total_wins / winning_trades if winning_trades > 0 else Decimal("0")
-        )
-        avg_loss = (
-            total_losses / losing_trades if losing_trades > 0 else Decimal("0")
-        )
+        avg_win = total_wins / winning_trades if winning_trades > 0 else Decimal("0")
+        avg_loss = total_losses / losing_trades if losing_trades > 0 else Decimal("0")
 
         # Find largest win/loss if not provided
         if largest_win is None:
@@ -552,10 +542,9 @@ class RiskMetricsCalculator:
 
         # Annualize return
         num_periods = len(returns) if returns else 1
-        annualized_return = (
-            (1 + total_return_pct) ** (self.trading_days_per_year / num_periods)
-            - 1
-        )
+        annualized_return = (1 + total_return_pct) ** (
+            self.trading_days_per_year / num_periods
+        ) - 1
 
         # Calculate risk metrics
         sharpe = self.calculate_sharpe_ratio(returns)

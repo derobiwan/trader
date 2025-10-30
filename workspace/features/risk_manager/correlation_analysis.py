@@ -16,7 +16,7 @@ import logging
 from decimal import Decimal
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -132,9 +132,7 @@ class CorrelationAnalyzer:
                     timestamps=timestamps,
                 )
 
-                logger.debug(
-                    f"Fetched {len(prices)} price points for {symbol}"
-                )
+                logger.debug(f"Fetched {len(prices)} price points for {symbol}")
 
             except Exception as e:
                 logger.error(f"Failed to fetch price history for {symbol}: {e}")
@@ -151,9 +149,7 @@ class CorrelationAnalyzer:
     # Returns Calculation
     # ========================================================================
 
-    def calculate_returns(
-        self, prices: List[Decimal]
-    ) -> List[float]:
+    def calculate_returns(self, prices: List[Decimal]) -> List[float]:
         """
         Calculate percentage returns from price series.
 
@@ -347,9 +343,7 @@ class CorrelationAnalyzer:
 
         return highly_correlated
 
-    def classify_correlation_strength(
-        self, correlation: float
-    ) -> str:
+    def classify_correlation_strength(self, correlation: float) -> str:
         """
         Classify correlation strength.
 
@@ -532,7 +526,10 @@ class CorrelationAnalyzer:
         # Highly correlated pairs
         if correlation_matrix.highly_correlated_pairs:
             report += "\n"
-            report += "⚠️  Highly Correlated Pairs (>" + f"{self.max_correlation_threshold:.0%}):\n"
+            report += (
+                "⚠️  Highly Correlated Pairs (>"
+                + f"{self.max_correlation_threshold:.0%}):\n"
+            )
             report += "-" * 80 + "\n"
 
             for pair in correlation_matrix.highly_correlated_pairs:

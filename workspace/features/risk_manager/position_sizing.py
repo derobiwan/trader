@@ -178,9 +178,7 @@ class KellyPositionSizer:
 
         return fractional_kelly
 
-    def calculate_confidence_adjustment(
-        self, sample_size: int
-    ) -> float:
+    def calculate_confidence_adjustment(self, sample_size: int) -> float:
         """
         Adjust Kelly based on sample size confidence.
 
@@ -245,9 +243,7 @@ class KellyPositionSizer:
         # Apply confidence adjustment if provided
         if confidence_adjustment is not None:
             fractional_kelly *= confidence_adjustment
-            logger.debug(
-                f"Applied confidence adjustment: {confidence_adjustment:.2f}"
-            )
+            logger.debug(f"Applied confidence adjustment: {confidence_adjustment:.2f}")
 
         # Calculate position size
         position_size = portfolio_value * Decimal(str(fractional_kelly))
@@ -293,17 +289,11 @@ class KellyPositionSizer:
         win_rate = len(wins) / len(trades) if trades else 0.0
 
         # Calculate average win
-        avg_win = (
-            sum(t.pnl for t in wins) / len(wins)
-            if wins
-            else Decimal("0")
-        )
+        avg_win = sum(t.pnl for t in wins) / len(wins) if wins else Decimal("0")
 
         # Calculate average loss (as positive value)
         avg_loss = (
-            abs(sum(t.pnl for t in losses) / len(losses))
-            if losses
-            else Decimal("0")
+            abs(sum(t.pnl for t in losses) / len(losses)) if losses else Decimal("0")
         )
 
         logger.info(
@@ -339,12 +329,9 @@ class KellyPositionSizer:
         # Filter by lookback period if specified
         if lookback_days is not None:
             cutoff_date = datetime.utcnow() - timedelta(days=lookback_days)
-            filtered_trades = [
-                t for t in trade_history if t.timestamp >= cutoff_date
-            ]
+            filtered_trades = [t for t in trade_history if t.timestamp >= cutoff_date]
             logger.info(
-                f"Using {len(filtered_trades)} trades from last "
-                f"{lookback_days} days"
+                f"Using {len(filtered_trades)} trades from last {lookback_days} days"
             )
         else:
             filtered_trades = trade_history
@@ -389,9 +376,7 @@ class KellyPositionSizer:
     # Variance and Risk Analysis
     # ========================================================================
 
-    def calculate_variance_of_returns(
-        self, trades: List[TradeResult]
-    ) -> Decimal:
+    def calculate_variance_of_returns(self, trades: List[TradeResult]) -> Decimal:
         """
         Calculate variance of returns.
 
@@ -411,9 +396,7 @@ class KellyPositionSizer:
 
         return variance
 
-    def recommend_kelly_fraction(
-        self, trades: List[TradeResult]
-    ) -> float:
+    def recommend_kelly_fraction(self, trades: List[TradeResult]) -> float:
         """
         Recommend Kelly fraction based on variance.
 
@@ -443,9 +426,7 @@ class KellyPositionSizer:
     # Reporting
     # ========================================================================
 
-    def format_sizing_report(
-        self, result: PositionSizingResult
-    ) -> str:
+    def format_sizing_report(self, result: PositionSizingResult) -> str:
         """
         Format position sizing result as readable report.
 
@@ -474,7 +455,7 @@ class KellyPositionSizer:
 ║ Recommendation:                                                ║
 ║   Position Size:      CHF {result.recommended_size_chf:>8.2f}                      ║
 ║                                                                ║
-║ Calculated: {result.calculation_timestamp.strftime('%Y-%m-%d %H:%M:%S')}                      ║
+║ Calculated: {result.calculation_timestamp.strftime("%Y-%m-%d %H:%M:%S")}                      ║
 ╚════════════════════════════════════════════════════════════════╝
         """
         return report
