@@ -1,0 +1,22 @@
+# Environment configuration (contains secrets)
+.env
+
+# Data directories
+logs/
+data/
+*.log
+
+# Database backups
+*.sql
+*.dump
+
+# Docker
+.docker/
+
+# Grafana data
+grafana-data/
+
+# Temporary files
+*.tmp
+*.bak
+*~

@@ -1,0 +1,38 @@
+# Prometheus Configuration for LLM Crypto Trading System
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'trader-local'
+    environment: 'production'
+
+# Scrape configurations
+scrape_configs:
+  # Trading application metrics
+  - job_name: 'trader-app'
+    static_configs:
+      - targets: ['trader:8000']
+        labels:
+          service: 'trading-app'
+
+  # PostgreSQL metrics (if exporter is added)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:9187']
+        labels:
+          service: 'postgres'
+
+  # Redis metrics (if exporter is added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:9121']
+        labels:
+          service: 'redis'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
