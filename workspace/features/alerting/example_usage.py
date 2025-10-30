@@ -9,7 +9,6 @@ Sprint: Sprint 2 Stream C
 """
 
 import asyncio
-import os
 from workspace.features.alerting import (
     Alert,
     AlertSeverity,
@@ -50,7 +49,7 @@ async def example_basic_usage():
             "symbol": "BTC/USDT",
             "size": 0.5,
             "entry_price": 45000,
-        }
+        },
     )
 
     results = await service.send_alert(alert)
@@ -190,46 +189,52 @@ async def example_trading_integration():
     # Example: Alert on position opening
     async def on_position_opened(symbol: str, size: float, price: float):
         """Called when position is opened"""
-        await alert_service.send_alert(Alert(
-            title=f"Position Opened: {symbol}",
-            message=f"Opened {size} {symbol} at ${price:,.2f}",
-            severity=AlertSeverity.INFO,
-            category=AlertCategory.TRADING,
-            metadata={
-                "symbol": symbol,
-                "size": size,
-                "price": price,
-            }
-        ))
+        await alert_service.send_alert(
+            Alert(
+                title=f"Position Opened: {symbol}",
+                message=f"Opened {size} {symbol} at ${price:,.2f}",
+                severity=AlertSeverity.INFO,
+                category=AlertCategory.TRADING,
+                metadata={
+                    "symbol": symbol,
+                    "size": size,
+                    "price": price,
+                },
+            )
+        )
 
     # Example: Alert on risk limit breach
     async def on_risk_limit_breach(limit_type: str, current: float, limit: float):
         """Called when risk limit is breached"""
-        await alert_service.send_alert(Alert(
-            title=f"Risk Limit Breached: {limit_type}",
-            message=f"{limit_type} limit breached: {current} > {limit}",
-            severity=AlertSeverity.CRITICAL,
-            category=AlertCategory.RISK,
-            metadata={
-                "limit_type": limit_type,
-                "current_value": current,
-                "limit_value": limit,
-            }
-        ))
+        await alert_service.send_alert(
+            Alert(
+                title=f"Risk Limit Breached: {limit_type}",
+                message=f"{limit_type} limit breached: {current} > {limit}",
+                severity=AlertSeverity.CRITICAL,
+                category=AlertCategory.RISK,
+                metadata={
+                    "limit_type": limit_type,
+                    "current_value": current,
+                    "limit_value": limit,
+                },
+            )
+        )
 
     # Example: Alert on system error
     async def on_system_error(error_msg: str, component: str):
         """Called on system error"""
-        await alert_service.send_alert(Alert(
-            title=f"System Error: {component}",
-            message=error_msg,
-            severity=AlertSeverity.CRITICAL,
-            category=AlertCategory.SYSTEM,
-            metadata={
-                "component": component,
-                "error": error_msg,
-            }
-        ))
+        await alert_service.send_alert(
+            Alert(
+                title=f"System Error: {component}",
+                message=error_msg,
+                severity=AlertSeverity.CRITICAL,
+                category=AlertCategory.SYSTEM,
+                metadata={
+                    "component": component,
+                    "error": error_msg,
+                },
+            )
+        )
 
     # Simulate some events
     print("Simulating trading events...\n")
@@ -261,9 +266,9 @@ async def example_throttling():
         results = await service.send_alert(alert)
 
         if "throttled" in results:
-            print(f"  Alert {i+1}: Throttled (prevented spam)")
+            print(f"  Alert {i + 1}: Throttled (prevented spam)")
         else:
-            print(f"  Alert {i+1}: Sent")
+            print(f"  Alert {i + 1}: Sent")
 
         await asyncio.sleep(0.5)
 
@@ -284,9 +289,9 @@ async def example_throttling():
 
 async def main():
     """Run all examples"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ALERTING SYSTEM - USAGE EXAMPLES")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     # Note: These examples use dummy credentials
     # In production, load from environment variables
@@ -301,9 +306,9 @@ async def main():
         print(f"Example execution error: {e}")
         print("(This is expected with dummy credentials)")
 
-    print("="*60)
+    print("=" * 60)
     print("Examples complete!")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
 
 if __name__ == "__main__":

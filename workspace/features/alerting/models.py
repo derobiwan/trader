@@ -17,6 +17,7 @@ import uuid
 
 class AlertSeverity(str, Enum):
     """Alert severity levels"""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -24,6 +25,7 @@ class AlertSeverity(str, Enum):
 
 class AlertCategory(str, Enum):
     """Alert categories for classification"""
+
     TRADING = "trading"
     SYSTEM = "system"
     RISK = "risk"
@@ -43,13 +45,11 @@ class Alert(BaseModel):
     message: str = Field(..., description="Alert message")
     severity: AlertSeverity = Field(..., description="Alert severity level")
     category: AlertCategory = Field(
-        default=AlertCategory.SYSTEM,
-        description="Alert category"
+        default=AlertCategory.SYSTEM, description="Alert category"
     )
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Additional metadata"
+        default=None, description="Additional metadata"
     )
 
     class Config:
@@ -58,6 +58,7 @@ class Alert(BaseModel):
 
 class AlertDeliveryStatus(str, Enum):
     """Alert delivery status"""
+
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"

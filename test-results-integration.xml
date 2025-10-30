@@ -1,0 +1,616 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="14" failures="10" skipped="0" tests="81" time="7.164" timestamp="2025-10-30T21:01:51.911081+01:00" hostname="AXP-KQX93H0G5P"><testcase classname="workspace.tests.integration.test_alerting_integration.TestAlertingIntegration" name="test_complete_alerting_flow" time="0.003" /><testcase classname="workspace.tests.integration.test_alerting_integration.TestAlertingIntegration" name="test_alert_throttling_integration" time="2.101" /><testcase classname="workspace.tests.integration.test_alerting_integration.TestAlertingIntegration" name="test_trading_scenario_alerts" time="0.001" /><testcase classname="workspace.tests.integration.test_alerting_integration.TestAlertingIntegration" name="test_delivery_statistics" time="0.507" /><testcase classname="workspace.tests.integration.test_database_integration" name="test_database_connection" time="0.022"><failure message="ConnectionError: Database connection failed: password authentication failed for user &quot;trading_user&quot;">self = &lt;workspace.shared.database.connection.DatabasePool object at 0x127fc75c0&gt;
+
+    async def initialize(self) -&gt; None:
+        """
+        Initialize connection pool and start health monitoring.
+
+        Raises:
+            ConnectionError: If unable to connect to database
+        """
+        if self.is_initialized:
+            logger.warning("Database pool already initialized")
+            return
+
+        try:
+            logger.info(
+                f"Initializing database pool: {self.config['database']}@{self.config['host']}:{self.config['port']}"
+            )
+
+            # Create connection pool
+&gt;           self.pool = await asyncpg.create_pool(
+                host=self.config["host"],
+                port=self.config["port"],
+                database=self.config["database"],
+                user=self.config["user"],
+                password=self.config["password"],
+                min_size=self.config["min_size"],
+                max_size=self.config["max_size"],
+                command_timeout=self.config["command_timeout"],
+                max_queries=self.config["max_queries"],
+                max_inactive_connection_lifetime=self.config[
+                    "max_inactive_connection_lifetime"
+                ],
+            )
+
+workspace/shared/database/connection.py:116:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:418: in _async__init__
+    await self._initialize()
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:445: in _initialize
+    await first_ch.connect()
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:132: in connect
+    self._con = await self._pool._get_new_connection()
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:517: in _get_new_connection
+    con = await self._connect(
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connection.py:2421: in connect
+    return await connect_utils._connect(
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connect_utils.py:1049: in _connect
+    conn = await _connect_addr(
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connect_utils.py:886: in _connect_addr
+    return await __connect_addr(params, True, *args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+params = ConnectionParameters(user='trading_user', password='', database='trading_system', ssl=&lt;ssl.SSLContext object at 0x1680...postgres'&gt;, server_settings=None, target_session_attrs=&lt;SessionAttribute.any: 'any'&gt;, krbsrvname=None, gsslib='gssapi')
+retry = True, addr = ('localhost', 5432)
+loop = &lt;_UnixSelectorEventLoop running=False closed=False debug=False&gt;
+config = ConnectionConfiguration(command_timeout=10.0, statement_cache_size=100, max_cached_statement_lifetime=300, max_cacheable_statement_size=15360)
+connection_class = &lt;class 'asyncpg.connection.Connection'&gt;
+record_class = &lt;class 'asyncpg.Record'&gt;
+params_input = ConnectionParameters(user='trading_user', password='', database='trading_system', ssl=&lt;ssl.SSLContext object at 0x1680...postgres'&gt;, server_settings=None, target_session_attrs=&lt;SessionAttribute.any: 'any'&gt;, krbsrvname=None, gsslib='gssapi')
+
+    async def __connect_addr(
+        params,
+        retry,
+        addr,
+        loop,
+        config,
+        connection_class,
+        record_class,
+        params_input,
+    ):
+        connected = _create_future(loop)
+
+        proto_factory = lambda: protocol.Protocol(
+            addr, connected, params, record_class, loop)
+
+        if isinstance(addr, str):
+            # UNIX socket
+            connector = loop.create_unix_connection(proto_factory, addr)
+
+        elif params.ssl and params.ssl_negotiation is SSLNegotiation.direct:
+            # if ssl and ssl_negotiation is `direct`, skip STARTTLS and perform
+            # direct SSL connection
+            connector = loop.create_connection(
+                proto_factory, *addr, ssl=params.ssl
+            )
+
+        elif params.ssl:
+            connector = _create_ssl_connection(
+                proto_factory, *addr, loop=loop, ssl_context=params.ssl,
+                ssl_is_advisory=params.sslmode == SSLMode.prefer)
+        else:
+            connector = loop.create_connection(proto_factory, *addr)
+
+        tr, pr = await connector
+
+        try:
+&gt;           await connected
+E           asyncpg.exceptions.InvalidPasswordError: password authentication failed for user "trading_user"
+
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connect_utils.py:934: InvalidPasswordError
+
+The above exception was the direct cause of the following exception:
+
+    @pytest.mark.asyncio
+    async def test_database_connection():
+        """Test basic database connection"""
+        pool = DatabasePool(
+            host="localhost",
+            port=5432,
+            database="trading_system",
+            user="trading_user",
+            password="",  # nosec B106 - test credentials
+        )
+
+&gt;       await pool.initialize()
+
+workspace/tests/integration/test_database_integration.py:43:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;workspace.shared.database.connection.DatabasePool object at 0x127fc75c0&gt;
+
+    async def initialize(self) -&gt; None:
+        """
+        Initialize connection pool and start health monitoring.
+
+        Raises:
+            ConnectionError: If unable to connect to database
+        """
+        if self.is_initialized:
+            logger.warning("Database pool already initialized")
+            return
+
+        try:
+            logger.info(
+                f"Initializing database pool: {self.config['database']}@{self.config['host']}:{self.config['port']}"
+            )
+
+            # Create connection pool
+            self.pool = await asyncpg.create_pool(
+                host=self.config["host"],
+                port=self.config["port"],
+                database=self.config["database"],
+                user=self.config["user"],
+                password=self.config["password"],
+                min_size=self.config["min_size"],
+                max_size=self.config["max_size"],
+                command_timeout=self.config["command_timeout"],
+                max_queries=self.config["max_queries"],
+                max_inactive_connection_lifetime=self.config[
+                    "max_inactive_connection_lifetime"
+                ],
+            )
+
+            # Verify connection
+            async with self.pool.acquire() as conn:
+                version = await conn.fetchval("SELECT version()")
+                logger.info(f"Connected to PostgreSQL: {version}")
+
+                # Verify TimescaleDB extension
+                timescaledb = await conn.fetchval(
+                    "SELECT extversion FROM pg_extension WHERE extname = 'timescaledb'"
+                )
+                if timescaledb:
+                    logger.info(f"TimescaleDB extension loaded: {timescaledb}")
+                else:
+                    logger.warning("TimescaleDB extension not found")
+
+            self.is_initialized = True
+
+            # Start health check task
+            self._health_check_task = asyncio.create_task(self._periodic_health_check())
+
+            logger.info(
+                f"Database pool initialized: {self.config['min_size']}-{self.config['max_size']} connections"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to initialize database pool: {e}")
+&gt;           raise ConnectionError(f"Database connection failed: {e}") from e
+E           ConnectionError: Database connection failed: password authentication failed for user "trading_user"
+
+workspace/shared/database/connection.py:156: ConnectionError</failure></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_connection_pool" time="0.016"><failure message="ConnectionError: Database connection failed: password authentication failed for user &quot;postgres&quot;">self = &lt;workspace.shared.database.connection.DatabasePool object at 0x16807ad80&gt;
+
+    async def initialize(self) -&gt; None:
+        """
+        Initialize connection pool and start health monitoring.
+
+        Raises:
+            ConnectionError: If unable to connect to database
+        """
+        if self.is_initialized:
+            logger.warning("Database pool already initialized")
+            return
+
+        try:
+            logger.info(
+                f"Initializing database pool: {self.config['database']}@{self.config['host']}:{self.config['port']}"
+            )
+
+            # Create connection pool
+&gt;           self.pool = await asyncpg.create_pool(
+                host=self.config["host"],
+                port=self.config["port"],
+                database=self.config["database"],
+                user=self.config["user"],
+                password=self.config["password"],
+                min_size=self.config["min_size"],
+                max_size=self.config["max_size"],
+                command_timeout=self.config["command_timeout"],
+                max_queries=self.config["max_queries"],
+                max_inactive_connection_lifetime=self.config[
+                    "max_inactive_connection_lifetime"
+                ],
+            )
+
+workspace/shared/database/connection.py:116:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:418: in _async__init__
+    await self._initialize()
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:445: in _initialize
+    await first_ch.connect()
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:132: in connect
+    self._con = await self._pool._get_new_connection()
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/pool.py:517: in _get_new_connection
+    con = await self._connect(
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connection.py:2421: in connect
+    return await connect_utils._connect(
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connect_utils.py:1049: in _connect
+    conn = await _connect_addr(
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connect_utils.py:886: in _connect_addr
+    return await __connect_addr(params, True, *args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+params = ConnectionParameters(user='postgres', password='', database='trading_system', ssl=&lt;ssl.SSLContext object at 0x168229c5...postgres'&gt;, server_settings=None, target_session_attrs=&lt;SessionAttribute.any: 'any'&gt;, krbsrvname=None, gsslib='gssapi')
+retry = True, addr = ('localhost', 5432)
+loop = &lt;_UnixSelectorEventLoop running=False closed=False debug=False&gt;
+config = ConnectionConfiguration(command_timeout=10.0, statement_cache_size=100, max_cached_statement_lifetime=300, max_cacheable_statement_size=15360)
+connection_class = &lt;class 'asyncpg.connection.Connection'&gt;
+record_class = &lt;class 'asyncpg.Record'&gt;
+params_input = ConnectionParameters(user='postgres', password='', database='trading_system', ssl=&lt;ssl.SSLContext object at 0x168229c5...postgres'&gt;, server_settings=None, target_session_attrs=&lt;SessionAttribute.any: 'any'&gt;, krbsrvname=None, gsslib='gssapi')
+
+    async def __connect_addr(
+        params,
+        retry,
+        addr,
+        loop,
+        config,
+        connection_class,
+        record_class,
+        params_input,
+    ):
+        connected = _create_future(loop)
+
+        proto_factory = lambda: protocol.Protocol(
+            addr, connected, params, record_class, loop)
+
+        if isinstance(addr, str):
+            # UNIX socket
+            connector = loop.create_unix_connection(proto_factory, addr)
+
+        elif params.ssl and params.ssl_negotiation is SSLNegotiation.direct:
+            # if ssl and ssl_negotiation is `direct`, skip STARTTLS and perform
+            # direct SSL connection
+            connector = loop.create_connection(
+                proto_factory, *addr, ssl=params.ssl
+            )
+
+        elif params.ssl:
+            connector = _create_ssl_connection(
+                proto_factory, *addr, loop=loop, ssl_context=params.ssl,
+                ssl_is_advisory=params.sslmode == SSLMode.prefer)
+        else:
+            connector = loop.create_connection(proto_factory, *addr)
+
+        tr, pr = await connector
+
+        try:
+&gt;           await connected
+E           asyncpg.exceptions.InvalidPasswordError: password authentication failed for user "postgres"
+
+/opt/miniconda3/lib/python3.12/site-packages/asyncpg/connect_utils.py:934: InvalidPasswordError
+
+The above exception was the direct cause of the following exception:
+
+    @pytest.mark.asyncio
+    async def test_connection_pool():
+        """Test connection pooling"""
+&gt;       pool = await init_pool()
+
+workspace/tests/integration/test_database_integration.py:62:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+workspace/shared/database/connection.py:436: in init_pool
+    await _global_pool.initialize()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;workspace.shared.database.connection.DatabasePool object at 0x16807ad80&gt;
+
+    async def initialize(self) -&gt; None:
+        """
+        Initialize connection pool and start health monitoring.
+
+        Raises:
+            ConnectionError: If unable to connect to database
+        """
+        if self.is_initialized:
+            logger.warning("Database pool already initialized")
+            return
+
+        try:
+            logger.info(
+                f"Initializing database pool: {self.config['database']}@{self.config['host']}:{self.config['port']}"
+            )
+
+            # Create connection pool
+            self.pool = await asyncpg.create_pool(
+                host=self.config["host"],
+                port=self.config["port"],
+                database=self.config["database"],
+                user=self.config["user"],
+                password=self.config["password"],
+                min_size=self.config["min_size"],
+                max_size=self.config["max_size"],
+                command_timeout=self.config["command_timeout"],
+                max_queries=self.config["max_queries"],
+                max_inactive_connection_lifetime=self.config[
+                    "max_inactive_connection_lifetime"
+                ],
+            )
+
+            # Verify connection
+            async with self.pool.acquire() as conn:
+                version = await conn.fetchval("SELECT version()")
+                logger.info(f"Connected to PostgreSQL: {version}")
+
+                # Verify TimescaleDB extension
+                timescaledb = await conn.fetchval(
+                    "SELECT extversion FROM pg_extension WHERE extname = 'timescaledb'"
+                )
+                if timescaledb:
+                    logger.info(f"TimescaleDB extension loaded: {timescaledb}")
+                else:
+                    logger.warning("TimescaleDB extension not found")
+
+            self.is_initialized = True
+
+            # Start health check task
+            self._health_check_task = asyncio.create_task(self._periodic_health_check())
+
+            logger.info(
+                f"Database pool initialized: {self.config['min_size']}-{self.config['max_size']} connections"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to initialize database pool: {e}")
+&gt;           raise ConnectionError(f"Database connection failed: {e}") from e
+E           ConnectionError: Database connection failed: password authentication failed for user "postgres"
+
+workspace/shared/database/connection.py:156: ConnectionError</failure></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_trades_hypertable" time="0.001"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_positions_table" time="0.001"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_metrics_snapshots_hypertable" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_continuous_aggregate" time="0.001"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_retention_policy" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_database_performance" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_database_integration" name="test_llm_requests_table" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_database_integration.py:18:  def db_pool()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_database_integration.py:18:  def db_pool()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_metrics_endpoint_returns_prometheus_format" time="0.004" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_metrics_endpoint_contains_correct_values" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_metrics_endpoint_without_initialization" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_metrics_endpoint_updates_with_new_data" time="0.002" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_metrics_latency_percentiles" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_metrics_system_uptime" time="0.002" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_health_endpoint" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_ready_endpoint_not_ready_initially" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_ready_endpoint_not_ready_during_startup" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_ready_endpoint_ready_after_startup" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_live_endpoint_alive" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_live_endpoint_unhealthy_when_frozen" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_live_endpoint_no_metrics_service" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_live_endpoint_no_trades_yet" time="0.001" /><testcase classname="workspace.tests.integration.test_metrics_endpoint.TestMetricsEndpoint" name="test_all_endpoints_have_timestamps" time="0.002" /><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_connection" time="0.004" /><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_set_get" time="0.001"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_dict_serialization" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_ttl_expiration" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_exists" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_clear_pattern" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_stats" time="0.000"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_cache_service_redis_backend" time="0.007"><failure message="KeyError: 'backend'">@pytest.mark.asyncio
+    async def test_cache_service_redis_backend():
+        """Test CacheService with Redis backend"""
+        # Initialize Redis
+        await init_redis()
+
+        # Create cache service with Redis
+        cache = CacheService(use_redis=True)
+
+        # Test set and get
+        await cache.set("cache_test_key", {"value": 123}, ttl_seconds=60)
+        result = await cache.get("cache_test_key")
+        assert result == {"value": 123}
+
+        # Test cache hit
+        result2 = await cache.get("cache_test_key")
+        assert result2 == {"value": 123}
+
+        # Check stats
+        stats = cache.get_stats()
+        print(f"Cache stats: {stats}")
+        assert stats["hits"] &gt;= 1
+&gt;       assert stats["backend"] == "redis"
+E       KeyError: 'backend'
+
+workspace/tests/integration/test_redis_integration.py:190: KeyError</failure></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_cache_service_fallback" time="0.004" /><testcase classname="workspace.tests.integration.test_redis_integration" name="test_cache_service_get_or_set" time="0.016" /><testcase classname="workspace.tests.integration.test_redis_integration" name="test_redis_performance" time="0.001"><error message="failed on setup with &quot;Failed: ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:&#10;workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()&#10;Requested fixture:&#10;../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'&quot;">ScopeMismatch: You tried to access the function scoped fixture _function_scoped_runner with a module scoped request object. Requesting fixture stack:
+workspace/tests/integration/test_redis_integration.py:18:  def redis_manager()
+Requested fixture:
+../../../../../../opt/miniconda3/lib/python3.12/site-packages/pytest_asyncio/plugin.py:748:  def _scoped_runner(event_loop_policy) -&gt; 'Iterator[Runner]'</error></testcase><testcase classname="workspace.tests.integration.test_redis_integration" name="test_cache_ttl_expiration" time="1.108" /><testcase classname="workspace.tests.integration.test_redis_integration" name="test_cache_clear_pattern" time="0.007"><failure message="assert 0 == 2">@pytest.mark.asyncio
+    async def test_cache_clear_pattern():
+        """Test clearing cache by pattern"""
+        await init_redis()
+        cache = CacheService(use_redis=True)
+
+        # Set multiple keys
+        await cache.set("market:BTC", {"price": 45000}, ttl_seconds=60)
+        await cache.set("market:ETH", {"price": 2500}, ttl_seconds=60)
+        await cache.set("llm:request_1", {"response": "data"}, ttl_seconds=60)
+
+        # Clear market keys
+        count = await cache.clear("market:*")
+&gt;       assert count == 2
+E       assert 0 == 2
+
+workspace/tests/integration/test_redis_integration.py:316: AssertionError</failure></testcase><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_valid_strategy_signal_approved" time="0.009"><failure message="AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?">self = &lt;tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration object at 0x127127fe0&gt;
+sample_ohlcv_data =                                    open          high  ...         close     volume
+timestamp                         ...  19.348597
+2025-10-30 20:01:58.462140+00:00  50934  51103.782026  ...  50939.812944  53.865178
+
+[100 rows x 5 columns]
+mock_trade_executor = &lt;tests.integration.conftest.mock_trade_executor.&lt;locals&gt;.MockTradeExecutor object at 0x1682f85f0&gt;
+mock_position_tracker = &lt;tests.integration.conftest.mock_position_tracker.&lt;locals&gt;.MockPositionTracker object at 0x1682fb3e0&gt;
+
+    @pytest.mark.asyncio
+    async def test_valid_strategy_signal_approved(
+        self,
+        sample_ohlcv_data,
+        mock_trade_executor,
+        mock_position_tracker,
+    ):
+        """Test risk manager approves valid strategy signal"""
+        # Generate signal from strategy
+        strategy = MeanReversionStrategy()
+&gt;       signal = await strategy.generate_signal(sample_ohlcv_data)
+E       AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?
+
+workspace/tests/integration/test_risk_manager_strategy.py:47: AttributeError</failure></testcase><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_low_confidence_signal_rejected" time="0.001" /><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_large_position_signal_rejected" time="0.001" /><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_invalid_stop_loss_rejected" time="0.001" /><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_all_strategies_validated" time="0.002"><failure message="AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?">self = &lt;tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration object at 0x127e6a240&gt;
+sample_ohlcv_data =                                    open          high  ...         close     volume
+timestamp                         ...  51.191275
+2025-10-30 20:01:58.488016+00:00  50534  50614.180497  ...  50467.840282  81.190138
+
+[100 rows x 5 columns]
+mock_trade_executor = &lt;tests.integration.conftest.mock_trade_executor.&lt;locals&gt;.MockTradeExecutor object at 0x1683d6c30&gt;
+mock_position_tracker = &lt;tests.integration.conftest.mock_position_tracker.&lt;locals&gt;.MockPositionTracker object at 0x1683d6bd0&gt;
+
+    @pytest.mark.asyncio
+    async def test_all_strategies_validated(
+        self,
+        sample_ohlcv_data,
+        mock_trade_executor,
+        mock_position_tracker,
+    ):
+        """Test all strategies produce valid signals"""
+        strategies = [
+            MeanReversionStrategy(),
+            TrendFollowingStrategy(),
+            VolatilityBreakoutStrategy(),
+        ]
+
+        risk_manager = RiskManager(
+            starting_balance_chf=Decimal("2626.96"),
+            max_daily_loss_chf=Decimal("-183.89"),
+            trade_executor=mock_trade_executor,
+            position_tracker=mock_position_tracker,
+        )
+
+        for strategy in strategies:
+            # Generate signal
+&gt;           signal = await strategy.generate_signal(sample_ohlcv_data)
+E           AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?
+
+workspace/tests/integration/test_risk_manager_strategy.py:182: AttributeError</failure></testcase><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_multiple_signals_exposure_limit" time="0.002"><failure message="AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?">self = &lt;tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration object at 0x127e6a4e0&gt;
+sample_ohlcv_data =                                    open          high  ...         close     volume
+timestamp                         ...  21.403785
+2025-10-30 20:01:58.498930+00:00  48255  48273.869785  ...  48243.016738  16.604577
+
+[100 rows x 5 columns]
+mock_trade_executor = &lt;tests.integration.conftest.mock_trade_executor.&lt;locals&gt;.MockTradeExecutor object at 0x1683d7fe0&gt;
+mock_position_tracker = &lt;tests.integration.conftest.mock_position_tracker.&lt;locals&gt;.MockPositionTracker object at 0x1683d7f80&gt;
+
+    @pytest.mark.asyncio
+    async def test_multiple_signals_exposure_limit(
+        self,
+        sample_ohlcv_data,
+        mock_trade_executor,
+        mock_position_tracker,
+    ):
+        """Test risk manager enforces total exposure limit"""
+        strategy = MeanReversionStrategy()
+        risk_manager = RiskManager(
+            starting_balance_chf=Decimal("2626.96"),
+            max_daily_loss_chf=Decimal("-183.89"),
+            trade_executor=mock_trade_executor,
+            position_tracker=mock_position_tracker,
+        )
+
+        # Create multiple positions
+        mock_position_tracker.positions = [
+            {"symbol": "BTC/USDT:USDT", "size_pct": Decimal("0.20")},
+            {"symbol": "ETH/USDT:USDT", "size_pct": Decimal("0.20")},
+            {"symbol": "SOL/USDT:USDT", "size_pct": Decimal("0.20")},
+            {"symbol": "BNB/USDT:USDT", "size_pct": Decimal("0.20")},
+        ]
+
+        # Generate new signal
+&gt;       signal = await strategy.generate_signal(sample_ohlcv_data)
+E       AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?
+
+workspace/tests/integration/test_risk_manager_strategy.py:218: AttributeError</failure></testcase><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_position_count_limit" time="0.002"><failure message="AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?">self = &lt;tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration object at 0x127e6a780&gt;
+sample_ohlcv_data =                                    open          high  ...         close     volume
+timestamp                         ...  42.708426
+2025-10-30 20:01:58.510177+00:00  48778  48917.628458  ...  48733.537919  66.274641
+
+[100 rows x 5 columns]
+mock_trade_executor = &lt;tests.integration.conftest.mock_trade_executor.&lt;locals&gt;.MockTradeExecutor object at 0x168319370&gt;
+mock_position_tracker = &lt;tests.integration.conftest.mock_position_tracker.&lt;locals&gt;.MockPositionTracker object at 0x168319310&gt;
+
+    @pytest.mark.asyncio
+    async def test_position_count_limit(
+        self,
+        sample_ohlcv_data,
+        mock_trade_executor,
+        mock_position_tracker,
+    ):
+        """Test risk manager enforces position count limit"""
+        strategy = MeanReversionStrategy()
+        risk_manager = RiskManager(
+            starting_balance_chf=Decimal("2626.96"),
+            max_daily_loss_chf=Decimal("-183.89"),
+            trade_executor=mock_trade_executor,
+            position_tracker=mock_position_tracker,
+        )
+
+        # Create 6 positions (at limit)
+        mock_position_tracker.positions = [
+            {"symbol": "BTC/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "ETH/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "SOL/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "BNB/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "ADA/USDT:USDT", "size_pct": Decimal("0.10")},
+            {"symbol": "DOGE/USDT:USDT", "size_pct": Decimal("0.10")},
+        ]
+
+        # Generate new signal
+&gt;       signal = await strategy.generate_signal(sample_ohlcv_data)
+E       AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?
+
+workspace/tests/integration/test_risk_manager_strategy.py:258: AttributeError</failure></testcase><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_leverage_limits_per_symbol" time="0.001" /><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_validation_provides_detailed_feedback" time="0.002"><failure message="AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?">self = &lt;tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration object at 0x127e6ac90&gt;
+sample_ohlcv_data =                                    open          high  ...         close     volume
+timestamp                         ...  88.706807
+2025-10-30 20:01:58.522444+00:00  48879  49024.283253  ...  48851.275524  87.302683
+
+[100 rows x 5 columns]
+mock_trade_executor = &lt;tests.integration.conftest.mock_trade_executor.&lt;locals&gt;.MockTradeExecutor object at 0x16831a930&gt;
+mock_position_tracker = &lt;tests.integration.conftest.mock_position_tracker.&lt;locals&gt;.MockPositionTracker object at 0x16831a900&gt;
+
+    @pytest.mark.asyncio
+    async def test_validation_provides_detailed_feedback(
+        self,
+        sample_ohlcv_data,
+        mock_trade_executor,
+        mock_position_tracker,
+    ):
+        """Test validation provides detailed feedback"""
+        strategy = MeanReversionStrategy()
+&gt;       signal = await strategy.generate_signal(sample_ohlcv_data)
+E       AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?
+
+workspace/tests/integration/test_risk_manager_strategy.py:314: AttributeError</failure></testcase><testcase classname="workspace.tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration" name="test_circuit_breaker_blocks_signals" time="0.002"><failure message="AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?">self = &lt;tests.integration.test_risk_manager_strategy.TestRiskManagerStrategyIntegration object at 0x127e6af30&gt;
+sample_ohlcv_data =                                    open          high  ...         close     volume
+timestamp                         ...  71.058173
+2025-10-30 20:01:58.533575+00:00  51139  51167.111407  ...  51004.960643  31.885124
+
+[100 rows x 5 columns]
+mock_trade_executor = &lt;tests.integration.conftest.mock_trade_executor.&lt;locals&gt;.MockTradeExecutor object at 0x16831be00&gt;
+mock_position_tracker = &lt;tests.integration.conftest.mock_position_tracker.&lt;locals&gt;.MockPositionTracker object at 0x16831bd70&gt;
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_blocks_signals(
+        self,
+        sample_ohlcv_data,
+        mock_trade_executor,
+        mock_position_tracker,
+    ):
+        """Test circuit breaker blocks all signals when tripped"""
+        strategy = MeanReversionStrategy()
+&gt;       signal = await strategy.generate_signal(sample_ohlcv_data)
+E       AttributeError: 'MeanReversionStrategy' object has no attribute 'generate_signal'. Did you mean: '_generate_hold_signal'?
+
+workspace/tests/integration/test_risk_manager_strategy.py:344: AttributeError</failure></testcase><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_mean_reversion_with_oversold_conditions" time="0.001" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_mean_reversion_with_overbought_conditions" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_mean_reversion_with_neutral_conditions" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_trend_following_with_bullish_trend" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_volatility_breakout_strategy" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_multiple_strategies_same_snapshot" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_strategy_signal_has_risk_parameters" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_strategy_position_sizing_reasonable" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_strategy_provides_reasoning" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_extreme_oversold_high_confidence" time="0.000" /><testcase classname="workspace.tests.integration.test_strategy_market_data.TestStrategyMarketDataIntegration" name="test_extreme_overbought_high_confidence" time="0.000" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_buy_success" time="0.004" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_buy_with_stop_loss" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_buy_position_sizing" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_sell_success" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_sell_with_stop_loss_above_entry" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_hold_no_action" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_close_existing_position" time="0.004" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_close_no_position" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_with_risk_manager_approval" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_with_risk_manager_rejection" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_exchange_error" time="0.003" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_invalid_symbol_format" time="0.004" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_metadata_preservation" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_executor_signal.TestExecuteSignalIntegration" name="test_execute_signal_latency_tracking" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_history_integration.TestTradeHistoryIntegration" name="test_trade_logged_on_buy_signal" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_history_integration.TestTradeHistoryIntegration" name="test_trade_logged_on_close_signal_with_pnl" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_history_integration.TestTradeHistoryIntegration" name="test_trade_statistics_calculation" time="0.003" /><testcase classname="workspace.tests.integration.test_trade_history_integration.TestTradeHistoryIntegration" name="test_trade_history_query_filters" time="0.002" /><testcase classname="workspace.tests.integration.test_trade_history_integration.TestTradeHistoryIntegration" name="test_daily_report_generation" time="0.003" /></testsuite></testsuites>

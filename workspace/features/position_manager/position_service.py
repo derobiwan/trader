@@ -504,7 +504,7 @@ class PositionService:
                         )
 
                         # Update daily P&L tracking
-                        today = date.today()
+                        today = Date.today()
                         await conn.execute(
                             """
                             INSERT INTO circuit_breaker_state (date, current_pnl_chf)

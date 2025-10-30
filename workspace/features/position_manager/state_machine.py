@@ -67,6 +67,7 @@ class PositionState(str, Enum):
         FAILED: Order or close failed
         LIQUIDATED: Position liquidated by exchange
     """
+
     NONE = "none"
     OPENING = "opening"
     OPEN = "open"
@@ -91,10 +92,15 @@ class StateTransition(BaseModel):
     - Reason for transition
     - Timestamp of transition
     """
+
     from_state: PositionState = Field(..., description="Previous state")
     to_state: PositionState = Field(..., description="New state")
-    reason: str = Field(..., min_length=1, max_length=500, description="Reason for transition")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="When transition occurred")
+    reason: str = Field(
+        ..., min_length=1, max_length=500, description="Reason for transition"
+    )
+    timestamp: datetime = Field(
+        default_factory=datetime.utcnow, description="When transition occurred"
+    )
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
     def __repr__(self) -> str:
@@ -111,6 +117,7 @@ class StateTransition(BaseModel):
 
 class InvalidStateTransition(Exception):
     """Raised when an invalid state transition is attempted."""
+
     pass
 
 
@@ -174,7 +181,7 @@ class PositionStateMachine:
         self,
         to_state: PositionState,
         reason: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Transition to a new state.
@@ -212,7 +219,7 @@ class PositionStateMachine:
             from_state=self.current_state,
             to_state=to_state,
             reason=reason.strip(),
-            metadata=metadata
+            metadata=metadata,
         )
         self.history.append(transition)
 
@@ -317,11 +324,15 @@ class PositionStateMachine:
                 # Calculate duration until next transition
                 if i + 1 < len(self.history):
                     next_transition = self.history[i + 1]
-                    duration = (next_transition.timestamp - transition.timestamp).total_seconds()
+                    duration = (
+                        next_transition.timestamp - transition.timestamp
+                    ).total_seconds()
                     total_duration += duration
                 elif self.current_state == state:
                     # Still in this state
-                    duration = (datetime.utcnow() - transition.timestamp).total_seconds()
+                    duration = (
+                        datetime.utcnow() - transition.timestamp
+                    ).total_seconds()
                     total_duration += duration
 
         return total_duration if found_state else None
@@ -368,7 +379,7 @@ class PositionStateMachine:
 def create_state_machine(
     symbol: str,
     position_id: Optional[UUID] = None,
-    initial_state: PositionState = PositionState.NONE
+    initial_state: PositionState = PositionState.NONE,
 ) -> PositionStateMachine:
     """
     Factory function to create a position state machine.
@@ -387,9 +398,7 @@ def create_state_machine(
     # (This is for reconstructing state machines from database)
     if initial_state != PositionState.NONE:
         sm.current_state = initial_state
-        logger.debug(
-            f"State machine created with initial state: {initial_state.value}"
-        )
+        logger.debug(f"State machine created with initial state: {initial_state.value}")
 
     return sm
 
@@ -400,7 +409,7 @@ def create_state_machine(
 
 
 def validate_transition_path(
-    transitions: List[tuple[PositionState, PositionState]]
+    transitions: List[tuple[PositionState, PositionState]],
 ) -> bool:
     """
     Validate a sequence of state transitions.

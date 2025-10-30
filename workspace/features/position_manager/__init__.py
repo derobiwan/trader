@@ -18,10 +18,6 @@ from workspace.features.position_manager.position_service import (
     PositionService,
     bulk_update_prices,
 )
-
-# Alias for consistency with other modules
-PositionManager = PositionService
-
 from workspace.features.position_manager.models import (
     # Request Models
     PositionCreateRequest,
@@ -47,6 +43,9 @@ from workspace.features.position_manager.models import (
     MAX_LEVERAGE,
     VALID_SYMBOLS,
 )
+
+# Alias for consistency with other modules
+PositionManager = PositionService
 
 __all__ = [
     # Service

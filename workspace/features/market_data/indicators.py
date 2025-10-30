@@ -104,6 +104,9 @@ class IndicatorCalculator:
                 rs = avg_gain / avg_loss
                 rsi_value = Decimal("100") - (Decimal("100") / (Decimal("1") + rs))
 
+            # Quantize to 2 decimal places for RSI model constraint
+            rsi_value = rsi_value.quantize(Decimal("0.01"))
+
             # Get latest candle info
             latest = ohlcv_data[-1]
 
@@ -119,6 +122,39 @@ class IndicatorCalculator:
 
         except Exception as e:
             logger.error(f"Error calculating RSI: {e}", exc_info=True)
+            return None
+
+    @staticmethod
+    def _calculate_ema_unquantized(
+        ohlcv_data: List[OHLCV],
+        period: int,
+    ) -> Optional[Decimal]:
+        """
+        Internal method to calculate EMA without quantizing (for use in MACD).
+        Returns only the Decimal value, not an EMA object.
+        """
+        if len(ohlcv_data) < period:
+            return None
+
+        try:
+            # Calculate SMA for initial EMA value
+            sma = sum(candle.close for candle in ohlcv_data[:period]) / Decimal(
+                str(period)
+            )
+            ema = sma
+
+            # Calculate multiplier
+            multiplier = Decimal("2") / Decimal(str(period + 1))
+
+            # Calculate EMA for remaining periods
+            for i in range(period, len(ohlcv_data)):
+                close = ohlcv_data[i].close
+                ema = (close - ema) * multiplier + ema
+
+            return ema
+
+        except Exception as e:
+            logger.error(f"Error calculating EMA: {e}", exc_info=True)
             return None
 
     @staticmethod
@@ -167,6 +203,9 @@ class IndicatorCalculator:
             for i in range(period, len(ohlcv_data)):
                 close = ohlcv_data[i].close
                 ema = (close - ema) * multiplier + ema
+
+            # Quantize to 8 decimal places for consistency with exchange precision
+            ema = ema.quantize(Decimal("0.00000001"))
 
             # Get latest candle info
             latest = ohlcv_data[-1]
@@ -221,24 +260,32 @@ class IndicatorCalculator:
             return None
 
         try:
-            # Calculate fast and slow EMAs
-            fast_ema = IndicatorCalculator.calculate_ema(ohlcv_data, fast_period)
-            slow_ema = IndicatorCalculator.calculate_ema(ohlcv_data, slow_period)
+            # Calculate fast and slow EMAs (unquantized to preserve precision for histogram)
+            fast_ema_value = IndicatorCalculator._calculate_ema_unquantized(
+                ohlcv_data, fast_period
+            )
+            slow_ema_value = IndicatorCalculator._calculate_ema_unquantized(
+                ohlcv_data, slow_period
+            )
 
-            if not fast_ema or not slow_ema:
+            if not fast_ema_value or not slow_ema_value:
                 return None
 
-            # Calculate MACD line (fast - slow)
-            macd_line = fast_ema.value - slow_ema.value
+            # Calculate MACD line (fast - slow) with full precision
+            macd_line = fast_ema_value - slow_ema_value
 
             # Calculate MACD line history for signal line calculation
             macd_values = []
             for i in range(slow_period, len(ohlcv_data)):
                 subset = ohlcv_data[: i + 1]
-                fast = IndicatorCalculator.calculate_ema(subset, fast_period)
-                slow = IndicatorCalculator.calculate_ema(subset, slow_period)
+                fast = IndicatorCalculator._calculate_ema_unquantized(
+                    subset, fast_period
+                )
+                slow = IndicatorCalculator._calculate_ema_unquantized(
+                    subset, slow_period
+                )
                 if fast and slow:
-                    macd_values.append(fast.value - slow.value)
+                    macd_values.append(fast - slow)
 
             # Need enough MACD values for signal line
             if len(macd_values) < signal_period:
@@ -254,6 +301,11 @@ class IndicatorCalculator:
 
             # Calculate histogram
             histogram = macd_line - signal_line
+
+            # Quantize to 8 decimal places for consistency with exchange precision
+            macd_line = macd_line.quantize(Decimal("0.00000001"))
+            signal_line = signal_line.quantize(Decimal("0.00000001"))
+            histogram = histogram.quantize(Decimal("0.00000001"))
 
             # Get latest candle info
             latest = ohlcv_data[-1]
@@ -328,6 +380,12 @@ class IndicatorCalculator:
 
             # Calculate bandwidth
             bandwidth = upper_band - lower_band
+
+            # Quantize to 8 decimal places for consistency with exchange precision
+            upper_band = upper_band.quantize(Decimal("0.00000001"))
+            middle_band = middle_band.quantize(Decimal("0.00000001"))
+            lower_band = lower_band.quantize(Decimal("0.00000001"))
+            bandwidth = bandwidth.quantize(Decimal("0.00000001"))
 
             # Get latest candle info
             latest = ohlcv_data[-1]

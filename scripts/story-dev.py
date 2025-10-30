@@ -37,7 +37,7 @@ class StoryDev:
             return False
 
         # Load story
-        story_content = story_file.read_text()
+        story_file.read_text()
 
         # Find corresponding task
         task_id = self._find_task_for_story(story_id)
