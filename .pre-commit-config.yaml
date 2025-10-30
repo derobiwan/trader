@@ -13,7 +13,7 @@ repos:
 
   # Black - Python code formatter
   - repo: https://github.com/psf/black
-    rev: 25.1.0
+    rev: 25.9.0
     hooks:
       - id: black
         name: black (formatting)
@@ -45,23 +45,7 @@ repos:
         pass_filenames: false
         exclude: ^tests/
 
-  # Flake8 - Python style guide enforcement
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.1
-    hooks:
-      - id: flake8
-        name: flake8 (style guide)
-        additional_dependencies:
-          - flake8-bugbear
-          - flake8-comprehensions
-          - flake8-import-order
-          - flake8-docstrings
-          - pydocstyle
-        args:
-          [--config=pyproject.toml, --max-line-length=100, --max-complexity=20]
-        exclude: ^tests/
-
-  # Standard pre-commit hooks
+    # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

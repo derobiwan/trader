@@ -16,7 +16,7 @@ from decimal import Decimal
 from typing import Any, Callable, Dict, List, Optional
 
 import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets.client import ClientProtocol
 
 from .models import OHLCV, Ticker, Timeframe
 
@@ -85,7 +85,7 @@ class BybitWebSocketClient:
         self.ping_interval = ping_interval
 
         # WebSocket connection
-        self.ws: Optional[WebSocketClientProtocol] = None
+        self.ws: Optional[ClientProtocol] = None
         self.running = False
 
         # Subscription tracking
