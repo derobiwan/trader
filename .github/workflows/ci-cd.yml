@@ -57,7 +57,7 @@ jobs:
         run: flake8 workspace/ --config=.flake8
 
       - name: Run mypy type checker
-        run: mypy workspace/ --config-file=mypy.ini
+        run: mypy workspace/
 
       - name: Run bandit security linter
         run: bandit -r workspace/ -f json -o bandit-report.json

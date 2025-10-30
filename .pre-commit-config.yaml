@@ -57,7 +57,8 @@ repos:
           - flake8-import-order
           - flake8-docstrings
           - pydocstyle
-        args: [--config=pyproject.toml, --max-line-length=100, --]
+        args:
+          [--config=pyproject.toml, --max-line-length=100, --max-complexity=20]
         exclude: ^tests/
 
   # Standard pre-commit hooks
