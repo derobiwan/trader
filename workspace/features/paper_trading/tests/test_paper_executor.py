@@ -8,9 +8,10 @@ Author: Implementation Specialist (Sprint 2 Stream B)
 Date: 2025-10-29
 """
 
-import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock
+
+import pytest
 
 from workspace.features.paper_trading import PaperTradingExecutor
 from workspace.features.trade_executor.models import OrderSide, OrderType

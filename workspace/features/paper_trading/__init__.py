@@ -13,8 +13,8 @@ Date: 2025-10-29
 """
 
 from .paper_executor import PaperTradingExecutor
-from .virtual_portfolio import VirtualPortfolio
 from .performance_tracker import PaperTradingPerformanceTracker
+from .virtual_portfolio import VirtualPortfolio
 
 __all__ = [
     "PaperTradingExecutor",

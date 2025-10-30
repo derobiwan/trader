@@ -8,9 +8,10 @@ Date: 2025-10-29
 Sprint: Sprint 2 Stream C
 """
 
-import os
 import logging
-from typing import Optional, List
+import os
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)

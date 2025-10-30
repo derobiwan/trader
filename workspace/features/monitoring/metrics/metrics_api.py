@@ -7,11 +7,12 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
-from datetime import datetime
-from typing import Dict, Any, Optional
 import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, Response
+
 from workspace.features.monitoring.metrics import MetricsService
 
 logger = logging.getLogger(__name__)

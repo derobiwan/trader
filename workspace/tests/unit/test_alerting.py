@@ -6,22 +6,17 @@ Date: 2025-10-29
 Sprint: Sprint 2 Stream C
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from workspace.features.alerting import (
-    Alert,
-    AlertSeverity,
-    AlertCategory,
-    AlertService,
-    AlertChannel,
-    AlertThrottler,
-    AlertRoutingRules,
-    EmailAlertChannel,
-    SlackAlertChannel,
-    PagerDutyAlertChannel,
-)
+import pytest
+
+from workspace.features.alerting import (Alert, AlertCategory, AlertChannel,
+                                         AlertRoutingRules, AlertService,
+                                         AlertSeverity, AlertThrottler,
+                                         EmailAlertChannel,
+                                         PagerDutyAlertChannel,
+                                         SlackAlertChannel)
 
 
 class TestAlertModels:

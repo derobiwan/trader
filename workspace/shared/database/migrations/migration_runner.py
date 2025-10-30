@@ -18,13 +18,14 @@ Usage:
     python migration_runner.py --dry-run
 """
 
+import argparse
 import asyncio
-import asyncpg
 import logging
 import os
 from pathlib import Path
 from typing import List, Tuple
-import argparse
+
+import asyncpg
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

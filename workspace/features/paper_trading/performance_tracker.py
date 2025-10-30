@@ -16,11 +16,11 @@ Date: 2025-10-29
 """
 
 import logging
+import statistics
+from collections import defaultdict
 from datetime import date
 from decimal import Decimal
-from typing import Dict, List, Optional, Any
-from collections import defaultdict
-import statistics
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

@@ -8,18 +8,18 @@ Date: 2025-10-28
 """
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 # Import components
-from workspace.features.market_data import MarketDataService, MarketDataSnapshot
-from workspace.features.trade_executor import TradeExecutor
-from workspace.features.position_manager import PositionManager
+from workspace.features.market_data import (MarketDataService,
+                                            MarketDataSnapshot)
 from workspace.features.paper_trading import PaperTradingExecutor
-
+from workspace.features.position_manager import PositionManager
+from workspace.features.trade_executor import TradeExecutor
 
 logger = logging.getLogger(__name__)
 

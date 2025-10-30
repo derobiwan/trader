@@ -7,15 +7,13 @@ Author: Infrastructure Specialist
 Date: 2025-10-28
 """
 
-import pytest
 import asyncio
 
-from workspace.infrastructure.cache import (
-    RedisManager,
-    init_redis,
-    close_redis,
-)
+import pytest
+
 from workspace.features.caching.cache_service import CacheService
+from workspace.infrastructure.cache import (RedisManager, close_redis,
+                                            init_redis)
 
 
 @pytest.fixture(scope="module")

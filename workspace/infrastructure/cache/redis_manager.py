@@ -18,10 +18,11 @@ Usage:
     value = await redis.get("key")
 """
 
-import redis.asyncio as redis
-from typing import Optional, Any, Dict
-import logging
 import json
+import logging
+from typing import Any, Dict, Optional
+
+import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 

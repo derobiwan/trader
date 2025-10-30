@@ -10,16 +10,11 @@ Date: 2025-10-28
 
 import logging
 from decimal import Decimal
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
-from .models import (
-    RiskValidation,
-    RiskCheckResult,
-    ValidationStatus,
-    Protection,
-    CircuitBreakerStatus,
-)
 from .circuit_breaker import CircuitBreaker
+from .models import (CircuitBreakerStatus, Protection, RiskCheckResult,
+                     RiskValidation, ValidationStatus)
 from .stop_loss_manager import StopLossManager
 
 logger = logging.getLogger(__name__)

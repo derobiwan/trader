@@ -7,14 +7,16 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
+from datetime import datetime, timedelta
+from decimal import Decimal
+
 import pytest
 import pytest_asyncio
-from decimal import Decimal
-from datetime import datetime, timedelta
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from workspace.features.monitoring.metrics import MetricsService
-from workspace.features.monitoring.metrics.metrics_api import app, init_metrics_service
+from workspace.features.monitoring.metrics.metrics_api import (
+    app, init_metrics_service)
 
 
 class TestMetricsEndpoint:

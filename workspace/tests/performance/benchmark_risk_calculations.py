@@ -10,16 +10,14 @@ Author: Risk Management Team
 Date: 2025-10-29
 """
 
-import time
 import asyncio
+import time
 from decimal import Decimal
 
-from workspace.features.risk_manager import (
-    PortfolioRiskManager,
-    KellyPositionSizer,
-    CorrelationAnalyzer,
-    RiskMetricsCalculator,
-)
+from workspace.features.risk_manager import (CorrelationAnalyzer,
+                                             KellyPositionSizer,
+                                             PortfolioRiskManager,
+                                             RiskMetricsCalculator)
 
 
 def benchmark_portfolio_risk_check():

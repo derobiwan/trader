@@ -8,12 +8,13 @@ Author: Trade Executor Implementation Team
 Date: 2025-10-27
 """
 
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field, validator
-import uuid
 
 
 class OrderType(str, Enum):

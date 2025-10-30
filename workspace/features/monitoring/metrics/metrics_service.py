@@ -8,17 +8,13 @@ Date: 2025-10-28
 """
 
 import logging
+import statistics
 import time
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any, List
-import statistics
+from typing import Any, Dict, List, Optional
 
-from .models import (
-    TradingMetrics,
-    MetricSnapshot,
-    PrometheusExportFormat,
-)
+from .models import MetricSnapshot, PrometheusExportFormat, TradingMetrics
 
 logger = logging.getLogger(__name__)
 

@@ -13,14 +13,12 @@ Date: 2025-10-29
 Sprint: 3, Stream B
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
-from workspace.features.risk_manager import (
-    RiskMetricsCalculator,
-    RiskMetrics,
-)
+import pytest
+
+from workspace.features.risk_manager import RiskMetrics, RiskMetricsCalculator
 
 
 @pytest.fixture

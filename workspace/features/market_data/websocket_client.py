@@ -13,12 +13,12 @@ import json
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Callable, Optional, List, Any
+from typing import Any, Callable, Dict, List, Optional
+
 import websockets
 from websockets.client import WebSocketClientProtocol
 
-from .models import Ticker, OHLCV, Timeframe
-
+from .models import OHLCV, Ticker, Timeframe
 
 logger = logging.getLogger(__name__)
 

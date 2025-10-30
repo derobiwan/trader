@@ -9,15 +9,11 @@ Sprint: Sprint 2 Stream C
 """
 
 import asyncio
-from workspace.features.alerting import (
-    Alert,
-    AlertSeverity,
-    AlertCategory,
-    AlertService,
-    EmailAlertChannel,
-    SlackAlertChannel,
-    PagerDutyAlertChannel,
-)
+
+from workspace.features.alerting import (Alert, AlertCategory, AlertService,
+                                         AlertSeverity, EmailAlertChannel,
+                                         PagerDutyAlertChannel,
+                                         SlackAlertChannel)
 from workspace.features.alerting.config import load_alerting_config
 
 

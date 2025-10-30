@@ -12,16 +12,15 @@ Date: 2025-10-29
 Sprint: 3, Stream B
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import AsyncMock
 
-from workspace.features.risk_manager import (
-    CorrelationAnalyzer,
-    CorrelationMatrix,
-    CorrelationPair,
-)
+import pytest
+
+from workspace.features.risk_manager import (CorrelationAnalyzer,
+                                             CorrelationMatrix,
+                                             CorrelationPair)
 
 
 @pytest.fixture

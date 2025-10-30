@@ -6,8 +6,9 @@ Date: 2025-10-29
 Sprint: 3 Stream C Task-048
 """
 
-import pytest
 import asyncio
+
+import pytest
 from performance.load_testing import LoadTester
 
 

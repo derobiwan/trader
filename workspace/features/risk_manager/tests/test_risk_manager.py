@@ -7,18 +7,14 @@ Author: Risk Management Team
 Date: 2025-10-28
 """
 
-import pytest
-from decimal import Decimal
 from dataclasses import dataclass
+from decimal import Decimal
 
-from workspace.features.risk_manager import (
-    RiskManager,
-    CircuitBreaker,
-    StopLossManager,
-    ValidationStatus,
-    CircuitBreakerState,
-)
+import pytest
 
+from workspace.features.risk_manager import (CircuitBreaker,
+                                             CircuitBreakerState, RiskManager,
+                                             StopLossManager, ValidationStatus)
 
 # ============================================================================
 # Mock Classes

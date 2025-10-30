@@ -10,38 +10,24 @@ Date: 2025-10-27
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
-import time
+from typing import Any, Dict, Optional
 
 import ccxt.async_support as ccxt
-from ccxt.base.errors import (
-    NetworkError,
-    ExchangeError,
-    RateLimitExceeded,
-    InvalidOrder,
-    InsufficientFunds,
-)
+from ccxt.base.errors import (ExchangeError, InsufficientFunds, InvalidOrder,
+                              NetworkError, RateLimitExceeded)
 
-from .models import (
-    Order,
-    OrderType,
-    OrderSide,
-    OrderStatus,
-    TimeInForce,
-    ExecutionResult,
-)
-from workspace.shared.database.connection import DatabasePool
+from workspace.features.error_recovery import (CircuitBreaker, RetryManager,
+                                               RetryStrategy)
+from workspace.features.monitoring.metrics import MetricsService
 from workspace.features.position_manager import PositionService
 from workspace.features.trade_history import TradeHistoryService, TradeType
-from workspace.features.monitoring.metrics import MetricsService
-from workspace.features.error_recovery import (
-    CircuitBreaker,
-    RetryManager,
-    RetryStrategy,
-)
+from workspace.shared.database.connection import DatabasePool
 
+from .models import (ExecutionResult, Order, OrderSide, OrderStatus, OrderType,
+                     TimeInForce)
 
 logger = logging.getLogger(__name__)
 

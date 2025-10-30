@@ -6,8 +6,10 @@ Date: 2025-10-29
 Sprint: 3 Stream C Task-046
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
+
 from workspace.shared.database.query_optimizer import QueryOptimizer
 
 

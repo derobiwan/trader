@@ -11,15 +11,10 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from .models import (
-    TradeHistoryEntry,
-    TradeType,
-    TradeStatus,
-    TradeStatistics,
-    DailyTradeReport,
-)
+from .models import (DailyTradeReport, TradeHistoryEntry, TradeStatistics,
+                     TradeStatus, TradeType)
 
 logger = logging.getLogger(__name__)
 

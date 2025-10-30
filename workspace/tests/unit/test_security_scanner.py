@@ -13,17 +13,16 @@ Date: 2025-10-29
 Sprint: 3, Stream C
 """
 
-import pytest
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
 
-from workspace.shared.security.security_scanner import (
-    SecurityScanner,
-    SecurityIssue,
-    ScanResult,
-    Severity,
-)
+import pytest
+
+from workspace.shared.security.security_scanner import (ScanResult,
+                                                        SecurityIssue,
+                                                        SecurityScanner,
+                                                        Severity)
 
 
 @pytest.fixture

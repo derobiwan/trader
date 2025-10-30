@@ -6,18 +6,13 @@ Continuously syncs positions with exchange and detects discrepancies.
 
 import asyncio
 import logging
-from typing import Dict, List, Optional
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
+from typing import Dict, List, Optional
 
 from workspace.features.position_reconciliation.models import (
-    ExchangePosition,
-    SystemPosition,
-    PositionDiscrepancy,
-    ReconciliationResult,
-    DiscrepancyType,
-    DiscrepancySeverity,
-)
+    DiscrepancySeverity, DiscrepancyType, ExchangePosition,
+    PositionDiscrepancy, ReconciliationResult, SystemPosition)
 
 logger = logging.getLogger(__name__)
 

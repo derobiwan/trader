@@ -4,14 +4,13 @@ Integration Tests: Strategy + Market Data
 Tests verifying strategies work correctly with market data snapshots.
 """
 
-import pytest
 from decimal import Decimal
 
-from workspace.features.strategy import (
-    MeanReversionStrategy,
-    TrendFollowingStrategy,
-    VolatilityBreakoutStrategy,
-)
+import pytest
+
+from workspace.features.strategy import (MeanReversionStrategy,
+                                         TrendFollowingStrategy,
+                                         VolatilityBreakoutStrategy)
 from workspace.features.trading_loop import TradingDecision
 from workspace.tests.integration.conftest import create_snapshot
 

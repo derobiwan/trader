@@ -7,15 +7,13 @@ Author: Infrastructure Specialist
 Date: 2025-10-28
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
 
-from workspace.shared.database.connection import (
-    DatabasePool,
-    init_pool,
-    close_pool,
-)
+import pytest
+
+from workspace.shared.database.connection import (DatabasePool, close_pool,
+                                                  init_pool)
 
 
 @pytest.fixture(scope="module")

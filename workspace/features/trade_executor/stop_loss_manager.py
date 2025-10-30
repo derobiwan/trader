@@ -14,17 +14,13 @@ import asyncio
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict
+from typing import Dict, Optional
 
-from .models import (
-    StopLossProtection,
-    StopLossLayer,
-    OrderSide,
-)
-from .executor_service import TradeExecutor
 from workspace.features.position_manager import PositionService
 from workspace.shared.database.connection import DatabasePool
 
+from .executor_service import TradeExecutor
+from .models import OrderSide, StopLossLayer, StopLossProtection
 
 logger = logging.getLogger(__name__)
 

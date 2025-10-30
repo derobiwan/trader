@@ -7,22 +7,18 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
-import pytest
-import pytest_asyncio
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+import pytest_asyncio
+
 from workspace.features.trade_executor import TradeExecutor
-from workspace.features.trade_executor.models import (
-    OrderSide,
-)
-from workspace.features.trading_loop import TradingSignal, TradingDecision
-from workspace.features.trade_history import (
-    TradeHistoryService,
-    TradeType,
-    TradeStatus,
-)
+from workspace.features.trade_executor.models import OrderSide
+from workspace.features.trade_history import (TradeHistoryService, TradeStatus,
+                                              TradeType)
+from workspace.features.trading_loop import TradingDecision, TradingSignal
 
 
 @pytest.mark.asyncio

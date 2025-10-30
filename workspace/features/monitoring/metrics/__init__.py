@@ -12,14 +12,9 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
-from .models import (
-    MetricType,
-    TradingMetrics,
-    MetricSnapshot,
-    AlertRule,
-    PrometheusExportFormat,
-)
 from .metrics_service import MetricsService
+from .models import (AlertRule, MetricSnapshot, MetricType,
+                     PrometheusExportFormat, TradingMetrics)
 
 __all__ = [
     # Enums

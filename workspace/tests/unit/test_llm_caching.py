@@ -7,14 +7,17 @@ Author: Sprint 1 Stream B
 Date: 2025-10-28
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import AsyncMock
-from workspace.features.decision_engine import LLMDecisionEngine
-from workspace.features.market_data import MarketDataSnapshot, Ticker, OHLCV, Timeframe
-from workspace.features.trading_loop import TradingDecision
+
+import pytest
+
 from workspace.features.caching import CacheService
+from workspace.features.decision_engine import LLMDecisionEngine
+from workspace.features.market_data import (OHLCV, MarketDataSnapshot, Ticker,
+                                            Timeframe)
+from workspace.features.trading_loop import TradingDecision
 
 
 def create_test_snapshot(
@@ -48,7 +51,7 @@ def create_test_snapshot(
     )
 
     # Create RSI and MACD objects (simplified for testing)
-    from workspace.features.market_data.models import RSI, MACD
+    from workspace.features.market_data.models import MACD, RSI
 
     rsi_obj = RSI(
         symbol=symbol,

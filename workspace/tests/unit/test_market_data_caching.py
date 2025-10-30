@@ -7,11 +7,14 @@ Author: Sprint 1 Stream B
 Date: 2025-10-28
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
-from workspace.features.market_data import MarketDataService, OHLCV, Ticker, Timeframe
+from decimal import Decimal
+
+import pytest
+
 from workspace.features.caching import CacheService
+from workspace.features.market_data import (OHLCV, MarketDataService, Ticker,
+                                            Timeframe)
 
 
 @pytest.mark.asyncio

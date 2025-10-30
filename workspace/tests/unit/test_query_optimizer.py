@@ -12,14 +12,13 @@ Date: 2025-10-29
 Sprint: 3, Stream C
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
-from workspace.shared.database.query_optimizer import (
-    QueryOptimizer,
-    SlowQuery,
-    IndexRecommendation,
-)
+import pytest
+
+from workspace.shared.database.query_optimizer import (IndexRecommendation,
+                                                       QueryOptimizer,
+                                                       SlowQuery)
 
 
 @pytest.fixture

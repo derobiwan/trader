@@ -14,9 +14,9 @@ All middleware is production-ready with proper error handling and logging.
 import logging
 import time
 import uuid
-from typing import Callable, Dict
-from datetime import datetime, timedelta
 from collections import defaultdict, deque
+from datetime import datetime, timedelta
+from typing import Callable, Dict
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -24,7 +24,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
 from .config import settings
-
 
 # Configure logger
 logger = logging.getLogger(__name__)

@@ -16,15 +16,11 @@ Sprint: Sprint 2 Stream C
 """
 
 import logging
-from typing import List, Dict
 from datetime import datetime, timedelta
+from typing import Dict, List
 
-from .models import (
-    Alert,
-    AlertSeverity,
-    AlertDeliveryStatus,
-    AlertDeliveryRecord,
-)
+from .models import (Alert, AlertDeliveryRecord, AlertDeliveryStatus,
+                     AlertSeverity)
 
 logger = logging.getLogger(__name__)
 

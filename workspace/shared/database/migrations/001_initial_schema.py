@@ -9,8 +9,9 @@ This migration is idempotent and can be run multiple times safely.
 """
 
 from typing import Sequence, Union
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # Revision identifiers

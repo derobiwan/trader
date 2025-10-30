@@ -4,14 +4,8 @@ Position Reconciliation Module
 Continuous position sync with exchange to detect and correct discrepancies.
 """
 
-from .models import (
-    ExchangePosition,
-    SystemPosition,
-    PositionDiscrepancy,
-    ReconciliationResult,
-    DiscrepancyType,
-    DiscrepancySeverity,
-)
+from .models import (DiscrepancySeverity, DiscrepancyType, ExchangePosition,
+                     PositionDiscrepancy, ReconciliationResult, SystemPosition)
 from .reconciliation_service import PositionReconciliationService
 
 __all__ = [

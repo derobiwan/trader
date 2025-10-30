@@ -22,19 +22,15 @@ import random
 import time
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-
 from workspace.features.trade_executor.executor_service import TradeExecutor
-from workspace.features.trade_executor.models import (
-    Order,
-    OrderType,
-    OrderSide,
-    OrderStatus,
-)
-from .virtual_portfolio import VirtualPortfolio
+from workspace.features.trade_executor.models import (Order, OrderSide,
+                                                      OrderStatus, OrderType)
+
 from .performance_tracker import PaperTradingPerformanceTracker
+from .virtual_portfolio import VirtualPortfolio
 
 logger = logging.getLogger(__name__)
 

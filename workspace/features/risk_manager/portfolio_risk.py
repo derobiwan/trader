@@ -13,10 +13,10 @@ Sprint: 3, Stream B, Task 043
 """
 
 import logging
-from decimal import Decimal
-from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

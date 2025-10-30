@@ -13,14 +13,12 @@ Date: 2025-10-29
 Sprint: 3, Stream C
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock
 from decimal import Decimal
+from unittest.mock import AsyncMock, Mock
 
-from workspace.shared.cache.cache_warmer import (
-    CacheWarmer,
-    CacheWarmingResult,
-)
+import pytest
+
+from workspace.shared.cache.cache_warmer import CacheWarmer, CacheWarmingResult
 
 
 @pytest.fixture

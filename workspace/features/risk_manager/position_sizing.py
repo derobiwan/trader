@@ -16,10 +16,11 @@ Sprint: 3, Stream B, Task 044
 """
 
 import logging
-from decimal import Decimal
-from typing import List, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
+from typing import List, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)

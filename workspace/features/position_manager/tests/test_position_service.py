@@ -16,14 +16,14 @@ Run with:
     pytest workspace/features/position_manager/tests/test_position_service.py::test_create_position_success -v
 """
 
-import pytest
 import asyncio
+# Test database setup
+import os
 from datetime import date as Date
 from decimal import Decimal
 from uuid import uuid4
 
-# Test database setup
-import os
+import pytest
 
 os.environ["DB_HOST"] = os.getenv("TEST_DB_HOST", "localhost")
 os.environ["DB_PORT"] = os.getenv("TEST_DB_PORT", "5432")
@@ -31,19 +31,12 @@ os.environ["DB_NAME"] = os.getenv("TEST_DB_NAME", "trading_system_test")
 os.environ["DB_USER"] = os.getenv("TEST_DB_USER", "postgres")
 os.environ["DB_PASSWORD"] = os.getenv("TEST_DB_PASSWORD", "")
 
-from workspace.shared.database.connection import DatabasePool
-from workspace.features.position_manager.position_service import (
-    PositionService,
-    bulk_update_prices,
-)
 from workspace.features.position_manager.models import (
-    ValidationError,
-    RiskLimitError,
-    PositionNotFoundError,
-    CIRCUIT_BREAKER_LOSS_CHF,
-    MAX_TOTAL_EXPOSURE_CHF,
-)
-
+    CIRCUIT_BREAKER_LOSS_CHF, MAX_TOTAL_EXPOSURE_CHF, PositionNotFoundError,
+    RiskLimitError, ValidationError)
+from workspace.features.position_manager.position_service import (
+    PositionService, bulk_update_prices)
+from workspace.shared.database.connection import DatabasePool
 
 # ============================================================================
 # Fixtures

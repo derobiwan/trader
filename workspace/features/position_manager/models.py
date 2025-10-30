@@ -33,8 +33,8 @@ Usage:
     )
 """
 
-from datetime import datetime
 from datetime import date as Date
+from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Optional
@@ -43,14 +43,9 @@ from uuid import UUID
 from pydantic import Field, field_validator
 
 # Import base models from shared database models
-from workspace.shared.database.models import (
-    Position,
-    PositionSide,
-    PositionStatus,
-    DatabaseModel,
-    usd_to_chf,
-)
-
+from workspace.shared.database.models import (DatabaseModel, Position,
+                                              PositionSide, PositionStatus,
+                                              usd_to_chf)
 
 # ============================================================================
 # Configuration Constants

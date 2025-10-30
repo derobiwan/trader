@@ -12,14 +12,7 @@ import logging
 from decimal import Decimal
 from typing import List, Optional
 
-from .models import (
-    OHLCV,
-    RSI,
-    MACD,
-    EMA,
-    BollingerBands,
-)
-
+from .models import EMA, MACD, OHLCV, RSI, BollingerBands
 
 logger = logging.getLogger(__name__)
 

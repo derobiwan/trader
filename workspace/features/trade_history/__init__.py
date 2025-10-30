@@ -13,13 +13,8 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
-from .models import (
-    TradeType,
-    TradeStatus,
-    TradeHistoryEntry,
-    TradeStatistics,
-    DailyTradeReport,
-)
+from .models import (DailyTradeReport, TradeHistoryEntry, TradeStatistics,
+                     TradeStatus, TradeType)
 from .trade_history_service import TradeHistoryService
 
 __all__ = [

@@ -9,12 +9,12 @@ Date: 2025-10-28
 
 import logging
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from workspace.features.market_data import MarketDataSnapshot
 from workspace.features.trading_loop import TradingDecision
-from .base_strategy import BaseStrategy, StrategySignal, StrategyType
 
+from .base_strategy import BaseStrategy, StrategySignal, StrategyType
 
 logger = logging.getLogger(__name__)
 

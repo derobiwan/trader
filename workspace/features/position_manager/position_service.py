@@ -61,33 +61,21 @@ Usage:
 
 import asyncio
 import logging
-from datetime import datetime
 from datetime import date as Date
+from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 import asyncpg
 
-from workspace.shared.database.connection import DatabasePool
-from workspace.shared.database.models import (
-    Position,
-    PositionSide,
-    PositionStatus,
-    usd_to_chf,
-)
 from workspace.features.position_manager.models import (
-    PositionCreateRequest,
-    PositionWithPnL,
-    DailyPnLSummary,
-    PositionStatistics,
-    CloseReason,
-    ValidationError,
-    RiskLimitError,
-    PositionNotFoundError,
-    CIRCUIT_BREAKER_LOSS_CHF,
-    USD_CHF_RATE,
-)
+    CIRCUIT_BREAKER_LOSS_CHF, USD_CHF_RATE, CloseReason, DailyPnLSummary,
+    PositionCreateRequest, PositionNotFoundError, PositionStatistics,
+    PositionWithPnL, RiskLimitError, ValidationError)
+from workspace.shared.database.connection import DatabasePool
+from workspace.shared.database.models import (Position, PositionSide,
+                                              PositionStatus, usd_to_chf)
 
 logger = logging.getLogger(__name__)
 

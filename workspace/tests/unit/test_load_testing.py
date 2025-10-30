@@ -13,17 +13,16 @@ Date: 2025-10-29
 Sprint: 3, Stream C
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
-from workspace.shared.performance.load_testing import (
-    LoadTester,
-    LoadTestConfig,
-    LoadTestType,
-    RequestResult,
-    LoadTestResult,
-)
+import pytest
+
+from workspace.shared.performance.load_testing import (LoadTestConfig,
+                                                       LoadTester,
+                                                       LoadTestResult,
+                                                       LoadTestType,
+                                                       RequestResult)
 
 
 @pytest.fixture
