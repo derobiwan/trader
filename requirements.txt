@@ -41,7 +41,7 @@ python-binance>=1.0.19      # Binance-specific features
 # Data Processing & Analysis
 pandas>=2.2.0
 numpy>=2.0.0
-pandas-ta>=0.4.0            # Technical analysis indicators
+pandas-ta>=0.4.67b0         # Technical analysis indicators (beta version)
 scipy>=1.13.0               # Statistical functions
 
 # Configuration & Environment
