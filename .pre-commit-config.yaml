@@ -3,15 +3,21 @@
 # Run manually with: pre-commit run --all-files
 
 repos:
-  # Ruff - Fast Python linter and formatter
+  # Ruff - Fast Python linter
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.2
     hooks:
       - id: ruff
         args: [--fix]
         name: ruff (linting)
-      - id: ruff-format
-        name: ruff (formatting)
+
+  # Black - Python code formatter
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        name: black (formatting)
+        language_version: python3.12
 
   # mypy - Static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
