@@ -24,14 +24,12 @@ import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, List, Optional
 import json
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Imports must come after sys.path manipulation
 from workspace.features.trading_loop import TradingEngine  # noqa: E402
 from workspace.features.market_data import MarketDataService  # noqa: E402
 
@@ -60,7 +58,7 @@ class PaperTradingTestRunner:
         duration_days: int = 7,
         cycles: int = 3360,  # 7 days * 480 cycles/day
         initial_balance: Decimal = Decimal("10000"),
-        symbols: Optional[List[Any]] = None,
+        symbols: list = None,
     ):
         """
         Initialize test runner
@@ -85,7 +83,7 @@ class PaperTradingTestRunner:
         self.engine = None
         self.start_time = None
         self.end_time = None
-        self.results: List[Any] = []
+        self.results = []
 
     async def setup(self):
         """Setup trading engine and services"""
@@ -140,7 +138,7 @@ class PaperTradingTestRunner:
                 if cycle % 100 == 0:
                     logger.info(
                         f"Progress: {cycle}/{self.cycles} cycles "
-                        f"({cycle/self.cycles*100:.1f}%)"
+                        f"({cycle / self.cycles * 100:.1f}%)"
                     )
 
                     # Log current performance
@@ -209,8 +207,7 @@ class PaperTradingTestRunner:
         self.end_time = datetime.utcnow()
 
         logger.info(
-            f"Real-time test complete: {cycle} cycles over "
-            f"{self.duration_days} days"
+            f"Real-time test complete: {cycle} cycles over {self.duration_days} days"
         )
 
     async def generate_report(self):

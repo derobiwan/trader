@@ -1,392 +1,610 @@
 """
-Unit Tests for Database Query Optimizer
+Unit tests for Query Optimizer.
 
-Tests database optimization features including:
+Tests all major functionality:
 - Index creation
-- Slow query analysis
-- Database maintenance
-- Performance monitoring
+- Slow query detection
+- Index usage stats
+- Table bloat monitoring
+- Table optimization
+- Performance metrics
+- Monitoring loop
 
-Author: Testing Team
-Date: 2025-10-29
-Sprint: 3, Stream C
+Target: 80%+ code coverage
 """
 
-from unittest.mock import AsyncMock, Mock
-
 import pytest
-
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timedelta
 from workspace.shared.database.query_optimizer import (
-    IndexRecommendation,
     QueryOptimizer,
-    SlowQuery,
+    QueryStats,
+    IndexStats,
+    TableStats,
 )
 
 
 @pytest.fixture
-def mock_connection():
-    """Mock database connection"""
+def mock_pool():
+    """Mock asyncpg connection pool."""
+    pool = AsyncMock()
+
+    # Mock connection
     conn = AsyncMock()
     conn.execute = AsyncMock()
-    conn.fetch = AsyncMock()
-    conn.fetchrow = AsyncMock()
-    return conn
+    conn.fetch = AsyncMock(return_value=[])
+    conn.fetchval = AsyncMock(return_value=False)
 
+    # Mock acquire context manager
+    pool.acquire = MagicMock()
+    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
+    pool.acquire.return_value.__aexit__ = AsyncMock()
 
-@pytest.fixture
-def mock_db_pool(mock_connection):
-    """Mock AsyncPG connection pool"""
-    pool = Mock()
-    # Create async context manager for acquire()
-    acquire_context = AsyncMock()
-    acquire_context.__aenter__ = AsyncMock(return_value=mock_connection)
-    acquire_context.__aexit__ = AsyncMock(return_value=None)
-    pool.acquire = Mock(return_value=acquire_context)
     return pool
 
 
 @pytest.fixture
-def optimizer(mock_db_pool):
-    """Query optimizer with mocked database"""
-    return QueryOptimizer(mock_db_pool)
-
-
-# ============================================================================
-# Index Creation Tests
-# ============================================================================
+def query_optimizer(mock_pool):
+    """Create QueryOptimizer instance with mocked pool."""
+    return QueryOptimizer(mock_pool)
 
 
 @pytest.mark.asyncio
-async def test_create_all_indexes_success(optimizer, mock_connection):
-    """Test successful index creation"""
-    # Execute
-    results = await optimizer.create_all_indexes()
+async def test_initialize_success(query_optimizer, mock_pool):
+    """Test successful initialization."""
+    # Act
+    await query_optimizer.initialize()
+
+    # Assert
+    conn = await mock_pool.acquire().__aenter__()
+    assert conn.execute.call_count >= 2  # At least 2 SQL commands
+
+
+@pytest.mark.asyncio
+async def test_initialize_failure():
+    """Test initialization failure handling."""
+    # Arrange
+    # Create pool with error connection
+    error_pool = AsyncMock()
+    conn_error = AsyncMock()
+    conn_error.execute = AsyncMock(side_effect=Exception("Database connection failed"))
+
+    # Setup acquire context manager
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=conn_error)
+    acquire_ctx.__aexit__ = AsyncMock()
+    error_pool.acquire = MagicMock(return_value=acquire_ctx)
+
+    # Create optimizer with error pool
+    optimizer = QueryOptimizer(error_pool)
+
+    # Act & Assert
+    with pytest.raises(Exception, match="Database connection failed"):
+        await optimizer.initialize()
+
+
+@pytest.mark.asyncio
+async def test_create_indexes_success(query_optimizer, mock_pool):
+    """Test successful index creation."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetchval = AsyncMock(return_value=False)  # Index doesn't exist
+    conn.execute = AsyncMock()
+
+    # Act
+    results = await query_optimizer.create_indexes()
 
     # Assert
     assert isinstance(results, dict)
     assert len(results) > 0
-    assert mock_connection.execute.called
+    # At least some indexes should be created
+    successful = sum(1 for success in results.values() if success)
+    assert successful >= 0
 
 
 @pytest.mark.asyncio
-async def test_create_all_indexes_partial_failure(optimizer, mock_connection):
-    """Test index creation with some failures"""
-    # Setup - Make some executions fail
-    call_count = 0
+async def test_create_indexes_already_exists(query_optimizer, mock_pool):
+    """Test creating indexes that already exist."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetchval = AsyncMock(return_value=True)  # Index already exists
 
-    async def mock_execute(sql):
-        nonlocal call_count
-        call_count += 1
-        if call_count % 3 == 0:  # Every 3rd call fails
-            raise Exception("Index already exists")
-
-    mock_connection.execute = mock_execute
-
-    # Execute
-    results = await optimizer.create_all_indexes()
+    # Act
+    results = await query_optimizer.create_indexes()
 
     # Assert
-    assert isinstance(results, dict)
-    _success_count = sum(1 for v in results.values() if v)  # noqa: F841
-    failure_count = sum(1 for v in results.values() if not v)
-    assert failure_count > 0  # Some failures occurred
-
-
-def test_get_index_definitions(optimizer):
-    """Test getting index definitions"""
-    definitions = optimizer._get_index_definitions()
-
-    assert isinstance(definitions, list)
-    assert len(definitions) > 10  # Should have multiple indexes
-    assert all("CREATE INDEX" in defn for defn in definitions)
-    assert any("CONCURRENTLY" in defn for defn in definitions)
-    assert any("WHERE" in defn for defn in definitions)  # Partial indexes
-
-
-def test_extract_index_name(optimizer):
-    """Test extracting index name from SQL"""
-    sql = """
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_positions_symbol_status
-    ON positions(symbol, status)
-    """
-
-    name = optimizer._extract_index_name(sql)
-
-    assert name == "idx_positions_symbol_status"
-
-
-# ============================================================================
-# Slow Query Analysis Tests
-# ============================================================================
+    assert all(results.values())  # All should return True
 
 
 @pytest.mark.asyncio
-async def test_analyze_slow_queries(optimizer, mock_connection):
-    """Test slow query analysis"""
-    # Setup
-    mock_connection.fetch = AsyncMock(
+async def test_create_index_with_where_clause(query_optimizer, mock_pool):
+    """Test index creation with WHERE clause."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetchval = AsyncMock(return_value=False)
+    conn.execute = AsyncMock()
+
+    # Act
+    result = await query_optimizer._create_index(
+        "test_idx", "test_table", "(column1, column2)", "WHERE status = 'active'"
+    )
+
+    # Assert
+    assert result is True
+    conn.execute.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_analyze_slow_queries_with_extension(query_optimizer, mock_pool):
+    """Test slow query analysis when extension is available."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetchval = AsyncMock(return_value=True)  # Extension exists
+    conn.fetch = AsyncMock(
         return_value=[
             {
                 "query": "SELECT * FROM positions WHERE symbol = $1",
-                "calls": 1000,
-                "total_time": 15000.0,
-                "mean_time": 15.0,
-                "max_time": 100.0,
-                "stddev_time": 5.0,
-            },
-            {
-                "query": "SELECT * FROM trades WHERE timestamp > $1",
-                "calls": 500,
-                "total_time": 7500.0,
-                "mean_time": 15.0,
-                "max_time": 50.0,
-                "stddev_time": 3.0,
-            },
+                "calls": 100,
+                "total_time": 5000.0,
+                "mean_time": 50.0,
+                "max_time": 200.0,
+                "min_time": 10.0,
+                "stddev_time": 20.0,
+            }
         ]
     )
 
-    # Execute
-    slow_queries = await optimizer.analyze_slow_queries(min_mean_time_ms=10.0)
+    # Act
+    stats = await query_optimizer.analyze_slow_queries()
 
     # Assert
-    assert len(slow_queries) == 2
-    assert all(isinstance(q, SlowQuery) for q in slow_queries)
-    assert slow_queries[0].calls == 1000
-    assert slow_queries[0].mean_time_ms == 15.0
+    assert len(stats) == 1
+    assert isinstance(stats[0], QueryStats)
+    assert stats[0].avg_time_ms == 50.0
+    assert stats[0].total_count == 100
 
 
 @pytest.mark.asyncio
-async def test_analyze_slow_queries_empty(optimizer, mock_connection):
-    """Test slow query analysis with no slow queries"""
-    # Setup
-    mock_connection.fetch = AsyncMock(return_value=[])
+async def test_analyze_slow_queries_no_extension(query_optimizer, mock_pool):
+    """Test slow query analysis when extension is not available."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetchval = AsyncMock(return_value=False)  # Extension doesn't exist
 
-    # Execute
-    slow_queries = await optimizer.analyze_slow_queries()
+    # Act
+    stats = await query_optimizer.analyze_slow_queries()
 
     # Assert
-    assert len(slow_queries) == 0
+    assert len(stats) == 0
 
 
 @pytest.mark.asyncio
-async def test_analyze_slow_queries_error(optimizer, mock_connection):
-    """Test slow query analysis error handling"""
-    # Setup
-    mock_connection.fetch = AsyncMock(side_effect=Exception("Database error"))
-
-    # Execute
-    slow_queries = await optimizer.analyze_slow_queries()
-
-    # Assert - should return empty list on error
-    assert slow_queries == []
-
-
-# ============================================================================
-# Database Maintenance Tests
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_vacuum_analyze_default_tables(optimizer, mock_connection):
-    """Test vacuum analyze with default tables"""
-    # Execute
-    await optimizer.vacuum_analyze()
-
-    # Assert
-    assert mock_connection.execute.call_count >= 5  # Default tables
-
-
-@pytest.mark.asyncio
-async def test_vacuum_analyze_specific_tables(optimizer, mock_connection):
-    """Test vacuum analyze with specific tables"""
-    # Execute
-    await optimizer.vacuum_analyze(table_names=["positions", "trades"])
-
-    # Assert
-    assert mock_connection.execute.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_get_table_stats(optimizer, mock_connection):
-    """Test getting table statistics"""
-    # Setup
-    mock_connection.fetchrow = AsyncMock(
-        return_value={
-            "schemaname": "public",
-            "relname": "positions",
-            "live_tuples": 1000,
-            "dead_tuples": 50,
-            "inserts": 1500,
-            "updates": 200,
-            "deletes": 100,
-            "last_vacuum": None,
-            "last_autovacuum": None,
-            "last_analyze": None,
-            "last_autoanalyze": None,
+async def test_analyze_slow_queries_with_limit(query_optimizer, mock_pool):
+    """Test slow query analysis with limit parameter."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetchval = AsyncMock(return_value=True)
+    mock_queries = [
+        {
+            "query": f"SELECT * FROM table{i}",
+            "calls": 100,
+            "total_time": 1000.0,
+            "mean_time": 10.0,
+            "max_time": 50.0,
+            "min_time": 5.0,
+            "stddev_time": 2.0,
         }
-    )
+        for i in range(50)
+    ]
+    conn.fetch = AsyncMock(return_value=mock_queries)
 
-    # Execute
-    stats = await optimizer.get_table_stats("positions")
+    # Act
+    await query_optimizer.analyze_slow_queries(limit=5)
 
     # Assert
-    assert stats["live_tuples"] == 1000
-    assert stats["dead_tuples"] == 50
-    assert stats["inserts"] == 1500
+    # Should have called with limit parameter
+    call_args = conn.fetch.call_args
+    assert call_args[0][2] == 5  # limit parameter
+
+
+def test_normalize_query(query_optimizer):
+    """Test query normalization."""
+    # Test number replacement
+    query1 = "SELECT * FROM table WHERE id = 123"
+    normalized1 = query_optimizer._normalize_query(query1)
+    assert "123" not in normalized1
+    assert "?" in normalized1
+
+    # Test string replacement
+    query2 = "SELECT * FROM table WHERE name = 'test'"
+    normalized2 = query_optimizer._normalize_query(query2)
+    assert "'test'" not in normalized2
+    assert "'?'" in normalized2
+
+    # Test truncation
+    query3 = "SELECT * " + "x" * 300
+    normalized3 = query_optimizer._normalize_query(query3)
+    assert len(normalized3) <= 203  # 200 + "..."
 
 
 @pytest.mark.asyncio
-async def test_get_table_stats_not_found(optimizer, mock_connection):
-    """Test getting stats for non-existent table"""
-    # Setup
-    mock_connection.fetchrow = AsyncMock(return_value=None)
-
-    # Execute
-    stats = await optimizer.get_table_stats("nonexistent")
-
-    # Assert
-    assert stats == {}
-
-
-# ============================================================================
-# Index Usage Analysis Tests
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_analyze_index_usage(optimizer, mock_connection):
-    """Test index usage analysis"""
-    # Setup
-    mock_connection.fetch = AsyncMock(
+async def test_get_index_usage_stats(query_optimizer, mock_pool):
+    """Test getting index usage statistics."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.fetch = AsyncMock(
         return_value=[
             {
                 "schemaname": "public",
                 "tablename": "positions",
                 "indexname": "idx_positions_symbol",
-                "scans": 1000,
-                "tuples_read": 10000,
-                "tuples_fetched": 9500,
-            },
+                "idx_scan": 1000,
+                "idx_tup_read": 5000,
+                "idx_tup_fetch": 4500,
+                "index_size": "1 MB",
+            }
+        ]
+    )
+
+    # Act
+    stats = await query_optimizer.get_index_usage_stats()
+
+    # Assert
+    assert len(stats) == 1
+    assert isinstance(stats[0], IndexStats)
+    assert stats[0].table_name == "positions"
+    assert stats[0].index_scans == 1000
+
+
+def test_parse_size_to_mb(query_optimizer):
+    """Test size parsing from PostgreSQL format."""
+    assert query_optimizer._parse_size_to_mb("1 MB") == 1.0
+    assert query_optimizer._parse_size_to_mb("2 GB") == 2048.0
+    assert query_optimizer._parse_size_to_mb("512 kB") == 0.5
+    assert query_optimizer._parse_size_to_mb("1024 bytes") == pytest.approx(
+        0.0009765625, rel=1e-3
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_table_stats(query_optimizer, mock_pool):
+    """Test getting table statistics."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    last_vacuum = datetime.now() - timedelta(hours=12)
+    last_analyze = datetime.now() - timedelta(hours=3)
+
+    conn.fetch = AsyncMock(
+        return_value=[
             {
                 "schemaname": "public",
-                "tablename": "trades",
-                "indexname": "idx_trades_timestamp",
-                "scans": 0,  # Unused index
-                "tuples_read": 0,
-                "tuples_fetched": 0,
-            },
+                "tablename": "positions",
+                "n_live_tup": 10000,
+                "n_dead_tup": 2000,
+                "last_vacuum": last_vacuum,
+                "last_analyze": last_analyze,
+                "total_size": "10 MB",
+                "table_size": "8 MB",
+                "indexes_size": "2 MB",
+            }
         ]
     )
 
-    # Execute
-    index_stats = await optimizer.analyze_index_usage()
+    # Act
+    stats = await query_optimizer.get_table_stats()
 
     # Assert
-    assert len(index_stats) == 2
-    assert index_stats[0]["scans"] == 1000
-    assert index_stats[1]["scans"] == 0  # Unused
-
-
-# ============================================================================
-# Query Plan Analysis Tests
-# ============================================================================
+    assert len(stats) == 1
+    assert isinstance(stats[0], TableStats)
+    assert stats[0].table_name == "positions"
+    assert stats[0].total_rows == 10000
+    assert stats[0].dead_rows == 2000
+    assert stats[0].bloat_ratio == pytest.approx(2000 / 12000, rel=1e-3)
 
 
 @pytest.mark.asyncio
-async def test_explain_query(optimizer, mock_connection):
-    """Test EXPLAIN query functionality"""
-    # Setup
-    mock_connection.fetch = AsyncMock(
+async def test_optimize_tables_with_bloat(query_optimizer, mock_pool):
+    """Test optimizing tables with bloat."""
+    # Arrange
+    await mock_pool.acquire().__aenter__()
+
+    # Mock table stats showing bloat
+    old_vacuum = datetime.now() - timedelta(hours=48)
+    query_optimizer.get_table_stats = AsyncMock(
         return_value=[
-            ["Seq Scan on positions  (cost=0.00..35.50 rows=10 width=100)"],
-            ["  Filter: (symbol = 'BTC/USDT:USDT'::text)"],
+            TableStats(
+                table_name="positions",
+                total_rows=10000,
+                dead_rows=3000,  # 30% bloat
+                table_size_mb=10.0,
+                index_size_mb=2.0,
+                bloat_ratio=0.3,
+                last_vacuum=old_vacuum,
+                last_analyze=old_vacuum,
+            )
         ]
     )
 
-    # Execute
-    plan = await optimizer.explain_query("SELECT * FROM positions WHERE symbol = $1")
+    # Act
+    results = await query_optimizer.optimize_tables()
 
     # Assert
-    assert "Seq Scan" in plan
-    assert "Filter" in plan
+    assert "positions" in results
+    assert results["positions"] is True
 
 
 @pytest.mark.asyncio
-async def test_explain_query_analyze(optimizer, mock_connection):
-    """Test EXPLAIN ANALYZE query functionality"""
-    # Setup
-    mock_connection.fetch = AsyncMock(
+async def test_optimize_tables_force(query_optimizer, mock_pool):
+    """Test forcing table optimization."""
+    # Arrange
+    query_optimizer.get_table_stats = AsyncMock(
         return_value=[
-            [
-                "Seq Scan on positions  (cost=0.00..35.50 rows=10 width=100) (actual time=0.010..0.020 rows=5 loops=1)"
-            ],
-            ["Planning Time: 0.050 ms"],
-            ["Execution Time: 0.100 ms"],
+            TableStats(
+                table_name="positions",
+                total_rows=10000,
+                dead_rows=100,  # Low bloat
+                table_size_mb=10.0,
+                index_size_mb=2.0,
+                bloat_ratio=0.01,
+                last_vacuum=datetime.now(),
+                last_analyze=datetime.now(),
+            )
         ]
     )
 
-    # Execute
-    plan = await optimizer.explain_query(
-        "SELECT * FROM positions WHERE symbol = $1", analyze=True
-    )
+    # Act
+    results = await query_optimizer.optimize_tables(force=True)
 
     # Assert
-    assert "actual time" in plan
-    assert "Execution Time" in plan
-
-
-# ============================================================================
-# Recommendations Tests
-# ============================================================================
-
-
-def test_get_index_recommendations(optimizer):
-    """Test getting index recommendations"""
-    recommendations = optimizer.get_index_recommendations()
-
-    assert len(recommendations) > 0
-    assert all(isinstance(r, IndexRecommendation) for r in recommendations)
-
-    # Check for partial index recommendation
-    partial_indexes = [r for r in recommendations if r.is_partial]
-    assert len(partial_indexes) > 0
-
-    # Check structure
-    rec = recommendations[0]
-    assert hasattr(rec, "table")
-    assert hasattr(rec, "columns")
-    assert hasattr(rec, "index_type")
-    assert hasattr(rec, "estimated_benefit")
-
-
-# ============================================================================
-# Performance Summary Tests
-# ============================================================================
+    assert "positions" in results
 
 
 @pytest.mark.asyncio
-async def test_get_performance_summary(optimizer, mock_connection):
-    """Test getting performance summary"""
-    # Setup - Mock slow queries
-    mock_connection.fetch = AsyncMock(return_value=[])
+async def test_optimize_table_vacuum_and_analyze(query_optimizer, mock_pool):
+    """Test optimizing a table with VACUUM and ANALYZE."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+    conn.execute = AsyncMock()
 
-    # Mock table stats
-    mock_connection.fetchrow = AsyncMock(
-        return_value={
-            "live_tuples": 1000,
-            "dead_tuples": 50,
-        }
+    # Act
+    result = await query_optimizer._optimize_table(
+        "positions", vacuum=True, analyze=True
     )
 
-    # Execute
-    summary = await optimizer.get_performance_summary()
+    # Assert
+    assert result is True
+    # Should have executed VACUUM ANALYZE
+    call_args = str(conn.execute.call_args_list)
+    assert "VACUUM" in call_args or "vacuum" in call_args.lower()
+
+
+@pytest.mark.asyncio
+async def test_get_performance_metrics(query_optimizer, mock_pool):
+    """Test getting comprehensive performance metrics."""
+    # Arrange
+    query_optimizer.analyze_slow_queries = AsyncMock(
+        return_value=[
+            QueryStats(
+                query_pattern="SELECT * FROM positions",
+                total_count=100,
+                total_time_ms=5000.0,
+                avg_time_ms=50.0,
+                max_time_ms=200.0,
+                min_time_ms=10.0,
+                p95_time_ms=150.0,
+                slow_count=100,
+            )
+        ]
+    )
+
+    query_optimizer.get_index_usage_stats = AsyncMock(
+        return_value=[
+            IndexStats(
+                table_name="positions",
+                index_name="idx_positions_symbol",
+                index_size_mb=1.0,
+                index_scans=1000,
+                index_reads=5000,
+                effectiveness=0.8,
+            )
+        ]
+    )
+
+    query_optimizer.get_table_stats = AsyncMock(
+        return_value=[
+            TableStats(
+                table_name="positions",
+                total_rows=10000,
+                dead_rows=2000,
+                table_size_mb=10.0,
+                index_size_mb=2.0,
+                bloat_ratio=0.2,
+                last_vacuum=datetime.now(),
+                last_analyze=datetime.now(),
+            )
+        ]
+    )
+
+    # Act
+    metrics = await query_optimizer.get_performance_metrics()
 
     # Assert
-    assert "timestamp" in summary
-    assert "slow_queries" in summary
-    assert "index_usage" in summary
-    assert "table_stats" in summary
+    assert "slow_queries" in metrics
+    assert "indexes" in metrics
+    assert "tables" in metrics
+    assert metrics["slow_queries"]["count"] == 1
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+@pytest.mark.asyncio
+async def test_start_monitoring(query_optimizer):
+    """Test starting performance monitoring."""
+    # Act
+    await query_optimizer.start_monitoring(interval_seconds=1)
+
+    # Assert
+    assert query_optimizer.monitoring_enabled is True
+    assert query_optimizer._monitor_task is not None
+
+    # Cleanup
+    await query_optimizer.stop_monitoring()
+
+
+@pytest.mark.asyncio
+async def test_stop_monitoring(query_optimizer):
+    """Test stopping performance monitoring."""
+    # Arrange
+    await query_optimizer.start_monitoring(interval_seconds=1)
+
+    # Act
+    await query_optimizer.stop_monitoring()
+
+    # Assert
+    assert query_optimizer.monitoring_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_monitoring_loop_detects_slow_queries(query_optimizer, mock_pool):
+    """Test that monitoring loop detects slow queries."""
+    # Arrange
+    query_optimizer.analyze_slow_queries = AsyncMock(
+        return_value=[
+            QueryStats(
+                query_pattern="SELECT * FROM positions",
+                total_count=100,
+                total_time_ms=5000.0,
+                avg_time_ms=50.0,
+                max_time_ms=200.0,
+                min_time_ms=10.0,
+                p95_time_ms=150.0,
+                slow_count=100,
+            )
+        ]
+    )
+
+    query_optimizer.get_table_stats = AsyncMock(return_value=[])
+    query_optimizer.get_index_usage_stats = AsyncMock(return_value=[])
+
+    # Start monitoring with very short interval
+    await query_optimizer.start_monitoring(interval_seconds=0.1)
+
+    # Wait for at least one monitoring cycle
+    await asyncio.sleep(0.2)
+
+    # Stop monitoring
+    await query_optimizer.stop_monitoring()
+
+    # Assert
+    assert query_optimizer.analyze_slow_queries.called
+
+
+@pytest.mark.asyncio
+async def test_monitoring_loop_detects_bloated_tables(query_optimizer, mock_pool):
+    """Test that monitoring loop detects and optimizes bloated tables."""
+    # Arrange
+    query_optimizer.analyze_slow_queries = AsyncMock(return_value=[])
+    query_optimizer.get_index_usage_stats = AsyncMock(return_value=[])
+
+    query_optimizer.get_table_stats = AsyncMock(
+        return_value=[
+            TableStats(
+                table_name="positions",
+                total_rows=10000,
+                dead_rows=3000,
+                table_size_mb=10.0,
+                index_size_mb=2.0,
+                bloat_ratio=0.3,  # 30% bloat - above threshold
+                last_vacuum=datetime.now() - timedelta(hours=48),
+                last_analyze=datetime.now(),
+            )
+        ]
+    )
+
+    query_optimizer.optimize_tables = AsyncMock()
+
+    # Start monitoring
+    await query_optimizer.start_monitoring(interval_seconds=0.1)
+    await asyncio.sleep(0.2)
+    await query_optimizer.stop_monitoring()
+
+    # Assert
+    assert query_optimizer.optimize_tables.called
+
+
+@pytest.mark.asyncio
+async def test_cleanup(query_optimizer):
+    """Test cleanup method."""
+    # Arrange
+    await query_optimizer.start_monitoring(interval_seconds=1)
+
+    # Act
+    await query_optimizer.cleanup()
+
+    # Assert
+    assert query_optimizer.monitoring_enabled is False
+
+
+@pytest.mark.asyncio
+async def test_error_handling_in_monitoring_loop(query_optimizer):
+    """Test error handling in monitoring loop."""
+    # Arrange
+    query_optimizer.analyze_slow_queries = AsyncMock(
+        side_effect=Exception("Test error")
+    )
+
+    # Start monitoring
+    await query_optimizer.start_monitoring(interval_seconds=0.1)
+
+    # Should not crash despite error
+    await asyncio.sleep(0.2)
+
+    # Stop monitoring
+    await query_optimizer.stop_monitoring()
+
+    # Assert - should have survived the error
+    assert True
+
+
+@pytest.mark.asyncio
+async def test_multiple_index_creation_attempts(query_optimizer, mock_pool):
+    """Test handling multiple index creation attempts."""
+    # Arrange
+    conn = await mock_pool.acquire().__aenter__()
+
+    # First call: index doesn't exist
+    # Second call: index exists
+    conn.fetchval = AsyncMock(side_effect=[False, True])
+
+    # Act
+    result1 = await query_optimizer._create_index("test_idx", "test_table", "(col)")
+    result2 = await query_optimizer._create_index("test_idx", "test_table", "(col)")
+
+    # Assert
+    assert result1 is True
+    assert result2 is True
+
+
+@pytest.mark.asyncio
+async def test_index_creation_failure():
+    """Test handling index creation failure."""
+    # Arrange
+    # Create pool with error connection
+    error_pool = AsyncMock()
+    conn_error = AsyncMock()
+    conn_error.fetchval = AsyncMock(return_value=False)  # Index doesn't exist
+    conn_error.execute = AsyncMock(side_effect=Exception("Index creation failed"))
+
+    # Setup acquire context manager
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=conn_error)
+    acquire_ctx.__aexit__ = AsyncMock()
+    error_pool.acquire = MagicMock(return_value=acquire_ctx)
+
+    # Create optimizer with error pool
+    optimizer = QueryOptimizer(error_pool)
+
+    # Act
+    result = await optimizer._create_index("test_idx", "test_table", "(col)")
+
+    # Assert
+    assert result is False

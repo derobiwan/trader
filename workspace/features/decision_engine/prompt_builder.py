@@ -223,7 +223,7 @@ Focus on:
             lines.append(
                 f"- **MACD**: {macd.macd_line:.2f}, Signal: {macd.signal_line:.2f}, Histogram: {macd.histogram:.2f}"
             )
-            if macd.is_bullish:
+            if macd.macd_line > macd.signal_line:
                 lines.append("  - Trend: Bullish (MACD > Signal)")
             else:
                 lines.append("  - Trend: Bearish (MACD < Signal)")
@@ -242,9 +242,9 @@ Focus on:
         if snapshot.bollinger:
             bb = snapshot.bollinger
             lines.append("- **Bollinger Bands**:")
-            lines.append(f"  - Upper: ${bb.upper:,.2f}")
-            lines.append(f"  - Middle: ${bb.middle:,.2f}")
-            lines.append(f"  - Lower: ${bb.lower:,.2f}")
+            lines.append(f"  - Upper: ${bb.upper_band:,.2f}")
+            lines.append(f"  - Middle: ${bb.middle_band:,.2f}")
+            lines.append(f"  - Lower: ${bb.lower_band:,.2f}")
             lines.append(f"  - Bandwidth: {bb.bandwidth:.4f}")
 
             if bb.is_squeeze:
@@ -254,9 +254,9 @@ Focus on:
 
             # Price position relative to bands
             current_price = ticker.last
-            if current_price > bb.upper:
+            if current_price > bb.upper_band:
                 lines.append("  - Price: Above upper band (overbought)")
-            elif current_price < bb.lower:
+            elif current_price < bb.lower_band:
                 lines.append("  - Price: Below lower band (oversold)")
             else:
                 lines.append("  - Price: Within bands (normal)")

@@ -8,19 +8,19 @@ Run with:
     pytest workspace/features/position_manager/tests/test_state_machine.py -v
 """
 
+import pytest
 from datetime import datetime
 from uuid import uuid4
 
-import pytest
-
 from workspace.features.position_manager.state_machine import (
-    InvalidStateTransition,
-    PositionState,
     PositionStateMachine,
+    PositionState,
+    InvalidStateTransition,
     create_state_machine,
-    get_state_flow_diagram,
     validate_transition_path,
+    get_state_flow_diagram,
 )
+
 
 # ============================================================================
 # Fixtures

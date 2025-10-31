@@ -22,22 +22,36 @@ import random
 import time
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Optional, Dict, Any, List
 from uuid import uuid4
+
 
 from workspace.features.trade_executor.executor_service import TradeExecutor
 from workspace.features.trade_executor.models import (
-    ExecutionResult,
     Order,
+    OrderType,
     OrderSide,
     OrderStatus,
-    OrderType,
 )
-
-from .performance_tracker import PaperTradingPerformanceTracker
 from .virtual_portfolio import VirtualPortfolio
+from .performance_tracker import PaperTradingPerformanceTracker
 
 logger = logging.getLogger(__name__)
+
+
+def _round_decimal(value: Decimal, places: int = 8) -> Decimal:
+    """
+    Round Decimal to specified decimal places.
+
+    Args:
+        value: Decimal value to round
+        places: Number of decimal places (default: 8)
+
+    Returns:
+        Rounded Decimal value
+    """
+    quantizer = Decimal(10) ** -places
+    return value.quantize(quantizer)
 
 
 class PaperTradingExecutor(TradeExecutor):
@@ -126,20 +140,22 @@ class PaperTradingExecutor(TradeExecutor):
             current_price: Current market price
 
         Returns:
-            Slipped price
+            Slipped price (rounded to 8 decimal places)
         """
         if not self.enable_slippage:
-            return current_price
+            return _round_decimal(current_price)
 
         # Simulate 0-0.2% slippage
         slippage_pct = Decimal(str(random.uniform(0, 0.002)))
 
         if side == OrderSide.BUY:
             # Buy at slightly higher price
-            return current_price * (Decimal("1") + slippage_pct)
+            slipped_price = current_price * (Decimal("1") + slippage_pct)
         else:
             # Sell at slightly lower price
-            return current_price * (Decimal("1") - slippage_pct)
+            slipped_price = current_price * (Decimal("1") - slippage_pct)
+
+        return _round_decimal(slipped_price)
 
     def _calculate_partial_fill(self, quantity: Decimal) -> Decimal:
         """
@@ -151,14 +167,15 @@ class PaperTradingExecutor(TradeExecutor):
             quantity: Requested quantity
 
         Returns:
-            Filled quantity
+            Filled quantity (rounded to 8 decimal places)
         """
         if not self.enable_partial_fills:
-            return quantity
+            return _round_decimal(quantity)
 
         # Simulate 95-100% fill
         fill_percentage = Decimal(str(random.uniform(0.95, 1.0)))
-        return quantity * fill_percentage
+        filled_quantity = quantity * fill_percentage
+        return _round_decimal(filled_quantity)
 
     def _calculate_fees(
         self, quantity: Decimal, price: Decimal, order_type: OrderType
@@ -172,14 +189,16 @@ class PaperTradingExecutor(TradeExecutor):
             order_type: Order type (market uses taker, limit uses maker)
 
         Returns:
-            Fees in USDT
+            Fees in USDT (rounded to 8 decimal places)
         """
         notional_value = quantity * price
 
         if order_type == OrderType.MARKET:
-            return notional_value * self.taker_fee_pct
+            fees = notional_value * self.taker_fee_pct
         else:
-            return notional_value * self.maker_fee_pct
+            fees = notional_value * self.maker_fee_pct
+
+        return _round_decimal(fees)
 
     async def create_market_order(
         self,
@@ -188,8 +207,8 @@ class PaperTradingExecutor(TradeExecutor):
         quantity: Decimal,
         reduce_only: bool = False,
         position_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> ExecutionResult:
+        **kwargs,
+    ) -> Order:
         """
         Simulate market order execution
 
@@ -202,7 +221,7 @@ class PaperTradingExecutor(TradeExecutor):
             **kwargs: Additional order parameters
 
         Returns:
-            ExecutionResult with simulated Order object
+            Simulated Order object
         """
         start_time = time.time()
 
@@ -219,6 +238,17 @@ class PaperTradingExecutor(TradeExecutor):
 
             # Apply partial fills
             filled_quantity = self._calculate_partial_fill(quantity)
+
+            # For reduce_only orders, handle position size constraints
+            if reduce_only and symbol in self.virtual_portfolio.positions:
+                position_quantity = self.virtual_portfolio.positions[symbol]["quantity"]
+                # If trying to close entire position (quantity >= position), close all
+                if quantity >= position_quantity:
+                    filled_quantity = position_quantity
+                else:
+                    # Otherwise, cap to position size
+                    filled_quantity = min(filled_quantity, position_quantity)
+                filled_quantity = _round_decimal(filled_quantity)
 
             # Calculate fees
             fees = self._calculate_fees(
@@ -296,19 +326,20 @@ class PaperTradingExecutor(TradeExecutor):
                         "side": side.value,
                         "quantity": float(filled_quantity),
                         "price": float(execution_price),
-                        "fees": float(fees),
-                        "pnl": float(pnl),
+                        "fees": fees,  # Keep as Decimal for performance tracker
+                        "pnl": pnl,  # Keep as Decimal for performance tracker
                         "timestamp": datetime.utcnow(),
                     }
                 )
 
             # Record metrics
             latency_ms = (time.time() - start_time) * 1000
-            self.metrics_service.record_trade(
+            self.metrics_service.record_order_execution(
+                symbol=symbol,
+                side=side.value,
+                order_type=OrderType.MARKET.value,
                 success=True,
-                realized_pnl=pnl if reduce_only else None,
-                fees=fees,
-                latency_ms=Decimal(str(latency_ms)),
+                latency_ms=latency_ms,
             )
 
             logger.info(
@@ -316,25 +347,22 @@ class PaperTradingExecutor(TradeExecutor):
                 f"{symbol} @ ${execution_price:.2f} (fees: ${fees:.4f})"
             )
 
-            return ExecutionResult(
-                success=True,
-                order=order,
-                latency_ms=Decimal(str(latency_ms)),
-            )
+            return order
 
         except Exception as e:
             logger.error(f"Paper market order failed: {e}", exc_info=True)
 
             # Record failure metrics
             latency_ms = (time.time() - start_time) * 1000
-            # Note: We don't record failed trades in metrics
-
-            return ExecutionResult(
+            self.metrics_service.record_order_execution(
+                symbol=symbol,
+                side=side.value,
+                order_type=OrderType.MARKET.value,
                 success=False,
-                error_code="PAPER_TRADING_ERROR",
-                error_message=str(e),
-                latency_ms=Decimal(str(latency_ms)),
+                latency_ms=latency_ms,
             )
+
+            raise
 
     async def create_stop_loss_order(
         self,
@@ -387,12 +415,9 @@ class PaperTradingExecutor(TradeExecutor):
 
         return order
 
-    async def get_account_balance(self, cache_ttl_seconds: int = 60) -> Decimal:
+    async def get_account_balance(self) -> Decimal:
         """
         Get virtual account balance
-
-        Args:
-            cache_ttl_seconds: Cache TTL (unused in paper trading)
 
         Returns:
             Virtual balance in USDT

@@ -10,9 +10,10 @@ Date: 2025-10-28
 
 import logging
 import time
-from datetime import datetime
+import inspect
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Optional, Callable, Any
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -208,22 +209,24 @@ class CircuitBreaker:
 
         try:
             # Execute function
-            if callable(func) and hasattr(func, "__code__"):
-                # Sync function
-                result = func(*args, **kwargs)
-            else:
+            if inspect.iscoroutinefunction(func):
                 # Async function
                 result = await func(*args, **kwargs)
+            else:
+                # Sync function or callable returning coroutine
+                result = func(*args, **kwargs)
+                # If result is a coroutine, await it
+                if inspect.iscoroutine(result):
+                    result = await result
 
             # Record success
             self._record_success()
 
             return result
 
-        except Exception as e:
-            # Record failure only if it's the expected exception type
-            if isinstance(e, self.expected_exception):
-                self._record_failure()
+        except self.expected_exception:
+            # Record failure
+            self._record_failure()
             raise
 
     def reset(self):

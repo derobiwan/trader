@@ -9,9 +9,10 @@ Date: 2025-10-29
 """
 
 import logging
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Optional, Dict, Any
+from dataclasses import dataclass
+
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class WebSocketHealthMonitor:
         self.last_disconnect: Optional[datetime] = None
 
         # Message rate tracking
-        self._message_timestamps: list[float] = []
+        self._message_timestamps = []
         self._message_rate_window = 60  # 1 minute window
 
     def record_message(self, message_type: str = "data"):
@@ -113,7 +114,7 @@ class WebSocketHealthMonitor:
         self.metrics.consecutive_unhealthy_checks = 0
 
         # Track message rate
-        self._message_timestamps.append(now.timestamp())
+        self._message_timestamps.append(now)
         self._cleanup_old_timestamps()
         self._update_message_rate()
 
@@ -160,6 +161,7 @@ class WebSocketHealthMonitor:
 
         # No messages received yet
         if not self.last_message_time:
+            self.metrics.consecutive_unhealthy_checks += 1
             logger.debug("Health check: No messages received yet")
             return False
 

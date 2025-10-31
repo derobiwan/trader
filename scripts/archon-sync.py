@@ -35,7 +35,7 @@ class ArchonMCPClient:
         try:
             response = requests.get(f"{self.url}/health", timeout=2)
             return response.status_code == 200
-        except:
+        except Exception:
             return False
 
     def create_task(self, task_data: Dict) -> Dict:

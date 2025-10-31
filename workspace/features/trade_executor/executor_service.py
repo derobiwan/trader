@@ -45,6 +45,11 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+def _round_latency_ms(latency_seconds: float) -> Decimal:
+    """Round latency to 2 decimal places for pydantic validation."""
+    return Decimal(str(round(latency_seconds * 1000, 2)))
+
+
 class TradeExecutor:
     """
     Trade Executor service for Bybit exchange
@@ -612,7 +617,7 @@ class TradeExecutor:
                 success=False,
                 error_code="INVALID_SYMBOL",
                 error_message=error_msg,
-                latency_ms=Decimal(str((time.time() - start_time) * 1000)),
+                latency_ms=_round_latency_ms(time.time() - start_time),
             )
 
         # Execute order with retry logic
@@ -910,7 +915,7 @@ class TradeExecutor:
                 success=False,
                 error_code="INVALID_SYMBOL",
                 error_message=error_msg,
-                latency_ms=Decimal(str((time.time() - start_time) * 1000)),
+                latency_ms=_round_latency_ms(time.time() - start_time),
             )
 
         # Execute order with retry logic

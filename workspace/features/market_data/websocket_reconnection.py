@@ -9,11 +9,12 @@ Date: 2025-10-29
 """
 
 import asyncio
-import logging
 import random
-from dataclasses import dataclass
+import logging
+from typing import Optional, Callable, Any
 from datetime import datetime
-from typing import Any, Callable, Optional
+from dataclasses import dataclass
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,11 @@ class ReconnectionStats:
             return 100.0
 
         uptime_time = total_time - self.total_downtime_seconds
+
+        # Ensure uptime is not negative due to timing issues
+        if uptime_time < 0:
+            uptime_time = 0.0
+
         return (uptime_time / total_time) * 100.0
 
 
@@ -112,7 +118,7 @@ class WebSocketReconnectionManager:
         # Jitter range: +/- (jitter_range * delay)
         jitter = random.uniform(-delay * self.jitter_range, delay * self.jitter_range)
 
-        return float(max(0, delay + jitter))  # Ensure non-negative
+        return max(0, delay + jitter)  # Ensure non-negative
 
     async def connect_with_retry(
         self,
@@ -133,7 +139,6 @@ class WebSocketReconnectionManager:
             Exception: If connect_func raises an unhandled exception
         """
         self.is_connecting = True
-        self.stats.total_attempts = 0
 
         while not self.is_connected:
             # Check max attempts
@@ -204,9 +209,6 @@ class WebSocketReconnectionManager:
 
                 logger.info(f"Retrying in {delay:.2f}s...")
                 await asyncio.sleep(delay)
-
-        # Should not reach here, but return False as fallback
-        return False
 
     def mark_disconnected(self):
         """Mark connection as disconnected and record disconnect time"""

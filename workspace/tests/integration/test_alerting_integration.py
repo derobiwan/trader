@@ -8,18 +8,17 @@ Date: 2025-10-29
 Sprint: Sprint 2 Stream C
 """
 
-import asyncio
-
 import pytest
+import asyncio
 
 from workspace.features.alerting import (
     Alert,
+    AlertSeverity,
     AlertCategory,
     AlertService,
-    AlertSeverity,
     EmailAlertChannel,
-    PagerDutyAlertChannel,
     SlackAlertChannel,
+    PagerDutyAlertChannel,
 )
 
 

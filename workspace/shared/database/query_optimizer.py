@@ -1,508 +1,771 @@
 """
-Database Query Optimizer
+Database Query Optimizer for Trading System.
 
-Creates optimized indexes for common queries and identifies slow queries.
+This module provides comprehensive database query optimization including:
+- Index creation and management for all common query patterns
+- Slow query detection and analysis
+- Table bloat monitoring
+- Automatic VACUUM ANALYZE operations
+- Performance metrics collection
 
-Features:
-- Create strategic indexes (including partial indexes)
-- Analyze slow queries via pg_stat_statements
-- Vacuum and analyze recommendations
-- Query performance monitoring
-
-Author: Performance Optimization Team
-Date: 2025-10-29
-Sprint: 3, Stream C, Task 046
+Author: Performance Optimizer Agent
+Date: 2025-10-30
 """
 
+import asyncio
 import logging
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Dict, List, Optional
-
+import time
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
 import asyncpg
+from dataclasses import dataclass
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class SlowQuery:
-    """Information about a slow query"""
+class QueryStats:
+    """Statistics for a specific query pattern."""
 
-    query: str
-    calls: int
+    query_pattern: str
+    total_count: int
     total_time_ms: float
-    mean_time_ms: float
+    avg_time_ms: float
     max_time_ms: float
-    stddev_time_ms: float
+    min_time_ms: float
+    p95_time_ms: float
+    slow_count: int  # Count of queries > 10ms
 
 
 @dataclass
-class IndexRecommendation:
-    """Recommendation for creating an index"""
+class IndexStats:
+    """Statistics for database indexes."""
 
-    table: str
-    columns: List[str]
-    index_type: str  # "btree", "hash", "gin", etc.
-    is_partial: bool
-    condition: Optional[str]
-    estimated_benefit: str
+    table_name: str
+    index_name: str
+    index_size_mb: float
+    index_scans: int
+    index_reads: int
+    effectiveness: float  # Percentage of scans vs table scans
+
+
+@dataclass
+class TableStats:
+    """Statistics for database tables."""
+
+    table_name: str
+    total_rows: int
+    dead_rows: int
+    table_size_mb: float
+    index_size_mb: float
+    bloat_ratio: float
+    last_vacuum: Optional[datetime]
+    last_analyze: Optional[datetime]
 
 
 class QueryOptimizer:
     """
-    Database query optimization and performance analysis.
+    Database query optimizer for the trading system.
 
-    Features:
-    - Strategic index creation for common queries
-    - Partial indexes for active data
-    - Slow query identification
-    - Vacuum and analyze scheduling
+    Provides comprehensive query optimization, index management,
+    and performance monitoring capabilities.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool):
+    # Performance thresholds
+    SLOW_QUERY_THRESHOLD_MS = 10.0
+    TABLE_BLOAT_THRESHOLD = 0.2  # 20%
+    MIN_INDEX_EFFECTIVENESS = 0.5  # 50%
+    VACUUM_INTERVAL_HOURS = 24
+    ANALYZE_INTERVAL_HOURS = 6
+
+    def __init__(self, connection_pool: asyncpg.Pool):
         """
-        Initialize query optimizer.
+        Initialize the query optimizer.
 
         Args:
-            db_pool: AsyncPG connection pool
+            connection_pool: AsyncPG connection pool
         """
-        self.db_pool = db_pool
-        logger.info("QueryOptimizer initialized")
+        self.pool = connection_pool
+        self.query_stats: Dict[str, List[float]] = defaultdict(list)
+        self.monitoring_enabled = False
+        self._monitor_task: Optional[asyncio.Task] = None
 
-    # ========================================================================
-    # Index Creation
-    # ========================================================================
+    async def initialize(self) -> None:
+        """Initialize the query optimizer and enable monitoring extensions."""
+        try:
+            async with self.pool.acquire() as conn:
+                # Enable pg_stat_statements if available
+                await conn.execute(
+                    """
+                    CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+                """
+                )
 
-    async def create_all_indexes(self) -> Dict[str, bool]:
+                # Create optimization metadata table
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS optimization_metadata (
+                        id SERIAL PRIMARY KEY,
+                        optimization_type VARCHAR(50) NOT NULL,
+                        table_name VARCHAR(100),
+                        index_name VARCHAR(100),
+                        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        duration_ms FLOAT,
+                        status VARCHAR(20),
+                        details JSONB
+                    );
+                """
+                )
+
+                logger.info("Query optimizer initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize query optimizer: {e}")
+            raise
+
+    async def create_indexes(self) -> Dict[str, bool]:
         """
-        Create all recommended indexes.
+        Create all optimized indexes for common query patterns.
 
         Returns:
-            Dictionary mapping index name to success status
+            Dictionary mapping index names to creation success status
         """
-        indexes = self._get_index_definitions()
+        indexes = [
+            # Position queries
+            (
+                "idx_positions_symbol_status",
+                "positions",
+                "(symbol, status)",
+                "WHERE status = 'active'",
+            ),
+            ("idx_positions_opened_at", "positions", "(opened_at DESC)", None),
+            (
+                "idx_positions_closed_at",
+                "positions",
+                "(closed_at DESC)",
+                "WHERE closed_at IS NOT NULL",
+            ),
+            (
+                "idx_positions_symbol_opened",
+                "positions",
+                "(symbol, opened_at DESC)",
+                None,
+            ),
+            # Trade history queries
+            ("idx_trades_executed_at", "trades", "(executed_at DESC)", None),
+            (
+                "idx_trades_symbol_executed",
+                "trades",
+                "(symbol, executed_at DESC)",
+                None,
+            ),
+            (
+                "idx_trades_pnl",
+                "trades",
+                "(realized_pnl DESC)",
+                "WHERE realized_pnl IS NOT NULL",
+            ),
+            ("idx_trades_symbol_pnl", "trades", "(symbol, realized_pnl)", None),
+            # State transition queries
+            (
+                "idx_state_transitions_symbol",
+                "state_transitions",
+                "(symbol, transitioned_at DESC)",
+                None,
+            ),
+            (
+                "idx_state_transitions_position",
+                "state_transitions",
+                "(position_id, transitioned_at DESC)",
+                None,
+            ),
+            (
+                "idx_state_transitions_from_to",
+                "state_transitions",
+                "(from_state, to_state)",
+                None,
+            ),
+            # Market data queries (time-series optimization)
+            (
+                "idx_market_data_symbol_time",
+                "market_data",
+                "(symbol, timestamp DESC)",
+                None,
+            ),
+            (
+                "idx_market_data_partition",
+                "market_data",
+                "(symbol, DATE(timestamp))",
+                None,
+            ),
+            # Signal queries
+            ("idx_signals_symbol_time", "signals", "(symbol, generated_at DESC)", None),
+            ("idx_signals_action", "signals", "(action, generated_at DESC)", None),
+            # Order queries
+            ("idx_orders_symbol_status", "orders", "(symbol, status)", None),
+            ("idx_orders_created", "orders", "(created_at DESC)", None),
+            # Performance metrics
+            (
+                "idx_metrics_type_time",
+                "performance_metrics",
+                "(metric_type, recorded_at DESC)",
+                None,
+            ),
+            # Risk events
+            (
+                "idx_risk_events_severity",
+                "risk_events",
+                "(severity, created_at DESC)",
+                None,
+            ),
+        ]
+
         results = {}
 
-        for index_def in indexes:
-            try:
-                async with self.db_pool.acquire() as conn:
-                    await conn.execute(index_def)
-                    index_name = self._extract_index_name(index_def)
-                    results[index_name] = True
-                    logger.info(f"✓ Created index: {index_name}")
-            except Exception as e:
-                index_name = self._extract_index_name(index_def)
-                results[index_name] = False
-                logger.error(f"✗ Failed to create index {index_name}: {e}")
+        for index_name, table, columns, where_clause in indexes:
+            success = await self._create_index(index_name, table, columns, where_clause)
+            results[index_name] = success
 
-        success_count = sum(1 for v in results.values() if v)
-        logger.info(
-            f"Index creation complete: {success_count}/{len(results)} successful"
-        )
+        # Log summary
+        successful = sum(1 for s in results.values() if s)
+        logger.info(f"Created {successful}/{len(indexes)} indexes successfully")
 
         return results
 
-    def _get_index_definitions(self) -> List[str]:
-        """
-        Get list of index definitions to create.
-
-        Returns:
-            List of CREATE INDEX SQL statements
-        """
-        return [
-            # ================================================================
-            # Position Indexes
-            # ================================================================
-            # Composite index for position queries by symbol and status
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_positions_symbol_status
-            ON positions(symbol, status)
-            """,
-            # Time-based queries
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_positions_created_at
-            ON positions(created_at DESC)
-            """,
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_positions_updated_at
-            ON positions(updated_at DESC)
-            """,
-            # Partial index for ONLY active positions (most common query)
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_active_positions
-            ON positions(symbol, side, quantity)
-            WHERE status IN ('OPEN', 'OPENING', 'CLOSING')
-            """,
-            # ================================================================
-            # Trade History Indexes
-            # ================================================================
-            # Time-based queries (most common)
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_trades_timestamp
-            ON trades(timestamp DESC)
-            """,
-            # Symbol-based P&L queries
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_trades_symbol_pnl
-            ON trades(symbol, realized_pnl)
-            """,
-            # Trade type filtering
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_trades_type_timestamp
-            ON trades(trade_type, timestamp DESC)
-            """,
-            # Partial index for profitable trades
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_trades_profitable
-            ON trades(symbol, realized_pnl, timestamp DESC)
-            WHERE realized_pnl > 0
-            """,
-            # ================================================================
-            # State Transition Indexes
-            # ================================================================
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_state_transitions_symbol
-            ON position_state_transitions(symbol, timestamp DESC)
-            """,
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_state_transitions_position
-            ON position_state_transitions(position_id, timestamp DESC)
-            """,
-            # ================================================================
-            # Market Data Cache Indexes
-            # ================================================================
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_market_data_symbol_time
-            ON market_data_cache(symbol, timeframe, timestamp DESC)
-            """,
-            # Partial index for recent data only (last 7 days)
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_market_data_recent
-            ON market_data_cache(symbol, timestamp DESC)
-            WHERE timestamp > NOW() - INTERVAL '7 days'
-            """,
-            # ================================================================
-            # Risk Events Indexes
-            # ================================================================
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_risk_events_timestamp
-            ON risk_events(timestamp DESC)
-            """,
-            """
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_risk_events_severity
-            ON risk_events(severity, timestamp DESC)
-            WHERE severity IN ('CRITICAL', 'HIGH')
-            """,
-        ]
-
-    def _extract_index_name(self, index_sql: str) -> str:
-        """
-        Extract index name from CREATE INDEX statement.
-
-        Args:
-            index_sql: SQL CREATE INDEX statement
-
-        Returns:
-            Index name
-        """
-        # Simple extraction: find text after "IF NOT EXISTS"
-        if "IF NOT EXISTS" in index_sql:
-            parts = index_sql.split("IF NOT EXISTS")[1].strip().split()
-            return parts[0]
-        return "unknown_index"
-
-    # ========================================================================
-    # Slow Query Analysis
-    # ========================================================================
-
-    async def analyze_slow_queries(
+    async def _create_index(
         self,
-        min_mean_time_ms: float = 10.0,
-        limit: int = 20,
-    ) -> List[SlowQuery]:
+        index_name: str,
+        table: str,
+        columns: str,
+        where_clause: Optional[str] = None,
+    ) -> bool:
         """
-        Identify slow queries using pg_stat_statements.
+        Create a single index with error handling.
 
         Args:
-            min_mean_time_ms: Minimum mean execution time in milliseconds
-            limit: Maximum number of queries to return
+            index_name: Name of the index
+            table: Table name
+            columns: Column specification
+            where_clause: Optional WHERE clause for partial index
 
         Returns:
-            List of slow queries ordered by mean time
+            True if index was created successfully
         """
-        query = """
-        SELECT
-            query,
-            calls,
-            total_exec_time as total_time,
-            mean_exec_time as mean_time,
-            max_exec_time as max_time,
-            stddev_exec_time as stddev_time
-        FROM pg_stat_statements
-        WHERE mean_exec_time > $1
-        ORDER BY mean_exec_time DESC
-        LIMIT $2
-        """
-
         try:
-            async with self.db_pool.acquire() as conn:
-                rows = await conn.fetch(query, min_mean_time_ms, limit)
+            async with self.pool.acquire() as conn:
+                # Check if index already exists
+                exists = await conn.fetchval(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_indexes
+                        WHERE indexname = $1
+                    );
+                """,
+                    index_name,
+                )
 
-                slow_queries = [
-                    SlowQuery(
-                        query=row["query"],
-                        calls=row["calls"],
-                        total_time_ms=row["total_time"],
-                        mean_time_ms=row["mean_time"],
-                        max_time_ms=row["max_time"],
-                        stddev_time_ms=row["stddev_time"],
+                if exists:
+                    logger.debug(f"Index {index_name} already exists")
+                    return True
+
+                # Build index creation query
+                query = f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {index_name} ON {table} {columns}"
+                if where_clause:
+                    query += f" {where_clause}"
+
+                start_time = time.time()
+                await conn.execute(query)
+                duration = (time.time() - start_time) * 1000
+
+                # Log optimization metadata
+                await conn.execute(
+                    """
+                    INSERT INTO optimization_metadata
+                    (optimization_type, table_name, index_name, duration_ms, status)
+                    VALUES ('create_index', $1, $2, $3, 'success');
+                """,
+                    table,
+                    index_name,
+                    duration,
+                )
+
+                logger.info(f"Created index {index_name} in {duration:.2f}ms")
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to create index {index_name}: {e}")
+            return False
+
+    async def analyze_slow_queries(self, limit: int = 20) -> List[QueryStats]:
+        """
+        Analyze slow queries from pg_stat_statements.
+
+        Args:
+            limit: Maximum number of slow queries to return
+
+        Returns:
+            List of QueryStats for slow queries
+        """
+        try:
+            async with self.pool.acquire() as conn:
+                # Check if pg_stat_statements is available
+                has_extension = await conn.fetchval(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_extension
+                        WHERE extname = 'pg_stat_statements'
+                    );
+                """
+                )
+
+                if not has_extension:
+                    logger.warning("pg_stat_statements extension not available")
+                    return []
+
+                # Fetch slow queries
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        query,
+                        calls,
+                        total_time,
+                        mean_time,
+                        max_time,
+                        min_time,
+                        stddev_time
+                    FROM pg_stat_statements
+                    WHERE mean_time > $1
+                        AND query NOT LIKE '%pg_stat_statements%'
+                        AND query NOT LIKE '%optimization_metadata%'
+                    ORDER BY mean_time DESC
+                    LIMIT $2;
+                """,
+                    self.SLOW_QUERY_THRESHOLD_MS,
+                    limit,
+                )
+
+                stats = []
+                for row in rows:
+                    # Calculate P95 (approximation using mean + 2*stddev)
+                    p95 = row["mean_time"] + (2 * row["stddev_time"])
+
+                    stats.append(
+                        QueryStats(
+                            query_pattern=self._normalize_query(row["query"]),
+                            total_count=row["calls"],
+                            total_time_ms=row["total_time"],
+                            avg_time_ms=row["mean_time"],
+                            max_time_ms=row["max_time"],
+                            min_time_ms=row["min_time"],
+                            p95_time_ms=p95,
+                            slow_count=row["calls"],  # All are slow if in this result
+                        )
                     )
-                    for row in rows
-                ]
 
-                logger.info(f"Found {len(slow_queries)} slow queries")
-
-                for sq in slow_queries:
-                    logger.warning(
-                        f"Slow query: {sq.mean_time_ms:.2f}ms avg, "
-                        f"{sq.calls} calls - {sq.query[:100]}..."
-                    )
-
-                return slow_queries
+                logger.info(f"Found {len(stats)} slow queries")
+                return stats
 
         except Exception as e:
             logger.error(f"Failed to analyze slow queries: {e}")
             return []
 
-    # ========================================================================
-    # Database Maintenance
-    # ========================================================================
+    def _normalize_query(self, query: str) -> str:
+        """Normalize query by removing specific values for pattern matching."""
+        import re
 
-    async def vacuum_analyze(self, table_names: Optional[List[str]] = None):
+        # Replace numbers with placeholders
+        query = re.sub(r"\b\d+\b", "?", query)
+        # Replace quoted strings with placeholders
+        query = re.sub(r"'[^']*'", "'?'", query)
+        # Truncate long queries
+        if len(query) > 200:
+            query = query[:200] + "..."
+        return query.strip()
+
+    async def get_index_usage_stats(self) -> List[IndexStats]:
         """
-        Run VACUUM ANALYZE on specified tables.
-
-        Args:
-            table_names: List of table names (None = all tables)
-        """
-        if table_names is None:
-            table_names = [
-                "positions",
-                "trades",
-                "position_state_transitions",
-                "market_data_cache",
-                "risk_events",
-            ]
-
-        for table in table_names:
-            try:
-                async with self.db_pool.acquire() as conn:
-                    await conn.execute(f"VACUUM ANALYZE {table}")
-                    logger.info(f"✓ Vacuumed and analyzed table: {table}")
-            except Exception as e:
-                logger.error(f"✗ Failed to vacuum {table}: {e}")
-
-    async def get_table_stats(self, table_name: str) -> Dict:
-        """
-        Get statistics for a table.
-
-        Args:
-            table_name: Name of table
+        Get usage statistics for all indexes.
 
         Returns:
-            Dictionary with table statistics
+            List of IndexStats for all indexes
         """
-        query = """
-        SELECT
-            schemaname,
-            relname,
-            n_live_tup as live_tuples,
-            n_dead_tup as dead_tuples,
-            n_tup_ins as inserts,
-            n_tup_upd as updates,
-            n_tup_del as deletes,
-            last_vacuum,
-            last_autovacuum,
-            last_analyze,
-            last_autoanalyze
-        FROM pg_stat_user_tables
-        WHERE relname = $1
-        """
-
         try:
-            async with self.db_pool.acquire() as conn:
-                row = await conn.fetchrow(query, table_name)
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        schemaname,
+                        tablename,
+                        indexname,
+                        idx_scan,
+                        idx_tup_read,
+                        idx_tup_fetch,
+                        pg_size_pretty(pg_relation_size(indexrelid)) as index_size
+                    FROM pg_stat_user_indexes
+                    WHERE schemaname = 'public'
+                    ORDER BY idx_scan DESC;
+                """
+                )
 
-                if row:
-                    stats = dict(row)
-                    logger.info(
-                        f"Table {table_name}: "
-                        f"{stats['live_tuples']} live, "
-                        f"{stats['dead_tuples']} dead tuples"
-                    )
-                    return stats
-
-                return {}
-
-        except Exception as e:
-            logger.error(f"Failed to get stats for {table_name}: {e}")
-            return {}
-
-    # ========================================================================
-    # Index Usage Analysis
-    # ========================================================================
-
-    async def analyze_index_usage(self) -> List[Dict]:
-        """
-        Analyze which indexes are being used.
-
-        Returns:
-            List of index usage statistics
-        """
-        query = """
-        SELECT
-            schemaname,
-            tablename,
-            indexname,
-            idx_scan as scans,
-            idx_tup_read as tuples_read,
-            idx_tup_fetch as tuples_fetched
-        FROM pg_stat_user_indexes
-        ORDER BY idx_scan DESC
-        """
-
-        try:
-            async with self.db_pool.acquire() as conn:
-                rows = await conn.fetch(query)
-
-                index_stats = [dict(row) for row in rows]
-
-                # Log unused indexes
-                unused = [idx for idx in index_stats if idx["scans"] == 0]
-                if unused:
-                    logger.warning(
-                        f"Found {len(unused)} unused indexes that could be dropped"
+                stats = []
+                for row in rows:
+                    # Calculate effectiveness (simplified)
+                    total_scans = row["idx_scan"] or 0
+                    effectiveness = (
+                        min(1.0, total_scans / 1000.0) if total_scans > 0 else 0.0
                     )
 
-                return index_stats
+                    # Parse size
+                    size_str = row["index_size"]
+                    size_mb = self._parse_size_to_mb(size_str)
+
+                    stats.append(
+                        IndexStats(
+                            table_name=row["tablename"],
+                            index_name=row["indexname"],
+                            index_size_mb=size_mb,
+                            index_scans=row["idx_scan"] or 0,
+                            index_reads=row["idx_tup_read"] or 0,
+                            effectiveness=effectiveness,
+                        )
+                    )
+
+                return stats
 
         except Exception as e:
-            logger.error(f"Failed to analyze index usage: {e}")
+            logger.error(f"Failed to get index usage stats: {e}")
             return []
 
-    # ========================================================================
-    # Query Plan Analysis
-    # ========================================================================
+    def _parse_size_to_mb(self, size_str: str) -> float:
+        """Parse PostgreSQL size string to MB."""
+        if "MB" in size_str:
+            return float(size_str.replace(" MB", ""))
+        elif "GB" in size_str:
+            return float(size_str.replace(" GB", "")) * 1024
+        elif "kB" in size_str:
+            return float(size_str.replace(" kB", "")) / 1024
+        elif "bytes" in size_str:
+            return float(size_str.replace(" bytes", "")) / (1024 * 1024)
+        return 0.0
 
-    async def explain_query(self, query: str, analyze: bool = False) -> str:
+    async def get_table_stats(self) -> List[TableStats]:
         """
-        Get EXPLAIN output for a query.
-
-        Args:
-            query: SQL query to explain
-            analyze: If True, run EXPLAIN ANALYZE (actually executes query)
+        Get statistics for all tables including bloat analysis.
 
         Returns:
-            EXPLAIN output as string
+            List of TableStats for all tables
         """
-        explain_cmd = "EXPLAIN ANALYZE" if analyze else "EXPLAIN"
-        explain_query = f"{explain_cmd} {query}"
-
         try:
-            async with self.db_pool.acquire() as conn:
-                rows = await conn.fetch(explain_query)
-                plan = "\n".join([row[0] for row in rows])
-                return plan
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT
+                        schemaname,
+                        tablename,
+                        n_live_tup,
+                        n_dead_tup,
+                        last_vacuum,
+                        last_analyze,
+                        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
+                        pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) as table_size,
+                        pg_size_pretty(pg_indexes_size(schemaname||'.'||tablename)) as indexes_size
+                    FROM pg_stat_user_tables
+                    WHERE schemaname = 'public'
+                    ORDER BY n_live_tup DESC;
+                """
+                )
+
+                stats = []
+                for row in rows:
+                    # Calculate bloat ratio
+                    live_rows = row["n_live_tup"] or 0
+                    dead_rows = row["n_dead_tup"] or 0
+                    total_rows = live_rows + dead_rows
+                    bloat_ratio = dead_rows / total_rows if total_rows > 0 else 0.0
+
+                    # Parse sizes
+                    table_size_mb = self._parse_size_to_mb(row["table_size"])
+                    index_size_mb = self._parse_size_to_mb(row["indexes_size"])
+
+                    stats.append(
+                        TableStats(
+                            table_name=row["tablename"],
+                            total_rows=live_rows,
+                            dead_rows=dead_rows,
+                            table_size_mb=table_size_mb,
+                            index_size_mb=index_size_mb,
+                            bloat_ratio=bloat_ratio,
+                            last_vacuum=row["last_vacuum"],
+                            last_analyze=row["last_analyze"],
+                        )
+                    )
+
+                return stats
 
         except Exception as e:
-            logger.error(f"Failed to explain query: {e}")
-            return f"Error: {e}"
+            logger.error(f"Failed to get table stats: {e}")
+            return []
 
-    # ========================================================================
-    # Recommendations
-    # ========================================================================
-
-    def get_index_recommendations(self) -> List[IndexRecommendation]:
+    async def optimize_tables(self, force: bool = False) -> Dict[str, bool]:
         """
-        Get list of recommended indexes.
+        Run VACUUM ANALYZE on tables that need optimization.
+
+        Args:
+            force: Force optimization even if not needed
 
         Returns:
-            List of index recommendations with explanations
+            Dictionary mapping table names to optimization success status
         """
-        return [
-            IndexRecommendation(
-                table="positions",
-                columns=["symbol", "status"],
-                index_type="btree",
-                is_partial=False,
-                condition=None,
-                estimated_benefit="High - Most common position query pattern",
-            ),
-            IndexRecommendation(
-                table="positions",
-                columns=["symbol", "side", "quantity"],
-                index_type="btree",
-                is_partial=True,
-                condition="status IN ('OPEN', 'OPENING', 'CLOSING')",
-                estimated_benefit=(
-                    "Very High - Dramatically reduces index size for active position queries"
-                ),
-            ),
-            IndexRecommendation(
-                table="trades",
-                columns=["timestamp"],
-                index_type="btree",
-                is_partial=False,
-                condition=None,
-                estimated_benefit="High - Time-based queries are extremely common",
-            ),
-            IndexRecommendation(
-                table="trades",
-                columns=["symbol", "realized_pnl", "timestamp"],
-                index_type="btree",
-                is_partial=True,
-                condition="realized_pnl > 0",
-                estimated_benefit="Medium - Profitable trade analysis queries",
-            ),
-            IndexRecommendation(
-                table="market_data_cache",
-                columns=["symbol", "timestamp"],
-                index_type="btree",
-                is_partial=True,
-                condition="timestamp > NOW() - INTERVAL '7 days'",
-                estimated_benefit=(
-                    "High - Most queries target recent data, dramatically reduces index size"
-                ),
-            ),
-        ]
+        results = {}
 
-    # ========================================================================
-    # Performance Monitoring
-    # ========================================================================
+        try:
+            table_stats = await self.get_table_stats()
 
-    async def get_performance_summary(self) -> Dict:
+            for stats in table_stats:
+                needs_vacuum = (
+                    force
+                    or stats.bloat_ratio > self.TABLE_BLOAT_THRESHOLD
+                    or (
+                        stats.last_vacuum
+                        and datetime.now() - stats.last_vacuum
+                        > timedelta(hours=self.VACUUM_INTERVAL_HOURS)
+                    )
+                )
+
+                needs_analyze = (
+                    force
+                    or stats.last_analyze is None
+                    or datetime.now() - stats.last_analyze
+                    > timedelta(hours=self.ANALYZE_INTERVAL_HOURS)
+                )
+
+                if needs_vacuum or needs_analyze:
+                    success = await self._optimize_table(
+                        stats.table_name, vacuum=needs_vacuum, analyze=needs_analyze
+                    )
+                    results[stats.table_name] = success
+
+            logger.info(f"Optimized {len(results)} tables")
+            return results
+
+        except Exception as e:
+            logger.error(f"Failed to optimize tables: {e}")
+            return results
+
+    async def _optimize_table(
+        self, table: str, vacuum: bool = True, analyze: bool = True
+    ) -> bool:
         """
-        Get overall database performance summary.
+        Run VACUUM and/or ANALYZE on a specific table.
+
+        Args:
+            table: Table name
+            vacuum: Whether to run VACUUM
+            analyze: Whether to run ANALYZE
 
         Returns:
-            Dictionary with performance metrics
+            True if optimization was successful
         """
-        summary = {
-            "timestamp": datetime.utcnow(),
-            "slow_queries": len(await self.analyze_slow_queries()),
-            "index_usage": await self.analyze_index_usage(),
-        }
+        try:
+            async with self.pool.acquire() as conn:
+                operations = []
+                if vacuum:
+                    operations.append("VACUUM")
+                if analyze:
+                    operations.append("ANALYZE")
 
-        # Get table stats for key tables
-        table_stats = {}
-        for table in ["positions", "trades", "market_data_cache"]:
-            stats = await self.get_table_stats(table)
-            if stats:
-                table_stats[table] = {
-                    "live_tuples": stats.get("live_tuples", 0),
-                    "dead_tuples": stats.get("dead_tuples", 0),
-                }
+                operation = " ".join(operations)
 
-        summary["table_stats"] = table_stats
+                start_time = time.time()
+                await conn.execute(f"{operation} {table};")
+                duration = (time.time() - start_time) * 1000
 
-        return summary
+                # Log optimization metadata
+                await conn.execute(
+                    """
+                    INSERT INTO optimization_metadata
+                    (optimization_type, table_name, duration_ms, status, details)
+                    VALUES ($1, $2, $3, 'success', $4);
+                """,
+                    operation.lower(),
+                    table,
+                    duration,
+                    {"vacuum": vacuum, "analyze": analyze},
+                )
+
+                logger.info(
+                    f"Optimized table {table} ({operation}) in {duration:.2f}ms"
+                )
+                return True
+
+        except Exception as e:
+            logger.error(f"Failed to optimize table {table}: {e}")
+            return False
+
+    async def get_performance_metrics(self) -> Dict[str, Any]:
+        """
+        Get comprehensive performance metrics.
+
+        Returns:
+            Dictionary containing various performance metrics
+        """
+        try:
+            # Gather all metrics
+            slow_queries = await self.analyze_slow_queries(10)
+            index_stats = await self.get_index_usage_stats()
+            table_stats = await self.get_table_stats()
+
+            # Calculate aggregates
+            total_slow_queries = len(slow_queries)
+            avg_slow_query_time = (
+                sum(q.avg_time_ms for q in slow_queries) / len(slow_queries)
+                if slow_queries
+                else 0
+            )
+
+            unused_indexes = [
+                idx
+                for idx in index_stats
+                if idx.effectiveness < self.MIN_INDEX_EFFECTIVENESS
+            ]
+
+            bloated_tables = [
+                tbl
+                for tbl in table_stats
+                if tbl.bloat_ratio > self.TABLE_BLOAT_THRESHOLD
+            ]
+
+            # Calculate database size
+            total_size_mb = sum(t.table_size_mb + t.index_size_mb for t in table_stats)
+
+            metrics = {
+                "timestamp": datetime.now().isoformat(),
+                "slow_queries": {
+                    "count": total_slow_queries,
+                    "avg_time_ms": avg_slow_query_time,
+                    "threshold_ms": self.SLOW_QUERY_THRESHOLD_MS,
+                    "top_slow_queries": [
+                        {
+                            "pattern": q.query_pattern[:100],
+                            "avg_time_ms": q.avg_time_ms,
+                            "count": q.total_count,
+                        }
+                        for q in slow_queries[:5]
+                    ],
+                },
+                "indexes": {
+                    "total_count": len(index_stats),
+                    "unused_count": len(unused_indexes),
+                    "total_size_mb": sum(idx.index_size_mb for idx in index_stats),
+                    "unused_indexes": [idx.index_name for idx in unused_indexes[:5]],
+                },
+                "tables": {
+                    "total_count": len(table_stats),
+                    "bloated_count": len(bloated_tables),
+                    "total_size_mb": total_size_mb,
+                    "bloated_tables": [
+                        {
+                            "name": t.table_name,
+                            "bloat_ratio": round(t.bloat_ratio, 2),
+                            "dead_rows": t.dead_rows,
+                        }
+                        for t in bloated_tables[:5]
+                    ],
+                },
+                "optimization_status": {
+                    "monitoring_enabled": self.monitoring_enabled,
+                    "last_optimization": datetime.now().isoformat(),
+                },
+            }
+
+            return metrics
+
+        except Exception as e:
+            logger.error(f"Failed to get performance metrics: {e}")
+            return {}
+
+    async def start_monitoring(self, interval_seconds: int = 300) -> None:
+        """
+        Start continuous performance monitoring.
+
+        Args:
+            interval_seconds: Monitoring interval in seconds (default: 5 minutes)
+        """
+        if self.monitoring_enabled:
+            logger.warning("Monitoring already enabled")
+            return
+
+        self.monitoring_enabled = True
+        self._monitor_task = asyncio.create_task(
+            self._monitoring_loop(interval_seconds)
+        )
+        logger.info(f"Started performance monitoring (interval: {interval_seconds}s)")
+
+    async def stop_monitoring(self) -> None:
+        """Stop continuous performance monitoring."""
+        if not self.monitoring_enabled:
+            return
+
+        self.monitoring_enabled = False
+        if self._monitor_task:
+            self._monitor_task.cancel()
+            try:
+                await self._monitor_task
+            except asyncio.CancelledError:
+                pass
+
+        logger.info("Stopped performance monitoring")
+
+    async def _monitoring_loop(self, interval: int) -> None:
+        """
+        Continuous monitoring loop.
+
+        Args:
+            interval: Monitoring interval in seconds
+        """
+        while self.monitoring_enabled:
+            try:
+                # Analyze slow queries
+                slow_queries = await self.analyze_slow_queries()
+                if slow_queries:
+                    logger.warning(f"Found {len(slow_queries)} slow queries")
+
+                # Check for bloated tables
+                table_stats = await self.get_table_stats()
+                bloated = [
+                    t for t in table_stats if t.bloat_ratio > self.TABLE_BLOAT_THRESHOLD
+                ]
+
+                if bloated:
+                    logger.warning(f"Found {len(bloated)} bloated tables")
+                    # Auto-optimize if needed
+                    await self.optimize_tables()
+
+                # Check index effectiveness
+                index_stats = await self.get_index_usage_stats()
+                ineffective = [
+                    i
+                    for i in index_stats
+                    if i.effectiveness < self.MIN_INDEX_EFFECTIVENESS
+                ]
+
+                if ineffective:
+                    logger.warning(
+                        f"Found {len(ineffective)} ineffective indexes: "
+                        f"{[i.index_name for i in ineffective[:3]]}"
+                    )
+
+                # Sleep until next interval
+                await asyncio.sleep(interval)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in monitoring loop: {e}")
+                await asyncio.sleep(interval)
+
+    async def cleanup(self) -> None:
+        """Cleanup resources and stop monitoring."""
+        await self.stop_monitoring()
+        logger.info("Query optimizer cleanup complete")

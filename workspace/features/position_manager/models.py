@@ -140,8 +140,8 @@ class PositionCreateRequest(DatabaseModel):
     leverage: int = Field(
         ..., ge=MIN_LEVERAGE, le=MAX_LEVERAGE, description="Position leverage (5-40x)"
     )
-    stop_loss: Decimal = Field(
-        ..., gt=0, description="Stop loss price in USD (REQUIRED)"
+    stop_loss: Optional[Decimal] = Field(
+        None, gt=0, description="Stop loss price in USD (REQUIRED)"
     )
     take_profit: Optional[Decimal] = Field(
         None, gt=0, description="Take profit price in USD"

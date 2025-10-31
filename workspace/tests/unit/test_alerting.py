@@ -6,22 +6,21 @@ Date: 2025-10-29
 Sprint: Sprint 2 Stream C
 """
 
+import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from workspace.features.alerting import (
     Alert,
-    AlertCategory,
-    AlertChannel,
-    AlertRoutingRules,
-    AlertService,
     AlertSeverity,
+    AlertCategory,
+    AlertService,
+    AlertChannel,
     AlertThrottler,
+    AlertRoutingRules,
     EmailAlertChannel,
-    PagerDutyAlertChannel,
     SlackAlertChannel,
+    PagerDutyAlertChannel,
 )
 
 
@@ -219,7 +218,7 @@ class TestMockAlertChannel:
         def __init__(self, name: str, should_fail: bool = False):
             super().__init__(name)
             self.should_fail = should_fail
-            self.sent_alerts: list[Alert] = []
+            self.sent_alerts = []
 
         async def send(self, alert: Alert) -> bool:
             if self.should_fail:

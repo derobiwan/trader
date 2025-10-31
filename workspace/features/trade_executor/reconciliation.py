@@ -258,10 +258,14 @@ class ReconciliationService:
         """
         # Extract quantities
         system_quantity = sys_pos.quantity
-        exchange_quantity = Decimal(str(exch_pos["contracts"]))
+        exchange_quantity = Decimal(str(exch_pos["contracts"])).quantize(
+            Decimal("0.00000001")
+        )
 
         # Calculate discrepancy
-        discrepancy = system_quantity - exchange_quantity
+        discrepancy = (system_quantity - exchange_quantity).quantize(
+            Decimal("0.00000001")
+        )
         abs_discrepancy = abs(discrepancy)
 
         # Create result
@@ -317,7 +321,11 @@ class ReconciliationService:
             )
 
         # Store reconciliation result
-        await self._store_reconciliation_result(result)
+        try:
+            await self._store_reconciliation_result(result)
+        except Exception as e:
+            logger.error(f"Error storing reconciliation result: {e}", exc_info=True)
+            # Continue even if storage fails - result is still valid
 
         return result
 

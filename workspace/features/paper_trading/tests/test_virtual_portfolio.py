@@ -8,9 +8,8 @@ Author: Implementation Specialist (Sprint 2 Stream B)
 Date: 2025-10-29
 """
 
-from decimal import Decimal
-
 import pytest
+from decimal import Decimal
 
 from workspace.features.paper_trading import VirtualPortfolio
 

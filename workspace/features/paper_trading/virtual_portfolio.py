@@ -18,9 +18,24 @@ Date: 2025-10-29
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 logger = logging.getLogger(__name__)
+
+
+def _round_decimal(value: Decimal, places: int = 8) -> Decimal:
+    """
+    Round Decimal to specified decimal places.
+
+    Args:
+        value: Decimal value to round
+        places: Number of decimal places (default: 8)
+
+    Returns:
+        Rounded Decimal value
+    """
+    quantizer = Decimal(10) ** -places
+    return value.quantize(quantizer)
 
 
 class VirtualPortfolio:
@@ -77,15 +92,16 @@ class VirtualPortfolio:
             pos = self.positions[symbol]
 
             # Calculate weighted average entry price
-            total_quantity = pos["quantity"] + quantity
-            avg_price = (
-                pos["entry_price"] * pos["quantity"] + entry_price * quantity
-            ) / total_quantity
+            total_quantity = _round_decimal(pos["quantity"] + quantity)
+            avg_price = _round_decimal(
+                (pos["entry_price"] * pos["quantity"] + entry_price * quantity)
+                / total_quantity
+            )
 
             # Update position
             pos["quantity"] = total_quantity
             pos["entry_price"] = avg_price
-            pos["total_fees"] += fees
+            pos["total_fees"] = _round_decimal(pos["total_fees"] + fees)
             pos["last_updated"] = datetime.utcnow()
 
             logger.info(
@@ -111,12 +127,13 @@ class VirtualPortfolio:
             )
 
         # Deduct cost from balance
-        cost = quantity * entry_price + fees
+        cost = _round_decimal(quantity * entry_price + fees)
         if side == "long":
-            self.balance -= cost
+            self.balance = _round_decimal(self.balance - cost)
         else:
             # For shorts, we receive proceeds
-            self.balance += quantity * entry_price - fees
+            proceeds = _round_decimal(quantity * entry_price - fees)
+            self.balance = _round_decimal(self.balance + proceeds)
 
         # Record trade
         self.trade_history.append(
@@ -167,20 +184,20 @@ class VirtualPortfolio:
 
         # Calculate P&L
         if pos["side"] == "long":
-            pnl = (exit_price - pos["entry_price"]) * close_quantity
+            pnl = _round_decimal((exit_price - pos["entry_price"]) * close_quantity)
         else:
-            pnl = (pos["entry_price"] - exit_price) * close_quantity
+            pnl = _round_decimal((pos["entry_price"] - exit_price) * close_quantity)
 
         # Subtract fees
-        pnl -= fees
+        pnl = _round_decimal(pnl - fees)
 
         # Update balance
         if pos["side"] == "long":
-            proceeds = close_quantity * exit_price - fees
-            self.balance += proceeds
+            proceeds = _round_decimal(close_quantity * exit_price - fees)
+            self.balance = _round_decimal(self.balance + proceeds)
         else:
-            cost = close_quantity * exit_price + fees
-            self.balance -= cost
+            cost = _round_decimal(close_quantity * exit_price + fees)
+            self.balance = _round_decimal(self.balance - cost)
 
         # Record closed position
         closed_pos = {
@@ -204,7 +221,7 @@ class VirtualPortfolio:
             logger.info(f"Closed position {symbol} fully: P&L: ${pnl:.2f}")
         else:
             # Partially closed
-            pos["quantity"] -= close_quantity
+            pos["quantity"] = _round_decimal(pos["quantity"] - close_quantity)
             pos["last_updated"] = datetime.utcnow()
             logger.info(
                 f"Partially closed position {symbol}: "
@@ -226,7 +243,7 @@ class VirtualPortfolio:
             }
         )
 
-        return Decimal(str(pnl))
+        return pnl
 
     def get_unrealized_pnl(self, current_prices: Dict[str, Decimal]) -> Decimal:
         """
@@ -236,7 +253,7 @@ class VirtualPortfolio:
             current_prices: Dictionary of current prices by symbol
 
         Returns:
-            Total unrealized P&L in USDT
+            Total unrealized P&L in USDT (rounded to 8 decimal places)
         """
         total_pnl = Decimal("0")
 
@@ -245,15 +262,15 @@ class VirtualPortfolio:
                 current_price = current_prices[symbol]
 
                 if pos["side"] == "long":
-                    position_pnl = (current_price - pos["entry_price"]) * pos[
-                        "quantity"
-                    ]
+                    position_pnl = _round_decimal(
+                        (current_price - pos["entry_price"]) * pos["quantity"]
+                    )
                 else:
-                    position_pnl = (pos["entry_price"] - current_price) * pos[
-                        "quantity"
-                    ]
+                    position_pnl = _round_decimal(
+                        (pos["entry_price"] - current_price) * pos["quantity"]
+                    )
 
-                total_pnl += position_pnl
+                total_pnl = _round_decimal(total_pnl + position_pnl)
 
         return total_pnl
 
@@ -268,7 +285,7 @@ class VirtualPortfolio:
             current_price: Current market price
 
         Returns:
-            Unrealized P&L or None if position doesn't exist
+            Unrealized P&L or None if position doesn't exist (rounded to 8 decimal places)
         """
         if symbol not in self.positions:
             return None
@@ -277,10 +294,10 @@ class VirtualPortfolio:
 
         if pos["side"] == "long":
             pnl = (current_price - pos["entry_price"]) * pos["quantity"]
-            return Decimal(str(pnl))
         else:
             pnl = (pos["entry_price"] - current_price) * pos["quantity"]
-            return Decimal(str(pnl))
+
+        return _round_decimal(pnl)
 
     def get_total_equity(self, current_prices: Dict[str, Decimal]) -> Decimal:
         """
@@ -290,10 +307,10 @@ class VirtualPortfolio:
             current_prices: Dictionary of current prices by symbol
 
         Returns:
-            Total equity in USDT
+            Total equity in USDT (rounded to 8 decimal places)
         """
         unrealized_pnl = self.get_unrealized_pnl(current_prices)
-        return self.balance + unrealized_pnl
+        return _round_decimal(self.balance + unrealized_pnl)
 
     def get_portfolio_summary(
         self, current_prices: Optional[Dict[str, Decimal]] = None
@@ -307,7 +324,7 @@ class VirtualPortfolio:
         Returns:
             Portfolio summary with balance, positions, and P&L
         """
-        summary: Dict[str, Any] = {
+        summary = {
             "initial_balance": float(self.initial_balance),
             "current_balance": float(self.balance),
             "open_positions": len(self.positions),
@@ -338,15 +355,12 @@ class VirtualPortfolio:
                 "quantity": float(pos["quantity"]),
                 "entry_price": float(pos["entry_price"]),
                 "unrealized_pnl": (
-                    float(pnl)
-                    if current_prices
-                    and pos["symbol"] in current_prices
-                    and (
-                        pnl := self.get_position_pnl(
+                    float(
+                        self.get_position_pnl(
                             pos["symbol"], current_prices[pos["symbol"]]
                         )
                     )
-                    is not None
+                    if current_prices and pos["symbol"] in current_prices
                     else None
                 ),
             }

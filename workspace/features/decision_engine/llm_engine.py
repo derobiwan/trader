@@ -8,21 +8,21 @@ Author: Decision Engine Implementation Team
 Date: 2025-10-28
 """
 
-import hashlib
-import json
 import logging
-from dataclasses import dataclass
+import json
+import hashlib
+from typing import Dict, List, Optional
 from decimal import Decimal
 from enum import Enum
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 import httpx
 
-from workspace.features.caching import CacheService
 from workspace.features.market_data import MarketDataSnapshot
-from workspace.features.trading_loop import TradingDecision, TradingSignal
-
+from workspace.features.trading_loop import TradingSignal, TradingDecision
+from workspace.features.caching import CacheService
 from .prompt_builder import PromptBuilder
+
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +171,7 @@ class LLMDecisionEngine:
                 if hasattr(snapshot.rsi, "value"):
                     rsi = float(snapshot.rsi.value)
                 else:
-                    # RSI object, extract numeric value
-                    rsi = float(str(snapshot.rsi))  # type: ignore
+                    rsi = float(snapshot.rsi)
                 rounded_rsi = round(rsi / 5) * 5  # Nearest 5
             else:
                 rounded_rsi = 0
@@ -181,8 +180,7 @@ class LLMDecisionEngine:
                 if hasattr(snapshot.macd, "macd_line"):
                     macd = float(snapshot.macd.macd_line)
                 else:
-                    # MACD object, extract numeric value
-                    macd = float(str(snapshot.macd))  # type: ignore
+                    macd = float(snapshot.macd)
                 rounded_macd = round(macd, 2)  # 2 decimals
             else:
                 rounded_macd = 0
@@ -199,8 +197,8 @@ class LLMDecisionEngine:
             "model": self.config.model,
         }
 
-        # Generate cache key (MD5 used for cache key generation only, not security)
-        cache_key = f"llm:signals:{hashlib.md5(json.dumps(cache_data, sort_keys=True).encode(), usedforsecurity=False).hexdigest()}"
+        # Generate cache key
+        cache_key = f"llm:signals:{hashlib.md5(json.dumps(cache_data, sort_keys=True).encode()).hexdigest()}"
 
         return cache_key
 

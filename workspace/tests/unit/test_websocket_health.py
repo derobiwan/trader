@@ -5,14 +5,12 @@ Author: Sprint 2 Stream A - WebSocket Stability Team
 Date: 2025-10-29
 """
 
+import pytest
 import asyncio
 from datetime import datetime
-
-import pytest
-
 from workspace.features.market_data.websocket_health import (
-    HealthMetrics,
     WebSocketHealthMonitor,
+    HealthMetrics,
 )
 
 
@@ -57,7 +55,7 @@ class TestWebSocketHealthMonitor:
         """Test recording multiple messages"""
         monitor = WebSocketHealthMonitor()
 
-        for _i in range(10):
+        for i in range(10):
             monitor.record_message()
 
         assert monitor.metrics.total_messages == 10
@@ -319,7 +317,7 @@ class TestWebSocketHealthMonitor:
         """Test tracking multiple disconnects"""
         monitor = WebSocketHealthMonitor()
 
-        for _i in range(5):
+        for i in range(5):
             monitor.record_disconnect()
 
         assert monitor.disconnect_count == 5

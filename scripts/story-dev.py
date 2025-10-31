@@ -9,7 +9,6 @@ import json
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
 
 # Base directory
 BASE_DIR = Path(__file__).parent.parent
@@ -36,6 +35,9 @@ class StoryDev:
             for story in sorted(self.stories_dir.glob("STORY-*.md")):
                 print(f"   - {story.stem}")
             return False
+
+        # Load story
+        story_file.read_text()
 
         # Find corresponding task
         task_id = self._find_task_for_story(story_id)
@@ -66,7 +68,7 @@ class StoryDev:
 
         return True
 
-    def list_stories(self, status: Optional[str] = None):
+    def list_stories(self, status: str = None):
         """List available stories"""
         print("\n📚 Available Stories")
         print("=" * 80)
@@ -264,7 +266,7 @@ class StoryDev:
 
     # Helper methods
 
-    def _find_task_for_story(self, story_id: str) -> Optional[str]:
+    def _find_task_for_story(self, story_id: str) -> str:
         """Find corresponding task ID for a story"""
         registry_file = self.agent_system / "registry" / "stories.json"
         if not registry_file.exists():

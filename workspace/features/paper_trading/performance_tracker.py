@@ -16,11 +16,11 @@ Date: 2025-10-29
 """
 
 import logging
-import statistics
-from collections import defaultdict
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Any
+from collections import defaultdict
+import statistics
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ class PaperTradingPerformanceTracker:
         Returns:
             Performance report dictionary
         """
-        report: Dict[str, Any] = {
+        report = {
             "summary": {
                 "total_trades": self.metrics["total_trades"],
                 "winning_trades": self.metrics["winning_trades"],

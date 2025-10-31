@@ -1,759 +1,889 @@
 """
-Load Testing Framework
+Load Testing Framework for Trading System.
 
-Comprehensive load testing and performance benchmarking for the trading system.
+This module provides comprehensive load testing capabilities to:
+- Simulate complete trading cycles under load
+- Measure performance metrics (latency, throughput, success rate)
+- Monitor resource usage (CPU, memory, connections)
+- Test graceful degradation under stress
+- Generate detailed performance reports
 
-Features:
-- Simulate trading cycles under load
-- Performance benchmarking
-- Stress testing with increasing load
-- Metrics collection and reporting
-- Bottleneck identification
-
-Author: Performance Optimization Team
-Date: 2025-10-29
-Sprint: 3, Stream C, Task 048
+Author: Implementation Specialist
+Date: 2025-10-30
 """
 
 import asyncio
 import logging
-import statistics
 import time
-from dataclasses import dataclass, field
+import psutil
 from datetime import datetime
-from enum import Enum
-from typing import Callable, List, Optional
+from typing import Dict, List, Optional, Callable
+from dataclasses import dataclass, field
+from collections import defaultdict
+import statistics
 
 logger = logging.getLogger(__name__)
 
 
-class LoadTestType(Enum):
-    """Types of load tests"""
-
-    BASELINE = "baseline"  # Normal load
-    STRESS = "stress"  # Increasing load until failure
-    SPIKE = "spike"  # Sudden load increase
-    ENDURANCE = "endurance"  # Sustained load over time
-
-
 @dataclass
 class LoadTestConfig:
-    """Configuration for a load test"""
+    """Configuration for load testing."""
 
-    test_type: LoadTestType
-    duration_seconds: int
-    concurrent_users: int
-    requests_per_second: int
-    ramp_up_seconds: int = 0
-    cooldown_seconds: int = 0
+    # Test configuration
+    test_name: str = "Trading System Load Test"
+    target_cycles: int = 1000
+    concurrent_workers: int = 10
+    ramp_up_seconds: int = 30  # Gradually increase load
+    test_duration_seconds: Optional[int] = (
+        None  # Max duration (None = until cycles complete)
+    )
+    cooldown_seconds: int = 10
+
+    # Target performance thresholds
+    target_success_rate: float = 0.995  # 99.5%
+    target_p50_latency_ms: float = 1000.0  # 1 second
+    target_p95_latency_ms: float = 2000.0  # 2 seconds
+    target_p99_latency_ms: float = 3000.0  # 3 seconds
+
+    # Resource monitoring
+    monitor_interval_seconds: float = 1.0
+    max_cpu_percent: float = 80.0
+    max_memory_percent: float = 85.0
+
+    # Failure handling
+    max_consecutive_failures: int = 5
+    failure_backoff_seconds: float = 1.0
 
 
 @dataclass
-class RequestResult:
-    """Result of a single request"""
+class CycleResult:
+    """Result from a single trading cycle execution."""
 
-    request_id: int
+    cycle_id: int
+    worker_id: int
+    timestamp: datetime
     success: bool
-    response_time_ms: float
+    latency_ms: float
     error_message: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    stages: Dict[str, float] = field(default_factory=dict)  # Stage-wise latencies
+
+
+@dataclass
+class ResourceSnapshot:
+    """Snapshot of system resource usage."""
+
+    timestamp: datetime
+    cpu_percent: float
+    memory_percent: float
+    memory_mb: float
+    open_connections: int
+    thread_count: int
+    disk_io_read_mb: float = 0.0
+    disk_io_write_mb: float = 0.0
 
 
 @dataclass
 class LoadTestResult:
-    """Result of a load test"""
+    """Complete load test results."""
 
-    test_type: LoadTestType
-    total_requests: int
-    successful_requests: int
-    failed_requests: int
-    total_duration_seconds: float
-    requests_per_second: float
-    avg_response_time_ms: float
-    min_response_time_ms: float
-    max_response_time_ms: float
-    p50_response_time_ms: float
-    p95_response_time_ms: float
-    p99_response_time_ms: float
-    error_rate_pct: float
-    throughput: float
-    bottlenecks: List[str]
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    test_name: str
+    start_time: datetime
+    end_time: datetime
+    duration_seconds: float
+
+    # Execution statistics
+    total_cycles: int
+    successful_cycles: int
+    failed_cycles: int
+    success_rate: float
+
+    # Latency statistics (milliseconds)
+    mean_latency_ms: float
+    median_latency_ms: float
+    p50_latency_ms: float
+    p95_latency_ms: float
+    p99_latency_ms: float
+    min_latency_ms: float
+    max_latency_ms: float
+    stddev_latency_ms: float
+
+    # Throughput statistics
+    cycles_per_second: float
+    peak_throughput: float
+
+    # Resource statistics
+    peak_cpu_percent: float
+    peak_memory_percent: float
+    peak_memory_mb: float
+    avg_cpu_percent: float
+    avg_memory_percent: float
+
+    # Threshold compliance
+    meets_success_rate_target: bool
+    meets_p50_latency_target: bool
+    meets_p95_latency_target: bool
+    meets_p99_latency_target: bool
+
+    # Detailed data
+    cycle_results: List[CycleResult] = field(default_factory=list)
+    resource_snapshots: List[ResourceSnapshot] = field(default_factory=list)
+    errors: List[str] = field(default_factory=list)
 
 
 class LoadTester:
     """
-    Load testing framework for the trading system.
+    Comprehensive load testing framework for the trading system.
 
-    Performs various types of load tests:
-    - Baseline: Normal operating conditions
-    - Stress: Gradually increasing load until failure
-    - Spike: Sudden increase in load
-    - Endurance: Sustained load over extended period
+    Simulates complete trading cycles under configurable load to validate
+    system performance, stability, and resource usage under stress.
     """
 
-    def __init__(self):
-        """Initialize load tester"""
-        self.results: List[RequestResult] = []
-        logger.info("LoadTester initialized")
-
-    # ========================================================================
-    # Main Testing Functions
-    # ========================================================================
-
-    async def run_load_test(
-        self,
-        test_config: LoadTestConfig,
-        target_function: Callable,
-        *args,
-        **kwargs,
-    ) -> LoadTestResult:
+    def __init__(self, config: Optional[LoadTestConfig] = None):
         """
-        Run a load test with the specified configuration.
+        Initialize the load tester.
 
         Args:
-            test_config: Load test configuration
-            target_function: Function to test (must be async)
-            *args: Arguments for target function
-            **kwargs: Keyword arguments for target function
+            config: Load test configuration
+        """
+        self.config = config or LoadTestConfig()
+        self.process = psutil.Process()
+        self.results: List[CycleResult] = []
+        self.resource_snapshots: List[ResourceSnapshot] = []
+        self._stop_monitoring = False
+        self._monitor_task: Optional[asyncio.Task] = None
+
+    async def simulate_trading_cycle(
+        self, cycle_id: int, worker_id: int
+    ) -> CycleResult:
+        """
+        Simulate a complete trading cycle.
+
+        This simulates:
+        1. Market data fetch (50-100ms)
+        2. LLM decision making (500-1500ms)
+        3. Trade execution (100-200ms)
+
+        Args:
+            cycle_id: Unique cycle identifier
+            worker_id: Worker executing this cycle
 
         Returns:
-            Load test result with performance metrics
+            CycleResult with execution metrics
         """
-        logger.info(
-            f"🚀 Starting {test_config.test_type.value} load test: "
-            f"{test_config.concurrent_users} users, "
-            f"{test_config.duration_seconds}s duration"
-        )
-
-        self.results = []
         start_time = time.time()
-
-        # Ramp up phase
-        if test_config.ramp_up_seconds > 0:
-            logger.info(f"Ramping up over {test_config.ramp_up_seconds}s...")
-            await self._ramp_up(test_config, target_function, *args, **kwargs)
-
-        # Main test phase
-        await self._execute_load_test(test_config, target_function, *args, **kwargs)
-
-        # Cooldown phase
-        if test_config.cooldown_seconds > 0:
-            logger.info(f"Cooling down for {test_config.cooldown_seconds}s...")
-            await asyncio.sleep(test_config.cooldown_seconds)
-
-        total_duration = time.time() - start_time
-
-        # Analyze results
-        result = self._analyze_results(test_config, total_duration)
-
-        logger.info(
-            f"✓ Load test complete: {result.total_requests} requests, "
-            f"{result.avg_response_time_ms:.2f}ms avg, "
-            f"{result.error_rate_pct:.1f}% error rate"
-        )
-
-        return result
-
-    async def _execute_load_test(
-        self,
-        test_config: LoadTestConfig,
-        target_function: Callable,
-        *args,
-        **kwargs,
-    ):
-        """Execute the main load test phase"""
-        duration = test_config.duration_seconds
-        concurrent_users = test_config.concurrent_users
-        requests_per_second = test_config.requests_per_second
-
-        # Calculate delay between requests
-        delay_between_requests = (
-            1.0 / requests_per_second if requests_per_second > 0 else 0
-        )
-
-        request_id = 0
-        start_time = time.time()
-
-        while time.time() - start_time < duration:
-            # Create batch of concurrent requests
-            batch_tasks = []
-            for _ in range(min(concurrent_users, requests_per_second)):
-                request_id += 1
-                task = self._execute_request(
-                    request_id, target_function, *args, **kwargs
-                )
-                batch_tasks.append(task)
-
-            # Execute batch
-            await asyncio.gather(*batch_tasks, return_exceptions=True)
-
-            # Delay before next batch
-            if delay_between_requests > 0:
-                await asyncio.sleep(delay_between_requests)
-
-    async def _ramp_up(
-        self,
-        test_config: LoadTestConfig,
-        target_function: Callable,
-        *args,
-        **kwargs,
-    ):
-        """Gradually increase load during ramp-up phase"""
-        ramp_duration = test_config.ramp_up_seconds
-        target_concurrent = test_config.concurrent_users
-        steps = 10
-
-        for step in range(1, steps + 1):
-            concurrent_users = int(target_concurrent * (step / steps))
-            await asyncio.sleep(ramp_duration / steps)
-
-            # Execute requests at this step
-            tasks = [
-                self._execute_request(step * 100 + i, target_function, *args, **kwargs)
-                for i in range(concurrent_users)
-            ]
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-    async def _execute_request(
-        self,
-        request_id: int,
-        target_function: Callable,
-        *args,
-        **kwargs,
-    ) -> RequestResult:
-        """Execute a single request and record result"""
-        start_time = time.time()
+        stages = {}
 
         try:
-            # Execute target function
-            if asyncio.iscoroutinefunction(target_function):
-                await target_function(*args, **kwargs)
-            else:
-                target_function(*args, **kwargs)
+            # Stage 1: Fetch market data
+            stage_start = time.time()
+            await self._simulate_market_data_fetch()
+            stages["market_data_fetch"] = (time.time() - stage_start) * 1000
 
-            response_time_ms = (time.time() - start_time) * 1000
+            # Stage 2: LLM decision
+            stage_start = time.time()
+            await self._simulate_llm_decision()
+            stages["llm_decision"] = (time.time() - stage_start) * 1000
 
-            result = RequestResult(
-                request_id=request_id,
+            # Stage 3: Trade execution
+            stage_start = time.time()
+            await self._simulate_trade_execution()
+            stages["trade_execution"] = (time.time() - stage_start) * 1000
+
+            # Calculate total latency
+            total_latency_ms = (time.time() - start_time) * 1000
+
+            return CycleResult(
+                cycle_id=cycle_id,
+                worker_id=worker_id,
+                timestamp=datetime.now(),
                 success=True,
-                response_time_ms=response_time_ms,
+                latency_ms=total_latency_ms,
+                stages=stages,
             )
 
         except Exception as e:
-            response_time_ms = (time.time() - start_time) * 1000
+            total_latency_ms = (time.time() - start_time) * 1000
 
-            result = RequestResult(
-                request_id=request_id,
+            return CycleResult(
+                cycle_id=cycle_id,
+                worker_id=worker_id,
+                timestamp=datetime.now(),
                 success=False,
-                response_time_ms=response_time_ms,
+                latency_ms=total_latency_ms,
                 error_message=str(e),
+                stages=stages,
             )
 
-            logger.debug(f"Request {request_id} failed: {e}")
+    async def _simulate_market_data_fetch(self) -> None:
+        """Simulate market data fetching operation."""
+        # Simulate API call latency (50-100ms)
+        import random
 
-        self.results.append(result)
+        await asyncio.sleep(random.uniform(0.05, 0.1))
+
+        # Simulate occasional API errors (1% failure rate)
+        if random.random() < 0.01:
+            raise Exception("Market data fetch failed")
+
+    async def _simulate_llm_decision(self) -> None:
+        """Simulate LLM decision making."""
+        # Simulate LLM API latency (500-1500ms)
+        import random
+
+        await asyncio.sleep(random.uniform(0.5, 1.5))
+
+        # Simulate occasional LLM errors (2% failure rate)
+        if random.random() < 0.02:
+            raise Exception("LLM decision failed")
+
+    async def _simulate_trade_execution(self) -> None:
+        """Simulate trade execution."""
+        # Simulate exchange API latency (100-200ms)
+        import random
+
+        await asyncio.sleep(random.uniform(0.1, 0.2))
+
+        # Simulate occasional execution errors (0.5% failure rate)
+        if random.random() < 0.005:
+            raise Exception("Trade execution failed")
+
+    async def run_load_test(
+        self, cycles: Optional[int] = None, custom_cycle_fn: Optional[Callable] = None
+    ) -> LoadTestResult:
+        """
+        Run a comprehensive load test.
+
+        Args:
+            cycles: Number of cycles to execute (overrides config)
+            custom_cycle_fn: Custom function to simulate trading cycle
+
+        Returns:
+            LoadTestResult with comprehensive metrics
+        """
+        target_cycles = cycles or self.config.target_cycles
+        cycle_fn = custom_cycle_fn or self.simulate_trading_cycle
+
+        logger.info(
+            f"Starting load test: {target_cycles} cycles, "
+            f"{self.config.concurrent_workers} workers"
+        )
+
+        # Reset state
+        self.results = []
+        self.resource_snapshots = []
+        self._stop_monitoring = False
+
+        # Start resource monitoring
+        self._monitor_task = asyncio.create_task(self._monitor_resources())
+
+        test_start = datetime.now()
+        start_time = time.time()
+
+        try:
+            # Execute load test with ramp-up
+            await self._execute_load_test(target_cycles, cycle_fn)
+
+            # Wait for cooldown
+            logger.info(f"Cooling down for {self.config.cooldown_seconds}s...")
+            await asyncio.sleep(self.config.cooldown_seconds)
+
+        finally:
+            # Stop monitoring
+            self._stop_monitoring = True
+            if self._monitor_task:
+                await self._monitor_task
+
+        test_end = datetime.now()
+        duration = time.time() - start_time
+
+        # Calculate metrics
+        result = self.calculate_metrics(
+            test_start=test_start, test_end=test_end, duration=duration
+        )
+
+        logger.info(
+            f"Load test complete: {result.total_cycles} cycles, "
+            f"{result.success_rate * 100:.2f}% success, "
+            f"P95: {result.p95_latency_ms:.2f}ms"
+        )
+
         return result
 
-    # ========================================================================
-    # Specific Test Types
-    # ========================================================================
+    async def _execute_load_test(self, target_cycles: int, cycle_fn: Callable) -> None:
+        """Execute the load test with worker pool and ramp-up."""
 
-    async def run_baseline_test(
-        self,
-        target_function: Callable,
-        duration_seconds: int = 60,
-        concurrent_users: int = 10,
-        *args,
-        **kwargs,
-    ) -> LoadTestResult:
-        """
-        Run baseline load test with normal operating conditions.
+        # Calculate ramp-up schedule
+        ramp_up_workers = self._calculate_ramp_up_schedule()
 
-        Args:
-            target_function: Function to test
-            duration_seconds: Test duration
-            concurrent_users: Number of concurrent users
-            *args: Arguments for target function
-            **kwargs: Keyword arguments for target function
+        # Create worker queues
+        work_queue = asyncio.Queue()
+        result_queue = asyncio.Queue()
 
-        Returns:
-            Load test result
-        """
-        config = LoadTestConfig(
-            test_type=LoadTestType.BASELINE,
-            duration_seconds=duration_seconds,
-            concurrent_users=concurrent_users,
-            requests_per_second=10,
-            ramp_up_seconds=5,
-            cooldown_seconds=5,
-        )
+        # Populate work queue
+        for i in range(target_cycles):
+            await work_queue.put(i)
 
-        return await self.run_load_test(config, target_function, *args, **kwargs)
+        # Create worker tasks with ramp-up
+        worker_tasks = []
+        for worker_id in range(self.config.concurrent_workers):
+            # Delay worker start for ramp-up
+            if worker_id < len(ramp_up_workers):
+                delay = ramp_up_workers[worker_id]
+            else:
+                delay = self.config.ramp_up_seconds
 
-    async def run_stress_test(
-        self,
-        target_function: Callable,
-        max_concurrent_users: int = 100,
-        step_duration_seconds: int = 30,
-        *args,
-        **kwargs,
-    ) -> List[LoadTestResult]:
-        """
-        Run stress test with gradually increasing load.
-
-        Args:
-            target_function: Function to test
-            max_concurrent_users: Maximum concurrent users to reach
-            step_duration_seconds: Duration of each load step
-            *args: Arguments for target function
-            **kwargs: Keyword arguments for target function
-
-        Returns:
-            List of load test results for each step
-        """
-        logger.info(
-            f"Starting stress test: ramping up to {max_concurrent_users} concurrent users"
-        )
-
-        results = []
-        steps = 5
-        step_size = max_concurrent_users // steps
-
-        for step in range(1, steps + 1):
-            concurrent_users = step * step_size
-
-            config = LoadTestConfig(
-                test_type=LoadTestType.STRESS,
-                duration_seconds=step_duration_seconds,
-                concurrent_users=concurrent_users,
-                requests_per_second=concurrent_users * 2,
-            )
-
-            result = await self.run_load_test(config, target_function, *args, **kwargs)
-            results.append(result)
-
-            # Check if system is degrading
-            if result.error_rate_pct > 10.0:
-                logger.warning(
-                    f"High error rate detected at {concurrent_users} users, "
-                    f"stopping stress test"
+            task = asyncio.create_task(
+                self._worker(
+                    worker_id=worker_id,
+                    work_queue=work_queue,
+                    result_queue=result_queue,
+                    cycle_fn=cycle_fn,
+                    start_delay=delay,
                 )
+            )
+            worker_tasks.append(task)
+
+        # Collect results
+        result_collector = asyncio.create_task(
+            self._collect_results(result_queue, target_cycles)
+        )
+
+        # Wait for completion
+        await asyncio.gather(*worker_tasks, return_exceptions=True)
+        await result_collector
+
+    def _calculate_ramp_up_schedule(self) -> List[float]:
+        """Calculate worker start delays for ramp-up."""
+        if self.config.ramp_up_seconds == 0:
+            return [0.0] * self.config.concurrent_workers
+
+        # Linear ramp-up
+        delays = []
+        interval = self.config.ramp_up_seconds / self.config.concurrent_workers
+
+        for i in range(self.config.concurrent_workers):
+            delays.append(i * interval)
+
+        return delays
+
+    async def _worker(
+        self,
+        worker_id: int,
+        work_queue: asyncio.Queue,
+        result_queue: asyncio.Queue,
+        cycle_fn: Callable,
+        start_delay: float,
+    ) -> None:
+        """Worker that processes trading cycles."""
+        # Wait for ramp-up delay
+        if start_delay > 0:
+            await asyncio.sleep(start_delay)
+
+        consecutive_failures = 0
+
+        while not work_queue.empty():
+            try:
+                cycle_id = await asyncio.wait_for(work_queue.get(), timeout=1.0)
+
+                # Execute cycle
+                if cycle_fn == self.simulate_trading_cycle:
+                    result = await cycle_fn(cycle_id, worker_id)
+                else:
+                    # Custom function may have different signature
+                    result = await cycle_fn(cycle_id, worker_id)
+
+                # Put result
+                await result_queue.put(result)
+
+                # Reset failure counter on success
+                if result.success:
+                    consecutive_failures = 0
+                else:
+                    consecutive_failures += 1
+
+                # Check failure threshold
+                if consecutive_failures >= self.config.max_consecutive_failures:
+                    logger.error(
+                        f"Worker {worker_id} hit failure threshold, backing off..."
+                    )
+                    await asyncio.sleep(self.config.failure_backoff_seconds)
+                    consecutive_failures = 0
+
+                work_queue.task_done()
+
+            except asyncio.TimeoutError:
                 break
+            except Exception as e:
+                logger.error(f"Worker {worker_id} error: {e}")
+                consecutive_failures += 1
 
-            # Brief cooldown between steps
-            await asyncio.sleep(5)
+    async def _collect_results(
+        self, result_queue: asyncio.Queue, target_cycles: int
+    ) -> None:
+        """Collect results from workers."""
+        collected = 0
 
-        return results
+        while collected < target_cycles:
+            try:
+                result = await asyncio.wait_for(result_queue.get(), timeout=5.0)
+                self.results.append(result)
+                collected += 1
 
-    async def run_spike_test(
-        self,
-        target_function: Callable,
-        baseline_users: int = 10,
-        spike_users: int = 100,
-        spike_duration_seconds: int = 30,
-        *args,
-        **kwargs,
-    ) -> LoadTestResult:
+                # Log progress
+                if collected % 100 == 0:
+                    logger.info(f"Completed {collected}/{target_cycles} cycles")
+
+            except asyncio.TimeoutError:
+                # Check if we should continue waiting
+                if collected < target_cycles * 0.9:  # Wait if less than 90% complete
+                    continue
+                else:
+                    logger.warning(
+                        f"Timeout waiting for results, got {collected}/{target_cycles}"
+                    )
+                    break
+
+    async def _monitor_resources(self) -> None:
+        """Monitor system resources during load test."""
+        logger.info("Starting resource monitoring...")
+
+        while not self._stop_monitoring:
+            try:
+                snapshot = await self.monitor_resources()
+                self.resource_snapshots.append(snapshot)
+
+                # Check resource limits
+                if snapshot.cpu_percent > self.config.max_cpu_percent:
+                    logger.warning(
+                        f"CPU usage high: {snapshot.cpu_percent:.1f}% "
+                        f"(limit: {self.config.max_cpu_percent}%)"
+                    )
+
+                if snapshot.memory_percent > self.config.max_memory_percent:
+                    logger.warning(
+                        f"Memory usage high: {snapshot.memory_percent:.1f}% "
+                        f"(limit: {self.config.max_memory_percent}%)"
+                    )
+
+                await asyncio.sleep(self.config.monitor_interval_seconds)
+
+            except Exception as e:
+                logger.error(f"Resource monitoring error: {e}")
+
+    async def monitor_resources(self) -> ResourceSnapshot:
         """
-        Run spike test with sudden increase in load.
-
-        Args:
-            target_function: Function to test
-            baseline_users: Normal load level
-            spike_users: Spike load level
-            spike_duration_seconds: Duration of spike
-            *args: Arguments for target function
-            **kwargs: Keyword arguments for target function
+        Capture current system resource usage.
 
         Returns:
-            Load test result during spike
+            ResourceSnapshot with current metrics
         """
-        logger.info(
-            f"Starting spike test: {baseline_users} → {spike_users} users for {spike_duration_seconds}s"
-        )
+        try:
+            # CPU usage
+            cpu_percent = self.process.cpu_percent(interval=0.1)
 
-        # Run at baseline first
-        baseline_config = LoadTestConfig(
-            test_type=LoadTestType.BASELINE,
-            duration_seconds=30,
-            concurrent_users=baseline_users,
-            requests_per_second=baseline_users,
-        )
-        await self.run_load_test(baseline_config, target_function, *args, **kwargs)
+            # Memory usage
+            memory_info = self.process.memory_info()
+            memory_mb = memory_info.rss / (1024 * 1024)
+            memory_percent = self.process.memory_percent()
 
-        # Spike
-        spike_config = LoadTestConfig(
-            test_type=LoadTestType.SPIKE,
-            duration_seconds=spike_duration_seconds,
-            concurrent_users=spike_users,
-            requests_per_second=spike_users * 2,
-        )
-        spike_result = await self.run_load_test(
-            spike_config, target_function, *args, **kwargs
-        )
+            # Connections and threads
+            try:
+                connections = len(self.process.connections())
+            except (psutil.AccessDenied, psutil.NoSuchProcess):
+                connections = 0
 
-        # Return to baseline
-        await self.run_load_test(baseline_config, target_function, *args, **kwargs)
+            thread_count = self.process.num_threads()
 
-        return spike_result
+            # Disk I/O (not available on all platforms, e.g., macOS)
+            try:
+                io_counters = self.process.io_counters()
+                disk_read_mb = io_counters.read_bytes / (1024 * 1024)
+                disk_write_mb = io_counters.write_bytes / (1024 * 1024)
+            except (
+                psutil.AccessDenied,
+                psutil.NoSuchProcess,
+                AttributeError,
+                NotImplementedError,
+            ):
+                # I/O counters not available on this platform
+                disk_read_mb = 0.0
+                disk_write_mb = 0.0
 
-    async def run_endurance_test(
-        self,
-        target_function: Callable,
-        duration_hours: int = 1,
-        concurrent_users: int = 20,
-        *args,
-        **kwargs,
+            return ResourceSnapshot(
+                timestamp=datetime.now(),
+                cpu_percent=cpu_percent,
+                memory_percent=memory_percent,
+                memory_mb=memory_mb,
+                open_connections=connections,
+                thread_count=thread_count,
+                disk_io_read_mb=disk_read_mb,
+                disk_io_write_mb=disk_write_mb,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to capture resource snapshot: {e}")
+            return ResourceSnapshot(
+                timestamp=datetime.now(),
+                cpu_percent=0.0,
+                memory_percent=0.0,
+                memory_mb=0.0,
+                open_connections=0,
+                thread_count=0,
+            )
+
+    def calculate_metrics(
+        self, test_start: datetime, test_end: datetime, duration: float
     ) -> LoadTestResult:
         """
-        Run endurance test with sustained load over extended period.
+        Calculate comprehensive metrics from test results.
 
         Args:
-            target_function: Function to test
-            duration_hours: Test duration in hours
-            concurrent_users: Number of concurrent users
-            *args: Arguments for target function
-            **kwargs: Keyword arguments for target function
+            test_start: Test start timestamp
+            test_end: Test end timestamp
+            duration: Test duration in seconds
 
         Returns:
-            Load test result
+            LoadTestResult with all metrics
         """
-        logger.info(
-            f"Starting endurance test: {concurrent_users} users for {duration_hours}h"
-        )
-
-        config = LoadTestConfig(
-            test_type=LoadTestType.ENDURANCE,
-            duration_seconds=duration_hours * 3600,
-            concurrent_users=concurrent_users,
-            requests_per_second=concurrent_users,
-            ramp_up_seconds=60,
-            cooldown_seconds=60,
-        )
-
-        return await self.run_load_test(config, target_function, *args, **kwargs)
-
-    # ========================================================================
-    # Trading System Specific Tests
-    # ========================================================================
-
-    async def test_market_data_fetching(
-        self,
-        market_data_service,
-        symbols: List[str],
-        duration_seconds: int = 60,
-    ) -> LoadTestResult:
-        """
-        Test market data fetching under load.
-
-        Args:
-            market_data_service: Market data service to test
-            symbols: List of symbols to fetch
-            duration_seconds: Test duration
-
-        Returns:
-            Load test result
-        """
-        logger.info("Testing market data fetching under load...")
-
-        async def fetch_market_data():
-            """Fetch market data for all symbols"""
-            tasks = [
-                market_data_service.get_ticker(symbol=symbol) for symbol in symbols
-            ]
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-        config = LoadTestConfig(
-            test_type=LoadTestType.BASELINE,
-            duration_seconds=duration_seconds,
-            concurrent_users=5,
-            requests_per_second=10,
-        )
-
-        return await self.run_load_test(config, fetch_market_data)
-
-    async def test_trading_decision_cycle(
-        self,
-        decision_engine,
-        duration_seconds: int = 180,
-    ) -> LoadTestResult:
-        """
-        Test full trading decision cycle under load.
-
-        Args:
-            decision_engine: Decision engine to test
-            duration_seconds: Test duration
-
-        Returns:
-            Load test result
-        """
-        logger.info("Testing trading decision cycle under load...")
-
-        async def execute_decision_cycle():
-            """Execute one decision cycle"""
-            # Simulate decision cycle
-            await decision_engine.analyze_market()
-            await decision_engine.generate_signals()
-            await decision_engine.evaluate_positions()
-
-        config = LoadTestConfig(
-            test_type=LoadTestType.BASELINE,
-            duration_seconds=duration_seconds,
-            concurrent_users=1,  # Sequential for trading
-            requests_per_second=1,  # Once per 3 minutes = 0.33, round to 1
-        )
-
-        return await self.run_load_test(config, execute_decision_cycle)
-
-    async def test_llm_request_handling(
-        self,
-        llm_service,
-        duration_seconds: int = 120,
-    ) -> LoadTestResult:
-        """
-        Test LLM request handling under load.
-
-        Args:
-            llm_service: LLM service to test
-            duration_seconds: Test duration
-
-        Returns:
-            Load test result
-        """
-        logger.info("Testing LLM request handling under load...")
-
-        async def make_llm_request():
-            """Make an LLM request"""
-            test_prompt = "Analyze BTC/USDT market conditions"
-            await llm_service.generate_response(prompt=test_prompt)
-
-        config = LoadTestConfig(
-            test_type=LoadTestType.BASELINE,
-            duration_seconds=duration_seconds,
-            concurrent_users=3,
-            requests_per_second=5,
-        )
-
-        return await self.run_load_test(config, make_llm_request)
-
-    # ========================================================================
-    # Result Analysis
-    # ========================================================================
-
-    def _analyze_results(
-        self, test_config: LoadTestConfig, total_duration: float
-    ) -> LoadTestResult:
-        """Analyze load test results and calculate metrics"""
         if not self.results:
-            logger.warning("No results to analyze")
-            return self._create_empty_result(test_config)
-
-        # Basic metrics
-        total_requests = len(self.results)
-        successful_requests = sum(1 for r in self.results if r.success)
-        failed_requests = total_requests - successful_requests
-
-        # Response time metrics
-        response_times = [r.response_time_ms for r in self.results]
-        avg_response_time = statistics.mean(response_times)
-        min_response_time = min(response_times)
-        max_response_time = max(response_times)
-
-        # Percentiles
-        sorted_times = sorted(response_times)
-        p50 = sorted_times[int(len(sorted_times) * 0.50)]
-        p95 = sorted_times[int(len(sorted_times) * 0.95)]
-        p99 = sorted_times[int(len(sorted_times) * 0.99)]
-
-        # Error rate
-        error_rate = (
-            (failed_requests / total_requests * 100) if total_requests > 0 else 0
-        )
-
-        # Throughput
-        requests_per_second = (
-            total_requests / total_duration if total_duration > 0 else 0
-        )
-        throughput = successful_requests / total_duration if total_duration > 0 else 0
-
-        # Identify bottlenecks
-        bottlenecks = self._identify_bottlenecks(
-            avg_response_time, error_rate, p95, p99
-        )
-
-        return LoadTestResult(
-            test_type=test_config.test_type,
-            total_requests=total_requests,
-            successful_requests=successful_requests,
-            failed_requests=failed_requests,
-            total_duration_seconds=total_duration,
-            requests_per_second=requests_per_second,
-            avg_response_time_ms=avg_response_time,
-            min_response_time_ms=min_response_time,
-            max_response_time_ms=max_response_time,
-            p50_response_time_ms=p50,
-            p95_response_time_ms=p95,
-            p99_response_time_ms=p99,
-            error_rate_pct=error_rate,
-            throughput=throughput,
-            bottlenecks=bottlenecks,
-        )
-
-    def _identify_bottlenecks(
-        self,
-        avg_response_time: float,
-        error_rate: float,
-        p95: float,
-        p99: float,
-    ) -> List[str]:
-        """Identify performance bottlenecks"""
-        bottlenecks = []
-
-        # Slow average response time
-        if avg_response_time > 2000:  # 2 seconds
-            bottlenecks.append(f"High average response time: {avg_response_time:.2f}ms")
-
-        # High error rate
-        if error_rate > 5.0:
-            bottlenecks.append(f"High error rate: {error_rate:.1f}%")
-
-        # High tail latency
-        if p99 > 5000:  # 5 seconds
-            bottlenecks.append(f"High p99 latency: {p99:.2f}ms")
-
-        # Large latency variance
-        if p99 > p95 * 2:
-            bottlenecks.append(
-                f"High latency variance: p95={p95:.2f}ms, p99={p99:.2f}ms"
+            logger.warning("No results to calculate metrics from")
+            return LoadTestResult(
+                test_name=self.config.test_name,
+                start_time=test_start,
+                end_time=test_end,
+                duration_seconds=duration,
+                total_cycles=0,
+                successful_cycles=0,
+                failed_cycles=0,
+                success_rate=0.0,
+                mean_latency_ms=0.0,
+                median_latency_ms=0.0,
+                p50_latency_ms=0.0,
+                p95_latency_ms=0.0,
+                p99_latency_ms=0.0,
+                min_latency_ms=0.0,
+                max_latency_ms=0.0,
+                stddev_latency_ms=0.0,
+                cycles_per_second=0.0,
+                peak_throughput=0.0,
+                peak_cpu_percent=0.0,
+                peak_memory_percent=0.0,
+                peak_memory_mb=0.0,
+                avg_cpu_percent=0.0,
+                avg_memory_percent=0.0,
+                meets_success_rate_target=False,
+                meets_p50_latency_target=False,
+                meets_p95_latency_target=False,
+                meets_p99_latency_target=False,
             )
 
-        return bottlenecks
+        # Execution statistics
+        total_cycles = len(self.results)
+        successful_cycles = sum(1 for r in self.results if r.success)
+        failed_cycles = total_cycles - successful_cycles
+        success_rate = successful_cycles / total_cycles if total_cycles > 0 else 0.0
 
-    def _create_empty_result(self, test_config: LoadTestConfig) -> LoadTestResult:
-        """Create empty result for failed tests"""
-        return LoadTestResult(
-            test_type=test_config.test_type,
-            total_requests=0,
-            successful_requests=0,
-            failed_requests=0,
-            total_duration_seconds=0,
-            requests_per_second=0,
-            avg_response_time_ms=0,
-            min_response_time_ms=0,
-            max_response_time_ms=0,
-            p50_response_time_ms=0,
-            p95_response_time_ms=0,
-            p99_response_time_ms=0,
-            error_rate_pct=0,
-            throughput=0,
-            bottlenecks=[],
-        )
+        # Latency statistics (only successful cycles)
+        successful_latencies = [r.latency_ms for r in self.results if r.success]
 
-    # ========================================================================
-    # Reporting
-    # ========================================================================
-
-    def generate_load_test_report(self, result: LoadTestResult) -> str:
-        """
-        Generate comprehensive load test report.
-
-        Args:
-            result: Load test result
-
-        Returns:
-            Formatted report string
-        """
-        report = "\n" + "=" * 80 + "\n"
-        report += f"LOAD TEST REPORT - {result.test_type.value.upper()}\n"
-        report += "=" * 80 + "\n\n"
-
-        report += f"Test Date: {result.timestamp.isoformat()}\n"
-        report += f"Duration: {result.total_duration_seconds:.2f}s\n\n"
-
-        # Request metrics
-        report += "REQUEST METRICS\n"
-        report += "-" * 80 + "\n"
-        report += f"Total Requests: {result.total_requests}\n"
-        report += f"Successful: {result.successful_requests} ({result.successful_requests / result.total_requests * 100:.1f}%)\n"
-        report += f"Failed: {result.failed_requests} ({result.error_rate_pct:.1f}%)\n"
-        report += f"Throughput: {result.throughput:.2f} requests/sec\n\n"
-
-        # Response time metrics
-        report += "RESPONSE TIME METRICS\n"
-        report += "-" * 80 + "\n"
-        report += f"Average: {result.avg_response_time_ms:.2f}ms\n"
-        report += f"Minimum: {result.min_response_time_ms:.2f}ms\n"
-        report += f"Maximum: {result.max_response_time_ms:.2f}ms\n"
-        report += f"P50 (Median): {result.p50_response_time_ms:.2f}ms\n"
-        report += f"P95: {result.p95_response_time_ms:.2f}ms\n"
-        report += f"P99: {result.p99_response_time_ms:.2f}ms\n\n"
-
-        # Bottlenecks
-        if result.bottlenecks:
-            report += "IDENTIFIED BOTTLENECKS\n"
-            report += "-" * 80 + "\n"
-            for bottleneck in result.bottlenecks:
-                report += f"⚠️  {bottleneck}\n"
-            report += "\n"
-
-        # Recommendations
-        report += "RECOMMENDATIONS\n"
-        report += "-" * 80 + "\n"
-        if result.error_rate_pct > 5.0:
-            report += "• Investigate and fix errors causing high failure rate\n"
-        if result.avg_response_time_ms > 2000:
-            report += "• Optimize slow operations to reduce average response time\n"
-        if result.p99_response_time_ms > 5000:
-            report += "• Address tail latency issues (p99 > 5s)\n"
-        if not result.bottlenecks:
-            report += "• No major bottlenecks detected\n"
-
-        report += "\n" + "=" * 80 + "\n"
-
-        return report
-
-    def generate_stress_test_report(self, results: List[LoadTestResult]) -> str:
-        """
-        Generate stress test report showing performance under increasing load.
-
-        Args:
-            results: List of load test results
-
-        Returns:
-            Formatted report string
-        """
-        report = "\n" + "=" * 80 + "\n"
-        report += "STRESS TEST REPORT\n"
-        report += "=" * 80 + "\n\n"
-
-        report += "Performance Under Increasing Load:\n\n"
-
-        report += f"{'Users':<10} {'Req/s':<10} {'Avg(ms)':<12} {'P95(ms)':<12} {'Errors':<10}\n"
-        report += "-" * 80 + "\n"
-
-        for _i, result in enumerate(results):
-            concurrent_users = result.total_requests // result.total_duration_seconds
-            report += (
-                f"{concurrent_users:<10} "
-                f"{result.requests_per_second:<10.2f} "
-                f"{result.avg_response_time_ms:<12.2f} "
-                f"{result.p95_response_time_ms:<12.2f} "
-                f"{result.error_rate_pct:<10.1f}%\n"
+        if successful_latencies:
+            mean_latency = statistics.mean(successful_latencies)
+            median_latency = statistics.median(successful_latencies)
+            min_latency = min(successful_latencies)
+            max_latency = max(successful_latencies)
+            stddev_latency = (
+                statistics.stdev(successful_latencies)
+                if len(successful_latencies) > 1
+                else 0.0
             )
 
-        # Find breaking point
-        breaking_point = None
-        for i, result in enumerate(results):
-            if result.error_rate_pct > 10.0 or result.avg_response_time_ms > 5000:
-                breaking_point = i
-                break
-
-        if breaking_point is not None:
-            report += f"\n⚠️  System degradation detected at step {breaking_point + 1}\n"
+            # Calculate percentiles
+            sorted_latencies = sorted(successful_latencies)
+            p50_latency = self._percentile(sorted_latencies, 50)
+            p95_latency = self._percentile(sorted_latencies, 95)
+            p99_latency = self._percentile(sorted_latencies, 99)
         else:
-            report += "\n✓ System remained stable under all tested load levels\n"
+            mean_latency = median_latency = min_latency = max_latency = (
+                stddev_latency
+            ) = 0.0
+            p50_latency = p95_latency = p99_latency = 0.0
 
-        report += "\n" + "=" * 80 + "\n"
+        # Throughput statistics
+        cycles_per_second = total_cycles / duration if duration > 0 else 0.0
 
-        return report
+        # Calculate peak throughput (cycles per second in 10-second windows)
+        peak_throughput = self._calculate_peak_throughput()
+
+        # Resource statistics
+        if self.resource_snapshots:
+            peak_cpu = max(s.cpu_percent for s in self.resource_snapshots)
+            peak_memory_percent = max(s.memory_percent for s in self.resource_snapshots)
+            peak_memory_mb = max(s.memory_mb for s in self.resource_snapshots)
+            avg_cpu = statistics.mean(s.cpu_percent for s in self.resource_snapshots)
+            avg_memory_percent = statistics.mean(
+                s.memory_percent for s in self.resource_snapshots
+            )
+        else:
+            peak_cpu = peak_memory_percent = peak_memory_mb = avg_cpu = (
+                avg_memory_percent
+            ) = 0.0
+
+        # Check threshold compliance
+        meets_success_rate = success_rate >= self.config.target_success_rate
+        meets_p50_latency = p50_latency <= self.config.target_p50_latency_ms
+        meets_p95_latency = p95_latency <= self.config.target_p95_latency_ms
+        meets_p99_latency = p99_latency <= self.config.target_p99_latency_ms
+
+        return LoadTestResult(
+            test_name=self.config.test_name,
+            start_time=test_start,
+            end_time=test_end,
+            duration_seconds=duration,
+            total_cycles=total_cycles,
+            successful_cycles=successful_cycles,
+            failed_cycles=failed_cycles,
+            success_rate=success_rate,
+            mean_latency_ms=mean_latency,
+            median_latency_ms=median_latency,
+            p50_latency_ms=p50_latency,
+            p95_latency_ms=p95_latency,
+            p99_latency_ms=p99_latency,
+            min_latency_ms=min_latency,
+            max_latency_ms=max_latency,
+            stddev_latency_ms=stddev_latency,
+            cycles_per_second=cycles_per_second,
+            peak_throughput=peak_throughput,
+            peak_cpu_percent=peak_cpu,
+            peak_memory_percent=peak_memory_percent,
+            peak_memory_mb=peak_memory_mb,
+            avg_cpu_percent=avg_cpu,
+            avg_memory_percent=avg_memory_percent,
+            meets_success_rate_target=meets_success_rate,
+            meets_p50_latency_target=meets_p50_latency,
+            meets_p95_latency_target=meets_p95_latency,
+            meets_p99_latency_target=meets_p99_latency,
+            cycle_results=self.results,
+            resource_snapshots=self.resource_snapshots,
+            errors=[
+                r.error_message
+                for r in self.results
+                if not r.success and r.error_message
+            ],
+        )
+
+    def _percentile(self, sorted_values: List[float], percentile: float) -> float:
+        """Calculate percentile from sorted values."""
+        if not sorted_values:
+            return 0.0
+
+        index = (percentile / 100) * (len(sorted_values) - 1)
+        lower_index = int(index)
+        upper_index = min(lower_index + 1, len(sorted_values) - 1)
+
+        # Linear interpolation
+        weight = index - lower_index
+        return (
+            sorted_values[lower_index] * (1 - weight)
+            + sorted_values[upper_index] * weight
+        )
+
+    def _calculate_peak_throughput(self) -> float:
+        """Calculate peak throughput in cycles/second."""
+        if not self.results:
+            return 0.0
+
+        # Group results by 10-second windows
+        window_size_seconds = 10.0
+        windows = defaultdict(int)
+
+        for result in self.results:
+            window_key = int(result.timestamp.timestamp() / window_size_seconds)
+            windows[window_key] += 1
+
+        # Find peak window
+        if windows:
+            peak_cycles = max(windows.values())
+            return peak_cycles / window_size_seconds
+
+        return 0.0
+
+    def generate_report(self, result: LoadTestResult) -> str:
+        """
+        Generate a comprehensive load test report.
+
+        Args:
+            result: Load test result to report on
+
+        Returns:
+            Formatted report as string
+        """
+        lines = []
+        lines.append("=" * 80)
+        lines.append(f"LOAD TEST REPORT: {result.test_name}")
+        lines.append("=" * 80)
+        lines.append(f"Start Time: {result.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"End Time:   {result.end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"Duration:   {result.duration_seconds:.2f}s")
+        lines.append("")
+
+        # Execution summary
+        lines.append("EXECUTION SUMMARY")
+        lines.append("-" * 80)
+        lines.append(f"Total Cycles:      {result.total_cycles}")
+        lines.append(f"Successful:        {result.successful_cycles}")
+        lines.append(f"Failed:            {result.failed_cycles}")
+        lines.append(
+            f"Success Rate:      {result.success_rate * 100:.2f}% "
+            f"{'✓' if result.meets_success_rate_target else '✗'} "
+            f"(Target: {self.config.target_success_rate * 100:.2f}%)"
+        )
+        lines.append("")
+
+        # Latency statistics
+        lines.append("LATENCY STATISTICS (milliseconds)")
+        lines.append("-" * 80)
+        lines.append(f"Mean:     {result.mean_latency_ms:.2f}ms")
+        lines.append(f"Median:   {result.median_latency_ms:.2f}ms")
+        lines.append(
+            f"P50:      {result.p50_latency_ms:.2f}ms "
+            f"{'✓' if result.meets_p50_latency_target else '✗'} "
+            f"(Target: {self.config.target_p50_latency_ms:.2f}ms)"
+        )
+        lines.append(
+            f"P95:      {result.p95_latency_ms:.2f}ms "
+            f"{'✓' if result.meets_p95_latency_target else '✗'} "
+            f"(Target: {self.config.target_p95_latency_ms:.2f}ms)"
+        )
+        lines.append(
+            f"P99:      {result.p99_latency_ms:.2f}ms "
+            f"{'✓' if result.meets_p99_latency_target else '✗'} "
+            f"(Target: {self.config.target_p99_latency_ms:.2f}ms)"
+        )
+        lines.append(f"Min:      {result.min_latency_ms:.2f}ms")
+        lines.append(f"Max:      {result.max_latency_ms:.2f}ms")
+        lines.append(f"Std Dev:  {result.stddev_latency_ms:.2f}ms")
+        lines.append("")
+
+        # Throughput statistics
+        lines.append("THROUGHPUT STATISTICS")
+        lines.append("-" * 80)
+        lines.append(f"Average:  {result.cycles_per_second:.2f} cycles/second")
+        lines.append(f"Peak:     {result.peak_throughput:.2f} cycles/second")
+        lines.append("")
+
+        # Resource statistics
+        lines.append("RESOURCE USAGE")
+        lines.append("-" * 80)
+        lines.append("CPU:")
+        lines.append(f"  Peak:    {result.peak_cpu_percent:.1f}%")
+        lines.append(f"  Average: {result.avg_cpu_percent:.1f}%")
+        lines.append("Memory:")
+        lines.append(
+            f"  Peak:    {result.peak_memory_percent:.1f}% ({result.peak_memory_mb:.1f} MB)"
+        )
+        lines.append(f"  Average: {result.avg_memory_percent:.1f}%")
+        lines.append("")
+
+        # Compliance status
+        lines.append("COMPLIANCE STATUS")
+        lines.append("-" * 80)
+        all_passed = (
+            result.meets_success_rate_target
+            and result.meets_p50_latency_target
+            and result.meets_p95_latency_target
+            and result.meets_p99_latency_target
+        )
+
+        if all_passed:
+            lines.append("✓ ALL TARGETS MET - System meets performance requirements")
+        else:
+            lines.append("✗ SOME TARGETS MISSED - Review failures below:")
+            if not result.meets_success_rate_target:
+                lines.append(
+                    f"  - Success rate: {result.success_rate * 100:.2f}% < {self.config.target_success_rate * 100:.2f}%"
+                )
+            if not result.meets_p50_latency_target:
+                lines.append(
+                    f"  - P50 latency: {result.p50_latency_ms:.2f}ms > {self.config.target_p50_latency_ms:.2f}ms"
+                )
+            if not result.meets_p95_latency_target:
+                lines.append(
+                    f"  - P95 latency: {result.p95_latency_ms:.2f}ms > {self.config.target_p95_latency_ms:.2f}ms"
+                )
+            if not result.meets_p99_latency_target:
+                lines.append(
+                    f"  - P99 latency: {result.p99_latency_ms:.2f}ms > {self.config.target_p99_latency_ms:.2f}ms"
+                )
+
+        lines.append("")
+
+        # Error summary
+        if result.errors:
+            lines.append("ERROR SUMMARY")
+            lines.append("-" * 80)
+            error_counts = defaultdict(int)
+            for error in result.errors:
+                error_counts[error] += 1
+
+            for error, count in sorted(
+                error_counts.items(), key=lambda x: x[1], reverse=True
+            )[:10]:
+                lines.append(f"  {count}x: {error}")
+            lines.append("")
+
+        lines.append("=" * 80)
+
+        return "\n".join(lines)
+
+
+# CLI interface
+async def main():
+    """Command-line interface for load tester."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Load Testing for Trading System")
+    parser.add_argument(
+        "--cycles", type=int, default=1000, help="Number of cycles to run"
+    )
+    parser.add_argument(
+        "--workers", type=int, default=10, help="Number of concurrent workers"
+    )
+    parser.add_argument(
+        "--ramp-up", type=int, default=30, help="Ramp-up time in seconds"
+    )
+    parser.add_argument("--output", help="Output file for report")
+
+    args = parser.parse_args()
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    # Create load tester
+    config = LoadTestConfig(
+        target_cycles=args.cycles,
+        concurrent_workers=args.workers,
+        ramp_up_seconds=args.ramp_up,
+    )
+
+    tester = LoadTester(config)
+
+    # Run load test
+    result = await tester.run_load_test()
+
+    # Generate report
+    report = tester.generate_report(result)
+
+    # Output report
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(report)
+        print(f"Report written to {args.output}")
+    else:
+        print(report)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

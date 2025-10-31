@@ -7,12 +7,11 @@ Author: Implementation Specialist (Sprint 2 Stream B)
 Date: 2025-10-29
 """
 
-import os
-import tempfile
-from datetime import datetime
-from decimal import Decimal
-
 import pytest
+from decimal import Decimal
+from datetime import datetime
+import tempfile
+import os
 
 from workspace.features.paper_trading import PaperTradingPerformanceTracker
 
@@ -78,7 +77,7 @@ def test_record_losing_trade(tracker):
 def test_calculate_win_rate(tracker):
     """Test win rate calculation"""
     # Record 3 wins and 2 losses
-    for _i in range(3):
+    for i in range(3):
         tracker.record_trade(
             {
                 "symbol": "BTC/USDT:USDT",
@@ -91,7 +90,7 @@ def test_calculate_win_rate(tracker):
             }
         )
 
-    for _i in range(2):
+    for i in range(2):
         tracker.record_trade(
             {
                 "symbol": "BTC/USDT:USDT",
@@ -205,7 +204,7 @@ def test_daily_pnl_tracking(tracker):
     today = datetime.utcnow()
 
     # Record multiple trades on same day
-    for _i in range(3):
+    for i in range(3):
         tracker.record_trade(
             {
                 "symbol": "BTC/USDT:USDT",

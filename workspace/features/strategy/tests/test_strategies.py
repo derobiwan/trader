@@ -7,29 +7,29 @@ Author: Strategy Implementation Team
 Date: 2025-10-28
 """
 
-from datetime import datetime, timezone
-from decimal import Decimal
-
 import pytest
+from decimal import Decimal
+from datetime import datetime, timezone
 
-from workspace.features.market_data import (
-    EMA,
-    MACD,
-    OHLCV,
-    RSI,
-    BollingerBands,
-    MarketDataSnapshot,
-    Ticker,
-    Timeframe,
-)
 from workspace.features.strategy import (
-    MeanReversionStrategy,
     StrategySignal,
     StrategyType,
+    MeanReversionStrategy,
     TrendFollowingStrategy,
     VolatilityBreakoutStrategy,
 )
 from workspace.features.trading_loop import TradingDecision
+from workspace.features.market_data import (
+    MarketDataSnapshot,
+    OHLCV,
+    Ticker,
+    RSI,
+    MACD,
+    EMA,
+    BollingerBands,
+    Timeframe,
+)
+
 
 # ============================================================================
 # Fixtures
@@ -760,8 +760,12 @@ class TestStrategyIntegration:
             VolatilityBreakoutStrategy(),
         ]
 
-        # Note: Cannot use pytest.lazy_fixture outside of parametrize decorator
-        # Snapshots would be mapped as: mean_reversion, trend_following, volatility_breakout
+        # Create snapshots that should trigger signals
+        {
+            "mean_reversion": pytest.lazy_fixture("oversold_snapshot"),
+            "trend_following": pytest.lazy_fixture("bullish_trend_snapshot"),
+            "volatility_breakout": pytest.lazy_fixture("upper_breakout_snapshot"),
+        }
 
         for strategy in strategies:
             # Get appropriate snapshot for strategy

@@ -14,12 +14,17 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
 
-from workspace.features.caching import CacheService
-from workspace.shared.database.connection import get_pool
-
+from .models import (
+    OHLCV,
+    Ticker,
+    Timeframe,
+    MarketDataSnapshot,
+)
 from .indicators import IndicatorCalculator
-from .models import OHLCV, MarketDataSnapshot, Ticker, Timeframe
 from .websocket_client import BybitWebSocketClient
+from workspace.shared.database.connection import DatabasePool
+from workspace.features.caching import CacheService
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +89,9 @@ class MarketDataService:
 
         # In-memory data stores
         self.latest_tickers: Dict[str, Ticker] = {}
-        self.ohlcv_data: Dict[str, List[OHLCV]] = {symbol: [] for symbol in symbols}
+        self.ohlcv_data: Dict[str, List[OHLCV]] = {
+            self._format_symbol(symbol): [] for symbol in symbols
+        }
         self.latest_snapshots: Dict[str, MarketDataSnapshot] = {}
 
         # WebSocket client
@@ -400,8 +407,7 @@ class MarketDataService:
             formatted_symbol = self._format_symbol(symbol)
 
             try:
-                pool = await get_pool()
-                async with pool.acquire() as conn:
+                async with DatabasePool.get_connection() as conn:
                     # Load last N candles
                     rows = await conn.fetch(
                         """
@@ -528,8 +534,7 @@ class MarketDataService:
     async def _store_ohlcv(self, ohlcv: OHLCV):
         """Store OHLCV data to database"""
         try:
-            pool = await get_pool()
-            async with pool.acquire() as conn:
+            async with DatabasePool.get_connection() as conn:
                 await conn.execute(
                     """
                     INSERT INTO market_data (

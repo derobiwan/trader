@@ -7,11 +7,11 @@ Author: Trading System Implementation Team & Infrastructure Specialist
 Date: 2025-10-28
 """
 
-import hashlib
 import json
 import logging
+import hashlib
 from decimal import Decimal
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 # Optional redis import (only needed for production)
 try:
@@ -267,11 +267,9 @@ class CacheService:
         # Convert args to strings
         parts = [str(arg) for arg in args]
 
-        # Create hash of parts (MD5 used for cache key generation only, not security)
+        # Create hash of parts
         content = ":".join(parts)
-        hash_suffix = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()[
-            :8
-        ]
+        hash_suffix = hashlib.md5(content.encode()).hexdigest()[:8]
 
         # Construct key
         if prefix:
@@ -282,7 +280,7 @@ class CacheService:
     async def get_or_set(
         self,
         key: str,
-        fetch_func: Callable,
+        fetch_func: callable,
         ttl_seconds: Optional[int] = None,
     ) -> Any:
         """
@@ -302,10 +300,7 @@ class CacheService:
             return value
 
         # Fetch value
-        if callable(fetch_func):
-            value = await fetch_func()
-        else:
-            raise TypeError("fetch_func must be callable")
+        value = await fetch_func()
 
         # Cache it
         await self.set(key, value, ttl_seconds)
