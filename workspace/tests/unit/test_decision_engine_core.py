@@ -59,6 +59,7 @@ def sample_ticker():
         high_24h=Decimal("51000"),
         low_24h=Decimal("49000"),
         volume_24h=Decimal("500000000"),
+        quote_volume_24h=Decimal("1000000000"),
         change_24h=Decimal("200"),
         change_24h_pct=Decimal("0.4"),
     )
@@ -218,6 +219,7 @@ class TestCacheKeyGeneration:
                 high_24h=Decimal("51000"),
                 low_24h=Decimal("49000"),
                 volume_24h=Decimal("500000000"),
+                quote_volume_24h=Decimal("1000000000"),
                 change_24h=Decimal("200"),
                 change_24h_pct=Decimal("0.4"),
             ),
@@ -244,6 +246,7 @@ class TestCacheKeyGeneration:
                 high_24h=Decimal("51000"),
                 low_24h=Decimal("49000"),
                 volume_24h=Decimal("500000000"),
+                quote_volume_24h=Decimal("1000000000"),
                 change_24h=Decimal("200"),
                 change_24h_pct=Decimal("0.4"),
             ),

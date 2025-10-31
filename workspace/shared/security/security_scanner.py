@@ -624,15 +624,24 @@ class SecurityScanner:
                         matches = re.finditer(pattern, line)
 
                         for match in matches:
-                            # Skip if looks like a placeholder or example
+                            # Get the full match or the last group (the actual secret value)
                             matched_text = match.group(0)
+                            # Try to extract the actual secret value from capture groups
+                            if match.groups():
+                                # Get the last non-empty group (usually the secret value)
+                                for group in reversed(match.groups()):
+                                    if group:
+                                        matched_text = group
+                                        break
+
+                            # Skip if looks like a placeholder or example
                             if self._is_false_positive(matched_text):
                                 continue
 
                             issue = SecurityIssue(
                                 issue_id=f"SECRET-{line_num}",
                                 title="Potential hardcoded secret detected",
-                                description=f"Found potential secret: {matched_text[:50]}...",
+                                description="Found potential secret in pattern match",
                                 severity=SeverityLevel.CRITICAL,
                                 category="hardcoded_secret",
                                 file_path=str(file_path.relative_to(self.project_root)),
@@ -648,12 +657,18 @@ class SecurityScanner:
 
     def _is_false_positive(self, text: str) -> bool:
         """Check if detected secret is likely a false positive."""
+        # Check for common false positive indicators
         false_positive_patterns = [
             r"(?i)(example|placeholder|test|dummy|fake|your|my)",
-            r"(?i)(\*{3,}|x{3,})",
-            r"(?i)(123|abc|password)",
+            r"(?i)(\*{3,}|x{3,})",  # Redacted values
             r"(?i)(TODO|FIXME)",
+            r"example\.com",  # Common example domain
+            r"test_value",  # Common test placeholder
         ]
+
+        # Check for exact matches of common weak passwords
+        if text.strip("\"'").lower() in ["123", "abc", "password", "password123"]:
+            return True
 
         for pattern in false_positive_patterns:
             if re.search(pattern, text):
@@ -847,13 +862,17 @@ class SecurityScanner:
                 if any(excl in str(python_file) for excl in self.config.exclude_dirs):
                     continue
 
+                # Skip test files (check filename only, not full path)
+                if python_file.name.lower().startswith("test_"):
+                    continue
+
                 try:
                     with open(python_file, "r", encoding="utf-8") as f:
                         lines = f.readlines()
 
                     for line_num, line in enumerate(lines, 1):
-                        # Skip test files
-                        if "test_" in str(python_file) or line.strip().startswith("#"):
+                        # Skip comments
+                        if line.strip().startswith("#"):
                             continue
 
                         for pattern in patterns:
@@ -897,8 +916,9 @@ class SecurityScanner:
                 if any(excl in str(python_file) for excl in self.config.exclude_dirs):
                     continue
 
-                # Skip test and config files
-                if "test_" in str(python_file) or "config" in str(python_file).lower():
+                # Skip test and config files (check filename only, not full path)
+                filename = python_file.name.lower()
+                if filename.startswith("test_") or "config" in filename:
                     continue
 
                 try:
@@ -1031,7 +1051,7 @@ class SecurityScanner:
 
         # Scan results by type
         for scan_type, result in results.items():
-            lines.append(f"{scan_type.upper().replace('_', ' ')}")
+            lines.append(f"{scan_type.upper()}")
             lines.append("-" * 80)
             lines.append(f"Status: {result.scan_status}")
             lines.append(f"Duration: {result.scan_duration_ms:.2f}ms")

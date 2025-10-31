@@ -573,6 +573,282 @@ async def test_retry_decorator_with_custom_exceptions():
 
 
 # ============================================================================
+# Additional Circuit Breaker Coverage Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_concurrent_requests(circuit_breaker):
+    """Test circuit breaker handles concurrent requests"""
+    import asyncio
+
+    call_count = 0
+
+    async def concurrent_func():
+        nonlocal call_count
+        call_count += 1
+        await asyncio.sleep(0.01)  # Simulate async work
+        return f"result_{call_count}"
+
+    # Execute multiple concurrent requests
+    tasks = [circuit_breaker.call(concurrent_func) for _ in range(5)]
+    results = await asyncio.gather(*tasks)
+
+    assert len(results) == 5
+    assert circuit_breaker.stats["successful_calls"] == 5
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_rapid_failures(circuit_breaker):
+    """Test circuit breaker handles rapid consecutive failures"""
+
+    async def rapid_fail():
+        raise Exception("Rapid failure")
+
+    # Trigger failures rapidly
+    for _ in range(3):
+        with pytest.raises(Exception):
+            await circuit_breaker.call(rapid_fail)
+
+    assert circuit_breaker.state == CircuitState.OPEN
+    assert circuit_breaker._failure_count == 3
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_half_open_multiple_successes(circuit_breaker):
+    """Test half-open requires multiple successes to close"""
+    circuit_breaker._state = CircuitState.HALF_OPEN
+    circuit_breaker.half_open_max_calls = 3
+
+    async def success_func():
+        return "success"
+
+    # First two successes - should remain half-open
+    await circuit_breaker.call(success_func)
+    await circuit_breaker.call(success_func)
+    assert circuit_breaker.state == CircuitState.HALF_OPEN
+
+    # Third success - should close
+    await circuit_breaker.call(success_func)
+    assert circuit_breaker.state == CircuitState.CLOSED
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_half_open_immediate_reopen(circuit_breaker):
+    """Test half-open immediately reopens on first failure"""
+    circuit_breaker._state = CircuitState.HALF_OPEN
+
+    async def failing_func():
+        raise Exception("Test failure")
+
+    # First failure in half-open should reopen
+    with pytest.raises(Exception):
+        await circuit_breaker.call(failing_func)
+
+    assert circuit_breaker.state == CircuitState.OPEN
+
+
+def test_circuit_breaker_state_property(circuit_breaker):
+    """Test state property returns correct state"""
+    assert circuit_breaker.state == CircuitState.CLOSED
+
+    circuit_breaker._state = CircuitState.OPEN
+    assert circuit_breaker.state == CircuitState.OPEN
+
+    circuit_breaker._state = CircuitState.HALF_OPEN
+    assert circuit_breaker.state == CircuitState.HALF_OPEN
+
+
+def test_circuit_breaker_is_properties_exclusive(circuit_breaker):
+    """Test is_closed, is_open, is_half_open are mutually exclusive"""
+    # CLOSED state
+    circuit_breaker._state = CircuitState.CLOSED
+    assert circuit_breaker.is_closed is True
+    assert circuit_breaker.is_open is False
+    assert circuit_breaker.is_half_open is False
+
+    # OPEN state
+    circuit_breaker._state = CircuitState.OPEN
+    circuit_breaker._opened_at = time.time()
+    assert circuit_breaker.is_closed is False
+    assert circuit_breaker.is_open is True
+    assert circuit_breaker.is_half_open is False
+
+    # HALF_OPEN state
+    circuit_breaker._state = CircuitState.HALF_OPEN
+    assert circuit_breaker.is_closed is False
+    assert circuit_breaker.is_open is False
+    assert circuit_breaker.is_half_open is True
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_success_resets_failure_count_in_closed(circuit_breaker):
+    """Test success resets failure count in closed state"""
+
+    async def failing_func():
+        raise Exception("Failure")
+
+    async def success_func():
+        return "success"
+
+    # 1 failure
+    with pytest.raises(Exception):
+        await circuit_breaker.call(failing_func)
+    assert circuit_breaker._failure_count == 1
+
+    # Success should reset
+    await circuit_breaker.call(success_func)
+    assert circuit_breaker._failure_count == 0
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_stats_rejected_calls(circuit_breaker):
+    """Test rejected calls are counted in statistics"""
+
+    async def failing_func():
+        raise Exception("Failure")
+
+    # Open the circuit
+    for _ in range(3):
+        with pytest.raises(Exception):
+            await circuit_breaker.call(failing_func)
+
+    # Try to call while open - should reject
+    with pytest.raises(CircuitBreakerOpenError):
+        await circuit_breaker.call(failing_func)
+
+    with pytest.raises(CircuitBreakerOpenError):
+        await circuit_breaker.call(failing_func)
+
+    assert circuit_breaker.stats["rejected_calls"] == 2
+
+
+def test_circuit_breaker_get_stats_includes_timestamps(circuit_breaker):
+    """Test get_stats includes timestamp information"""
+    circuit_breaker._last_failure_time = time.time()
+
+    stats = circuit_breaker.get_stats()
+
+    assert "last_failure_time" in stats
+    assert stats["last_failure_time"] is not None
+
+
+def test_circuit_breaker_get_stats_opened_at(circuit_breaker):
+    """Test get_stats includes opened_at when circuit is open"""
+    circuit_breaker._state = CircuitState.OPEN
+    circuit_breaker._opened_at = time.time()
+
+    stats = circuit_breaker.get_stats()
+
+    assert "opened_at" in stats
+    assert stats["opened_at"] is not None
+
+
+def test_circuit_breaker_reset_clears_all_state(circuit_breaker):
+    """Test manual reset clears all state"""
+    # Set various state
+    circuit_breaker._state = CircuitState.OPEN
+    circuit_breaker._failure_count = 5
+    circuit_breaker._success_count = 2
+    circuit_breaker._opened_at = time.time()
+
+    # Reset
+    circuit_breaker.reset()
+
+    assert circuit_breaker.state == CircuitState.CLOSED
+    assert circuit_breaker._failure_count == 0
+    assert circuit_breaker._success_count == 0
+    assert circuit_breaker._opened_at is None
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_sync_function_returning_coroutine(circuit_breaker):
+    """Test circuit breaker handles sync function returning coroutine"""
+
+    async def async_inner():
+        return "async_result"
+
+    def sync_returns_coroutine():
+        return async_inner()
+
+    result = await circuit_breaker.call(sync_returns_coroutine)
+    assert result == "async_result"
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_exception_propagation(circuit_breaker):
+    """Test circuit breaker propagates original exception"""
+
+    class CustomError(Exception):
+        pass
+
+    async def custom_error_func():
+        raise CustomError("Custom message")
+
+    with pytest.raises(CustomError, match="Custom message"):
+        await circuit_breaker.call(custom_error_func)
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_auto_transition_to_half_open(circuit_breaker):
+    """Test automatic transition from OPEN to HALF_OPEN after timeout"""
+    circuit_breaker._state = CircuitState.OPEN
+    circuit_breaker._opened_at = time.time() - 10  # 10 seconds ago
+    circuit_breaker.recovery_timeout_seconds = 5
+
+    # Checking is_open should trigger transition
+    is_open = circuit_breaker.is_open
+
+    assert is_open is False  # Not open anymore
+    assert circuit_breaker.state == CircuitState.HALF_OPEN
+
+
+def test_circuit_breaker_no_auto_transition_before_timeout(circuit_breaker):
+    """Test no auto transition before timeout expires"""
+    circuit_breaker._state = CircuitState.OPEN
+    circuit_breaker._opened_at = time.time() - 2  # 2 seconds ago
+    circuit_breaker.recovery_timeout_seconds = 5
+
+    # Check is_open - should not transition yet
+    is_open = circuit_breaker.is_open
+
+    assert is_open is True
+    assert circuit_breaker.state == CircuitState.OPEN
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_failure_count_increments_correctly(circuit_breaker):
+    """Test failure count increments correctly"""
+
+    async def failing_func():
+        raise Exception("Failure")
+
+    # Track failure count
+    for i in range(1, 4):
+        with pytest.raises(Exception):
+            await circuit_breaker.call(failing_func)
+        # After opening, failure count stays at threshold
+        expected_count = min(i, circuit_breaker.failure_threshold)
+        assert circuit_breaker._failure_count == expected_count
+
+
+@pytest.mark.asyncio
+async def test_circuit_breaker_last_failure_time_updated(circuit_breaker):
+    """Test last_failure_time is updated on each failure"""
+
+    async def failing_func():
+        raise Exception("Failure")
+
+    before = time.time()
+    with pytest.raises(Exception):
+        await circuit_breaker.call(failing_func)
+    after = time.time()
+
+    assert circuit_breaker._last_failure_time is not None
+    assert before <= circuit_breaker._last_failure_time <= after
+
+
+# ============================================================================
 # Integration Tests
 # ============================================================================
 
@@ -604,6 +880,25 @@ async def test_circuit_breaker_with_retry_manager():
     # Second call should be rejected by circuit breaker
     with pytest.raises(CircuitBreakerOpenError):
         await rm.execute(call_with_circuit)
+
+
+@pytest.mark.asyncio
+async def test_multiple_circuit_breakers_independent():
+    """Test multiple circuit breakers operate independently"""
+    cb1 = CircuitBreaker(name="service1", failure_threshold=2)
+    cb2 = CircuitBreaker(name="service2", failure_threshold=2)
+
+    async def failing_func():
+        raise Exception("Failure")
+
+    # Open cb1
+    for _ in range(2):
+        with pytest.raises(Exception):
+            await cb1.call(failing_func)
+
+    # cb1 should be open, cb2 should be closed
+    assert cb1.state == CircuitState.OPEN
+    assert cb2.state == CircuitState.CLOSED
 
 
 if __name__ == "__main__":

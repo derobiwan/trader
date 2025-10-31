@@ -749,24 +749,28 @@ async def test_fetch_order_status_error(executor, mock_exchange):
 
 
 @pytest.mark.asyncio
-async def test_circuit_breaker_initialization():
+async def test_circuit_breaker_initialization(mock_exchange, mock_position_service):
     """Test circuit breaker is initialized when enabled"""
     executor = TradeExecutor(
         api_key="test",
         api_secret="test",
         enable_circuit_breaker=True,
+        exchange=mock_exchange,
+        position_service=mock_position_service,
     )
 
     assert executor.exchange_circuit_breaker is not None
 
 
 @pytest.mark.asyncio
-async def test_circuit_breaker_disabled():
+async def test_circuit_breaker_disabled(mock_exchange, mock_position_service):
     """Test circuit breaker is not initialized when disabled"""
     executor = TradeExecutor(
         api_key="test",
         api_secret="test",
         enable_circuit_breaker=False,
+        exchange=mock_exchange,
+        position_service=mock_position_service,
     )
 
     assert executor.exchange_circuit_breaker is None

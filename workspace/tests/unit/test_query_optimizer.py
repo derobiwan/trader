@@ -62,15 +62,26 @@ async def test_initialize_success(query_optimizer, mock_pool):
 
 
 @pytest.mark.asyncio
-async def test_initialize_failure(query_optimizer, mock_pool):
+async def test_initialize_failure():
     """Test initialization failure handling."""
     # Arrange
-    conn = await mock_pool.acquire().__aenter__()
-    conn.execute.side_effect = Exception("Database connection failed")
+    # Create pool with error connection
+    error_pool = AsyncMock()
+    conn_error = AsyncMock()
+    conn_error.execute = AsyncMock(side_effect=Exception("Database connection failed"))
+
+    # Setup acquire context manager
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=conn_error)
+    acquire_ctx.__aexit__ = AsyncMock()
+    error_pool.acquire = MagicMock(return_value=acquire_ctx)
+
+    # Create optimizer with error pool
+    optimizer = QueryOptimizer(error_pool)
 
     # Act & Assert
     with pytest.raises(Exception, match="Database connection failed"):
-        await query_optimizer.initialize()
+        await optimizer.initialize()
 
 
 @pytest.mark.asyncio
@@ -574,15 +585,26 @@ async def test_multiple_index_creation_attempts(query_optimizer, mock_pool):
 
 
 @pytest.mark.asyncio
-async def test_index_creation_failure(query_optimizer, mock_pool):
+async def test_index_creation_failure():
     """Test handling index creation failure."""
     # Arrange
-    conn = await mock_pool.acquire().__aenter__()
-    conn.fetchval = AsyncMock(return_value=False)
-    conn.execute = AsyncMock(side_effect=Exception("Index creation failed"))
+    # Create pool with error connection
+    error_pool = AsyncMock()
+    conn_error = AsyncMock()
+    conn_error.fetchval = AsyncMock(return_value=False)  # Index doesn't exist
+    conn_error.execute = AsyncMock(side_effect=Exception("Index creation failed"))
+
+    # Setup acquire context manager
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=conn_error)
+    acquire_ctx.__aexit__ = AsyncMock()
+    error_pool.acquire = MagicMock(return_value=acquire_ctx)
+
+    # Create optimizer with error pool
+    optimizer = QueryOptimizer(error_pool)
 
     # Act
-    result = await query_optimizer._create_index("test_idx", "test_table", "(col)")
+    result = await optimizer._create_index("test_idx", "test_table", "(col)")
 
     # Assert
     assert result is False

@@ -18,7 +18,7 @@ import logging
 import time
 import psutil
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 import statistics
 import json
@@ -447,14 +447,22 @@ class PerformanceBenchmark:
             logger.debug(f"Cache DELETE failed: {e}")
             return None
 
-    async def benchmark_memory_usage(self) -> MemoryBenchmarkResult:
+    async def benchmark_memory_usage(
+        self,
+        benchmark_name: str = "memory_usage",
+        workload_fn: Optional[Callable] = None,
+    ) -> MemoryBenchmarkResult:
         """
         Benchmark memory usage and detect potential leaks.
+
+        Args:
+            benchmark_name: Name for this benchmark
+            workload_fn: Optional async callable to use as workload (default: create test data)
 
         Returns:
             MemoryBenchmarkResult with memory analysis
         """
-        logger.info("Starting memory usage benchmarks...")
+        logger.info(f"Starting memory usage benchmark: {benchmark_name}...")
 
         try:
             # Establish baseline
@@ -463,33 +471,57 @@ class PerformanceBenchmark:
             baseline_memory_mb = self.process.memory_info().rss / (1024 * 1024)
 
             # Run baseline operations
-            test_data = []
-            for i in range(self.config.memory_baseline_operations):
-                test_data.append({"id": i, "data": "x" * 1000})
+            if workload_fn:
+                # Use custom workload function
+                for i in range(self.config.memory_baseline_operations):
+                    await workload_fn()
+            else:
+                # Default: create test data
+                test_data = []
+                for i in range(self.config.memory_baseline_operations):
+                    test_data.append({"id": i, "data": "x" * 1000})
 
             await asyncio.sleep(0.1)
 
             # Measure memory under load
             logger.info("Testing memory under load...")
-            for i in range(self.config.memory_test_operations):
-                test_data.append(
-                    {
-                        "id": i + self.config.memory_baseline_operations,
-                        "data": "x" * 1000,
-                    }
-                )
+            if workload_fn:
+                # Use custom workload function
+                for i in range(self.config.memory_test_operations):
+                    await workload_fn()
 
-                # Periodic measurement
-                if i % 100 == 0:
-                    current_memory_mb = self.process.memory_info().rss / (1024 * 1024)
-                    logger.debug(
-                        f"Memory at {i} operations: {current_memory_mb:.2f} MB"
+                    # Periodic measurement
+                    if i % 100 == 0:
+                        current_memory_mb = self.process.memory_info().rss / (
+                            1024 * 1024
+                        )
+                        logger.debug(
+                            f"Memory at {i} operations: {current_memory_mb:.2f} MB"
+                        )
+            else:
+                # Default: create test data
+                for i in range(self.config.memory_test_operations):
+                    test_data.append(
+                        {
+                            "id": i + self.config.memory_baseline_operations,
+                            "data": "x" * 1000,
+                        }
                     )
+
+                    # Periodic measurement
+                    if i % 100 == 0:
+                        current_memory_mb = self.process.memory_info().rss / (
+                            1024 * 1024
+                        )
+                        logger.debug(
+                            f"Memory at {i} operations: {current_memory_mb:.2f} MB"
+                        )
 
             peak_memory_mb = self.process.memory_info().rss / (1024 * 1024)
 
             # Clear test data and measure
-            test_data.clear()
+            if not workload_fn:
+                test_data.clear()
             await self._force_gc()
             await asyncio.sleep(0.1)
 
@@ -506,7 +538,7 @@ class PerformanceBenchmark:
             meets_target = not potential_leak
 
             result = MemoryBenchmarkResult(
-                benchmark_name="memory_usage",
+                benchmark_name=benchmark_name,
                 timestamp=datetime.now(),
                 baseline_memory_mb=baseline_memory_mb,
                 peak_memory_mb=peak_memory_mb,
@@ -571,6 +603,22 @@ class PerformanceBenchmark:
             )
 
         return validation_results
+
+    def validate_targets(self, metrics: BenchmarkMetrics) -> bool:
+        """
+        Validate a single benchmark metrics against performance targets.
+
+        Args:
+            metrics: Benchmark metrics to validate
+
+        Returns:
+            True if all targets met, False otherwise
+        """
+        return (
+            metrics.p50_latency_ms <= self.config.p50_target_ms
+            and metrics.p95_latency_ms <= self.config.p95_target_ms
+            and metrics.p99_latency_ms <= self.config.p99_target_ms
+        )
 
     async def detect_regressions(
         self, baseline_results: Optional[Dict[str, BenchmarkMetrics]] = None
@@ -644,6 +692,71 @@ class PerformanceBenchmark:
             )
 
         return regressions
+
+    def detect_regression(
+        self,
+        current_metrics: BenchmarkMetrics,
+        baseline_metrics: Optional[BenchmarkMetrics] = None,
+    ) -> RegressionAnalysis:
+        """
+        Detect regression for a single benchmark compared to baseline.
+
+        Args:
+            current_metrics: Current benchmark metrics
+            baseline_metrics: Baseline metrics to compare against (if None, looks up from baseline_results)
+
+        Returns:
+            RegressionAnalysis for the benchmark
+        """
+        if baseline_metrics is None:
+            # Try to look up baseline from baseline_results
+            baseline_metrics = self.baseline_results.get(current_metrics.benchmark_name)
+
+            if baseline_metrics is None:
+                # No baseline to compare against
+                return RegressionAnalysis(
+                    benchmark_name=current_metrics.benchmark_name,
+                    current_p95_ms=current_metrics.p95_latency_ms,
+                    baseline_p95_ms=None,
+                    regression_detected=False,
+                    regression_percent=0.0,
+                    recommendation="No baseline available for comparison",
+                )
+
+        # Compare P95 latencies
+        current_p95 = current_metrics.p95_latency_ms
+        baseline_p95 = baseline_metrics.p95_latency_ms
+
+        # Calculate regression percentage
+        if baseline_p95 > 0:
+            regression_percent = ((current_p95 - baseline_p95) / baseline_p95) * 100
+        else:
+            regression_percent = 0.0
+
+        # Regression if > 10% slower
+        regression_detected = regression_percent > 10.0
+
+        # Generate recommendation
+        if regression_detected:
+            recommendation = (
+                f"Performance regression detected: P95 latency increased by {regression_percent:.1f}%. "
+                f"Investigate recent changes and optimize critical path."
+            )
+        elif regression_percent < -10.0:
+            recommendation = (
+                f"Performance improved by {abs(regression_percent):.1f}%. Good job!"
+            )
+        else:
+            recommendation = "Performance is stable."
+
+        return RegressionAnalysis(
+            benchmark_name=current_metrics.benchmark_name,
+            current_p95_ms=current_p95,
+            baseline_p95_ms=baseline_p95,
+            regression_detected=regression_detected,
+            regression_percent=regression_percent,
+            recommendation=recommendation,
+        )
 
     async def run_all_benchmarks(
         self, db_pool: Optional[Any] = None, cache_manager: Optional[Any] = None
@@ -1001,16 +1114,42 @@ class PerformanceBenchmark:
             "metadata": metrics.metadata,
         }
 
-    def save_baseline(self, filepath: str) -> None:
-        """Save current results as baseline for regression detection."""
+    def save_baseline(
+        self, metrics: Optional[BenchmarkMetrics] = None, filepath: Optional[str] = None
+    ) -> None:
+        """
+        Save benchmark results as baseline for regression detection.
+
+        Args:
+            metrics: Optional single metrics to save (if None, saves all benchmark_results)
+            filepath: Path to save baseline file
+        """
         try:
-            baseline_data = {
-                "timestamp": datetime.now().isoformat(),
-                "benchmarks": {
-                    name: self._metrics_to_dict(metrics)
-                    for name, metrics in self.benchmark_results.items()
-                },
-            }
+            # Handle different calling conventions
+            if isinstance(metrics, str):
+                # Called as save_baseline(filepath) - old convention
+                filepath = metrics
+                metrics = None
+            elif filepath is None and metrics is not None:
+                raise ValueError("filepath must be provided when saving metrics")
+
+            if metrics is not None:
+                # Save single metrics
+                baseline_data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "benchmarks": {
+                        metrics.benchmark_name: self._metrics_to_dict(metrics)
+                    },
+                }
+            else:
+                # Save all results
+                baseline_data = {
+                    "timestamp": datetime.now().isoformat(),
+                    "benchmarks": {
+                        name: self._metrics_to_dict(m)
+                        for name, m in self.benchmark_results.items()
+                    },
+                }
 
             with open(filepath, "w") as f:
                 json.dump(baseline_data, f, indent=2)
@@ -1020,15 +1159,25 @@ class PerformanceBenchmark:
         except Exception as e:
             logger.error(f"Failed to save baseline: {e}")
 
-    def load_baseline(self, filepath: str) -> None:
-        """Load baseline results for regression detection."""
+    def load_baseline(self, filepath: str) -> Optional[BenchmarkMetrics]:
+        """
+        Load baseline results for regression detection.
+
+        Args:
+            filepath: Path to baseline file
+
+        Returns:
+            First loaded BenchmarkMetrics if any, otherwise None
+        """
         try:
             with open(filepath, "r") as f:
                 baseline_data = json.load(f)
 
+            first_metrics = None
+
             # Convert back to BenchmarkMetrics objects
             for name, metrics_dict in baseline_data["benchmarks"].items():
-                self.baseline_results[name] = BenchmarkMetrics(
+                metrics = BenchmarkMetrics(
                     benchmark_name=metrics_dict["benchmark_name"],
                     timestamp=datetime.fromisoformat(metrics_dict["timestamp"]),
                     total_operations=metrics_dict["total_operations"],
@@ -1049,11 +1198,18 @@ class PerformanceBenchmark:
                     meets_p99_target=metrics_dict["meets_p99_target"],
                     metadata=metrics_dict.get("metadata", {}),
                 )
+                self.baseline_results[name] = metrics
+
+                # Return first metrics for single-metric loads
+                if first_metrics is None:
+                    first_metrics = metrics
 
             logger.info(f"Baseline loaded from {filepath}")
+            return first_metrics
 
         except Exception as e:
             logger.error(f"Failed to load baseline: {e}")
+            return None
 
 
 # CLI interface

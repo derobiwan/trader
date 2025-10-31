@@ -671,6 +671,295 @@ class TestStatistics:
 
 
 # =============================================================================
+# Prometheus Export Edge Cases
+# =============================================================================
+
+
+class TestPrometheusExportEdgeCases:
+    """Tests for Prometheus export edge cases"""
+
+    def test_prometheus_text_format_structure(self, metrics_service):
+        """Test Prometheus text format has correct structure"""
+        metrics_service.record_trade(success=True, realized_pnl=Decimal("100"))
+
+        text = metrics_service.get_prometheus_text()
+
+        # Should contain HELP and TYPE lines
+        assert "# HELP" in text
+        assert "# TYPE" in text
+        # Should contain metric name prefix
+        assert "trading_" in text
+
+    def test_prometheus_export_with_counter_metrics(self, metrics_service):
+        """Test counter metrics are properly typed"""
+        metrics_service.record_trade(success=True)
+
+        export = metrics_service.export_prometheus()
+        text = export.to_prometheus_text()
+
+        # Counter metrics should have _total suffix and counter type
+        assert "# TYPE trading_trades_total counter" in text
+
+    def test_prometheus_export_with_gauge_metrics(self, metrics_service):
+        """Test gauge metrics are properly typed"""
+        metrics_service.record_position_opened()
+
+        export = metrics_service.export_prometheus()
+        text = export.to_prometheus_text()
+
+        # Gauge metrics should have gauge type
+        assert "gauge" in text.lower()
+
+    def test_prometheus_export_handles_none_values(self, metrics_service):
+        """Test export handles None values correctly"""
+        # Sharpe ratio is None by default
+        export = metrics_service.export_prometheus()
+
+        # Should not include None values
+        assert "None" not in str(export.metrics.values())
+
+    def test_prometheus_export_converts_decimals(self, metrics_service):
+        """Test Decimal values are converted to float"""
+        metrics_service.record_trade(success=True, realized_pnl=Decimal("123.45"))
+
+        export = metrics_service.export_prometheus()
+
+        # All values should be numeric types
+        for value in export.metrics.values():
+            if value is not None and not isinstance(value, (int, float, str)):
+                pytest.fail(f"Unexpected type in metrics: {type(value)}")
+
+    def test_prometheus_export_timestamp_format(self, metrics_service):
+        """Test export timestamp is valid"""
+        export = metrics_service.export_prometheus()
+
+        assert export.timestamp is not None
+        assert isinstance(export.timestamp, datetime)
+
+
+# =============================================================================
+# Additional Edge Case Tests
+# =============================================================================
+
+
+class TestAdditionalEdgeCases:
+    """Additional edge case tests"""
+
+    def test_record_trade_without_pnl(self, metrics_service):
+        """Test recording trade without P&L"""
+        metrics_service.record_trade(success=True, realized_pnl=None, fees=Decimal("5"))
+
+        assert metrics_service.metrics.trades_successful == 1
+        assert metrics_service.metrics.realized_pnl_total == Decimal("0")
+        assert metrics_service.metrics.fees_paid_total == Decimal("5")
+
+    def test_record_trade_without_latency(self, metrics_service):
+        """Test recording trade without latency"""
+        metrics_service.record_trade(success=True, latency_ms=None)
+
+        assert metrics_service.metrics.trades_successful == 1
+        # Latency samples should be empty
+        assert len(metrics_service._latency_samples) == 0
+
+    def test_latency_percentile_with_single_sample(self, metrics_service):
+        """Test latency percentiles with single sample"""
+        metrics_service.record_trade(success=True, latency_ms=Decimal("100"))
+
+        # Should handle single sample gracefully
+        assert metrics_service.metrics.execution_latency_avg_ms == Decimal("100")
+        assert metrics_service.metrics.execution_latency_p95_ms == Decimal("100")
+        assert metrics_service.metrics.execution_latency_p99_ms == Decimal("100")
+
+    def test_snapshot_system_version_and_environment(
+        self, metrics_service, sample_trading_symbols
+    ):
+        """Test snapshot includes system version and environment"""
+        snapshot = metrics_service.create_snapshot(sample_trading_symbols)
+
+        assert snapshot.system_version == "1.0.0"
+        assert snapshot.environment == "production"
+
+    def test_multiple_snapshots_ordering(self, metrics_service, sample_trading_symbols):
+        """Test multiple snapshots maintain order"""
+        for i in range(5):
+            metrics_service.record_trade(
+                success=True, realized_pnl=Decimal(str(i * 10))
+            )
+            metrics_service.create_snapshot(sample_trading_symbols)
+
+        # Should have 5 snapshots
+        assert len(metrics_service._snapshots) == 5
+
+        # Realized PnL should increase across snapshots
+        pnls = [s.metrics.realized_pnl_total for s in metrics_service._snapshots]
+        assert pnls == sorted(pnls)
+
+    def test_get_stats_decimal_conversion(self, metrics_service):
+        """Test stats converts Decimal to string"""
+        metrics_service.record_trade(success=True, realized_pnl=Decimal("123.45"))
+
+        stats = metrics_service.get_stats()
+
+        # Decimal values should be strings
+        assert isinstance(stats["realized_pnl"], str)
+        assert stats["realized_pnl"] == "123.45"
+
+    def test_uptime_never_negative(self, metrics_service):
+        """Test uptime is never negative"""
+        import time
+
+        time.sleep(0.01)  # Small delay
+        uptime = metrics_service.get_uptime_seconds()
+
+        assert uptime >= 0
+
+    def test_position_closed_total_increments(self, metrics_service):
+        """Test closed position count increments correctly"""
+        for _ in range(5):
+            metrics_service.record_position_opened()
+
+        for _ in range(3):
+            metrics_service.record_position_closed()
+
+        assert metrics_service.metrics.positions_open == 2
+        assert metrics_service.metrics.positions_closed_total == 3
+
+    def test_order_events_independent(self, metrics_service):
+        """Test order events can be recorded independently"""
+        metrics_service.record_order(placed=True)
+        metrics_service.record_order(filled=True)
+        metrics_service.record_order(cancelled=True)
+        metrics_service.record_order(rejected=True)
+
+        assert metrics_service.metrics.orders_placed_total == 1
+        assert metrics_service.metrics.orders_filled_total == 1
+        assert metrics_service.metrics.orders_cancelled_total == 1
+        assert metrics_service.metrics.orders_rejected_total == 1
+
+    def test_llm_call_without_tokens(self, metrics_service):
+        """Test LLM call without token counts"""
+        metrics_service.record_llm_call(success=True, tokens_input=0, tokens_output=0)
+
+        assert metrics_service.metrics.llm_calls_total == 1
+        assert metrics_service.metrics.llm_tokens_input_total == 0
+
+    def test_market_data_fetch_mixed_results(self, metrics_service):
+        """Test mixed success/failure market data fetches"""
+        for _ in range(7):
+            metrics_service.record_market_data_fetch(success=True)
+
+        for _ in range(3):
+            metrics_service.record_market_data_fetch(success=False)
+
+        assert metrics_service.metrics.market_data_fetches_total == 10
+        assert metrics_service.metrics.market_data_errors_total == 3
+
+    def test_websocket_reconnection_count(self, metrics_service):
+        """Test WebSocket reconnection count"""
+        for _ in range(5):
+            metrics_service.record_websocket_reconnection()
+
+        assert metrics_service.metrics.websocket_reconnections_total == 5
+
+    def test_risk_events_accumulate(self, metrics_service):
+        """Test risk events accumulate correctly"""
+        for _ in range(3):
+            metrics_service.record_circuit_breaker_trigger()
+
+        for _ in range(2):
+            metrics_service.record_position_size_violation()
+
+        for _ in range(1):
+            metrics_service.record_daily_loss_limit_trigger()
+
+        assert metrics_service.metrics.circuit_breaker_triggers_total == 3
+        assert metrics_service.metrics.max_position_size_exceeded_total == 2
+        assert metrics_service.metrics.daily_loss_limit_triggers_total == 1
+
+    def test_cache_metrics_accumulate(self, metrics_service):
+        """Test cache metrics accumulate correctly"""
+        for _ in range(10):
+            metrics_service.record_cache_hit()
+
+        for _ in range(5):
+            metrics_service.record_cache_miss()
+
+        for _ in range(2):
+            metrics_service.record_cache_eviction()
+
+        assert metrics_service.metrics.cache_hits_total == 10
+        assert metrics_service.metrics.cache_misses_total == 5
+        assert metrics_service.metrics.cache_evictions_total == 2
+
+    def test_snapshot_with_empty_symbols_list(self, metrics_service):
+        """Test snapshot with empty trading symbols"""
+        snapshot = metrics_service.create_snapshot([])
+
+        assert snapshot.trading_symbols == []
+
+    def test_prometheus_export_metric_name_prefixing(self, metrics_service):
+        """Test all metrics are prefixed with 'trading_'"""
+        export = metrics_service.export_prometheus()
+
+        for metric_name in export.metrics.keys():
+            assert metric_name.startswith("trading_")
+
+    def test_update_system_metrics_updates_uptime(self, metrics_service):
+        """Test update_system_metrics actually updates uptime"""
+        import time
+
+        time.sleep(0.1)
+        before = metrics_service.metrics.system_uptime_seconds
+
+        metrics_service.update_system_metrics()
+
+        after = metrics_service.metrics.system_uptime_seconds
+
+        assert after >= before
+
+    def test_latency_samples_exact_trim_boundary(self, metrics_service):
+        """Test latency samples trim at exact boundary"""
+        # Record exactly max_latency_samples + 1
+        for i in range(metrics_service._max_latency_samples + 1):
+            metrics_service.record_trade(success=True, latency_ms=Decimal(str(i)))
+
+        # Should be trimmed to max
+        assert (
+            len(metrics_service._latency_samples)
+            == metrics_service._max_latency_samples
+        )
+
+    def test_snapshot_exact_trim_boundary(
+        self, metrics_service, sample_trading_symbols
+    ):
+        """Test snapshots trim at exact boundary"""
+        # Create exactly max_snapshots + 1
+        for i in range(metrics_service._max_snapshots + 1):
+            metrics_service.create_snapshot(sample_trading_symbols)
+
+        # Should be trimmed to max
+        assert len(metrics_service._snapshots) == metrics_service._max_snapshots
+
+    def test_performance_metrics_update_independently(self, metrics_service):
+        """Test performance metrics can be updated independently"""
+        metrics_service.update_performance_metrics(
+            win_rate=Decimal("0.5"), profit_factor=Decimal("1.0")
+        )
+
+        assert metrics_service.metrics.win_rate == Decimal("0.5")
+        assert metrics_service.metrics.sharpe_ratio is None
+
+        # Update with Sharpe
+        metrics_service.update_performance_metrics(
+            win_rate=Decimal("0.6"),
+            profit_factor=Decimal("1.2"),
+            sharpe_ratio=Decimal("0.8"),
+        )
+
+        assert metrics_service.metrics.sharpe_ratio == Decimal("0.8")
+
+
+# =============================================================================
 # Export
 # =============================================================================
 
@@ -689,4 +978,6 @@ __all__ = [
     "TestMetricsSnapshot",
     "TestPrometheusExport",
     "TestStatistics",
+    "TestPrometheusExportEdgeCases",
+    "TestAdditionalEdgeCases",
 ]

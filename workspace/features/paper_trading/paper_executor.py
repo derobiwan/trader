@@ -39,6 +39,21 @@ from .performance_tracker import PaperTradingPerformanceTracker
 logger = logging.getLogger(__name__)
 
 
+def _round_decimal(value: Decimal, places: int = 8) -> Decimal:
+    """
+    Round Decimal to specified decimal places.
+
+    Args:
+        value: Decimal value to round
+        places: Number of decimal places (default: 8)
+
+    Returns:
+        Rounded Decimal value
+    """
+    quantizer = Decimal(10) ** -places
+    return value.quantize(quantizer)
+
+
 class PaperTradingExecutor(TradeExecutor):
     """
     Paper trading executor - simulates trades without real money
@@ -125,20 +140,22 @@ class PaperTradingExecutor(TradeExecutor):
             current_price: Current market price
 
         Returns:
-            Slipped price
+            Slipped price (rounded to 8 decimal places)
         """
         if not self.enable_slippage:
-            return current_price
+            return _round_decimal(current_price)
 
         # Simulate 0-0.2% slippage
         slippage_pct = Decimal(str(random.uniform(0, 0.002)))
 
         if side == OrderSide.BUY:
             # Buy at slightly higher price
-            return current_price * (Decimal("1") + slippage_pct)
+            slipped_price = current_price * (Decimal("1") + slippage_pct)
         else:
             # Sell at slightly lower price
-            return current_price * (Decimal("1") - slippage_pct)
+            slipped_price = current_price * (Decimal("1") - slippage_pct)
+
+        return _round_decimal(slipped_price)
 
     def _calculate_partial_fill(self, quantity: Decimal) -> Decimal:
         """
@@ -150,14 +167,15 @@ class PaperTradingExecutor(TradeExecutor):
             quantity: Requested quantity
 
         Returns:
-            Filled quantity
+            Filled quantity (rounded to 8 decimal places)
         """
         if not self.enable_partial_fills:
-            return quantity
+            return _round_decimal(quantity)
 
         # Simulate 95-100% fill
         fill_percentage = Decimal(str(random.uniform(0.95, 1.0)))
-        return quantity * fill_percentage
+        filled_quantity = quantity * fill_percentage
+        return _round_decimal(filled_quantity)
 
     def _calculate_fees(
         self, quantity: Decimal, price: Decimal, order_type: OrderType
@@ -171,14 +189,16 @@ class PaperTradingExecutor(TradeExecutor):
             order_type: Order type (market uses taker, limit uses maker)
 
         Returns:
-            Fees in USDT
+            Fees in USDT (rounded to 8 decimal places)
         """
         notional_value = quantity * price
 
         if order_type == OrderType.MARKET:
-            return notional_value * self.taker_fee_pct
+            fees = notional_value * self.taker_fee_pct
         else:
-            return notional_value * self.maker_fee_pct
+            fees = notional_value * self.maker_fee_pct
+
+        return _round_decimal(fees)
 
     async def create_market_order(
         self,
@@ -218,6 +238,17 @@ class PaperTradingExecutor(TradeExecutor):
 
             # Apply partial fills
             filled_quantity = self._calculate_partial_fill(quantity)
+
+            # For reduce_only orders, handle position size constraints
+            if reduce_only and symbol in self.virtual_portfolio.positions:
+                position_quantity = self.virtual_portfolio.positions[symbol]["quantity"]
+                # If trying to close entire position (quantity >= position), close all
+                if quantity >= position_quantity:
+                    filled_quantity = position_quantity
+                else:
+                    # Otherwise, cap to position size
+                    filled_quantity = min(filled_quantity, position_quantity)
+                filled_quantity = _round_decimal(filled_quantity)
 
             # Calculate fees
             fees = self._calculate_fees(
@@ -295,8 +326,8 @@ class PaperTradingExecutor(TradeExecutor):
                         "side": side.value,
                         "quantity": float(filled_quantity),
                         "price": float(execution_price),
-                        "fees": float(fees),
-                        "pnl": float(pnl),
+                        "fees": fees,  # Keep as Decimal for performance tracker
+                        "pnl": pnl,  # Keep as Decimal for performance tracker
                         "timestamp": datetime.utcnow(),
                     }
                 )

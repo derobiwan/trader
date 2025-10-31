@@ -115,7 +115,8 @@ class Ticker(BaseModel):
         last: Last traded price
         high_24h: 24-hour high
         low_24h: 24-hour low
-        volume_24h: 24-hour volume
+        volume_24h: 24-hour volume in base currency
+        quote_volume_24h: 24-hour volume in quote currency (USDT)
         change_24h: 24-hour price change
         change_24h_pct: 24-hour price change percentage
     """
@@ -128,6 +129,7 @@ class Ticker(BaseModel):
     high_24h: Decimal = Field(..., decimal_places=8)
     low_24h: Decimal = Field(..., decimal_places=8)
     volume_24h: Decimal = Field(..., decimal_places=8, ge=0)
+    quote_volume_24h: Decimal = Field(..., decimal_places=8, ge=0)
     change_24h: Decimal = Field(..., decimal_places=8)
     change_24h_pct: Decimal = Field(..., decimal_places=4)
 

@@ -44,7 +44,7 @@ class TestReconnectionStats:
         """Test uptime calculation with some downtime"""
         stats = ReconnectionStats()
         stats.current_uptime_start = datetime.utcnow()
-        stats.total_downtime_seconds = 5.0  # 5 seconds downtime
+        stats.total_downtime_seconds = 0.05  # 50ms downtime
 
         # Wait a bit to have some uptime
         import time

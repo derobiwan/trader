@@ -41,24 +41,47 @@ def mock_redis():
 
 
 @pytest.fixture
-def mock_market_data_fetcher():
-    """Mock market data fetcher."""
-    fetcher = AsyncMock()
-    fetcher.fetch_ohlcv = AsyncMock(
-        return_value=[[1234567890, 50000.0, 51000.0, 49000.0, 50500.0, 1000.0]]
-    )
-    fetcher.fetch_ticker = AsyncMock(
-        return_value={
-            "symbol": "BTC/USDT",
-            "last": 50000.0,
-            "bid": 49999.0,
-            "ask": 50001.0,
-        }
-    )
-    fetcher.fetch_orderbook = AsyncMock(
-        return_value={"bids": [[50000.0, 1.0]], "asks": [[50001.0, 1.0]]}
-    )
-    return fetcher
+def mock_market_data_service():
+    """Mock market data service."""
+    from datetime import datetime
+
+    service = AsyncMock()
+
+    # Mock OHLCV class
+    ohlcv_mock = MagicMock()
+    ohlcv_mock.timestamp = datetime.now()
+    ohlcv_mock.open = 50000.0
+    ohlcv_mock.high = 51000.0
+    ohlcv_mock.low = 49000.0
+    ohlcv_mock.close = 50500.0
+    ohlcv_mock.volume = 1000.0
+
+    # Mock Ticker class with all required attributes
+    ticker_mock = MagicMock()
+    ticker_mock.symbol = "BTC/USDT"
+    ticker_mock.last_price = 50000.0
+    ticker_mock.bid_price = 49999.0
+    ticker_mock.ask_price = 50001.0
+    ticker_mock.volume_24h = 1000.0
+    ticker_mock.timestamp = datetime.now()
+
+    # Mock OrderBook class with timestamp
+    orderbook_mock = MagicMock()
+    orderbook_mock.bids = [[50000.0, 1.0]]
+    orderbook_mock.asks = [[50001.0, 1.0]]
+    orderbook_mock.timestamp = datetime.now()
+
+    # Mock snapshot
+    snapshot_mock = MagicMock()
+    snapshot_mock.ticker = ticker_mock
+    snapshot_mock.orderbook = orderbook_mock
+
+    # Mock service methods
+    service.get_ohlcv_history = AsyncMock(return_value=[ohlcv_mock])
+    service.get_latest_ticker = AsyncMock(return_value=ticker_mock)
+    service.get_snapshot = AsyncMock(return_value=snapshot_mock)
+
+    return service
 
 
 @pytest.fixture
@@ -105,7 +128,7 @@ def cache_config():
 @pytest.fixture
 def cache_warmer(
     mock_redis,
-    mock_market_data_fetcher,
+    mock_market_data_service,
     mock_balance_fetcher,
     mock_position_service,
     cache_config,
@@ -113,7 +136,7 @@ def cache_warmer(
     """Create CacheWarmer instance with mocked dependencies."""
     return CacheWarmer(
         redis_manager=mock_redis,
-        market_data_fetcher=mock_market_data_fetcher,
+        market_data_service=mock_market_data_service,
         balance_fetcher=mock_balance_fetcher,
         position_service=mock_position_service,
         config=cache_config,
@@ -187,22 +210,24 @@ async def test_warm_market_data_with_auto_symbols(cache_warmer, mock_position_se
 
 
 @pytest.mark.asyncio
-async def test_warm_ohlcv_success(cache_warmer, mock_redis, mock_market_data_fetcher):
+async def test_warm_ohlcv_success(cache_warmer, mock_redis, mock_market_data_service):
     """Test warming OHLCV data."""
     # Act
     result = await cache_warmer._warm_ohlcv("BTC/USDT")
 
     # Assert
     assert result is True
-    assert mock_market_data_fetcher.fetch_ohlcv.called
+    assert mock_market_data_service.get_ohlcv_history.called
     assert mock_redis.set.called
 
 
 @pytest.mark.asyncio
-async def test_warm_ohlcv_failure(cache_warmer, mock_market_data_fetcher):
+async def test_warm_ohlcv_failure(cache_warmer, mock_market_data_service):
     """Test handling OHLCV warming failure."""
     # Arrange
-    mock_market_data_fetcher.fetch_ohlcv = AsyncMock(side_effect=Exception("API error"))
+    mock_market_data_service.get_ohlcv_history = AsyncMock(
+        side_effect=Exception("API error")
+    )
 
     # Act
     result = await cache_warmer._warm_ohlcv("BTC/USDT")
@@ -212,10 +237,10 @@ async def test_warm_ohlcv_failure(cache_warmer, mock_market_data_fetcher):
 
 
 @pytest.mark.asyncio
-async def test_warm_ohlcv_no_data(cache_warmer, mock_market_data_fetcher):
+async def test_warm_ohlcv_no_data(cache_warmer, mock_market_data_service):
     """Test warming OHLCV when no data is returned."""
     # Arrange
-    mock_market_data_fetcher.fetch_ohlcv = AsyncMock(return_value=None)
+    mock_market_data_service.get_ohlcv_history = AsyncMock(return_value=None)
 
     # Act
     result = await cache_warmer._warm_ohlcv("BTC/USDT")
@@ -225,20 +250,20 @@ async def test_warm_ohlcv_no_data(cache_warmer, mock_market_data_fetcher):
 
 
 @pytest.mark.asyncio
-async def test_warm_ticker_success(cache_warmer, mock_redis, mock_market_data_fetcher):
+async def test_warm_ticker_success(cache_warmer, mock_redis, mock_market_data_service):
     """Test warming ticker data."""
     # Act
     result = await cache_warmer._warm_ticker("BTC/USDT")
 
     # Assert
     assert result is True
-    assert mock_market_data_fetcher.fetch_ticker.called
+    assert mock_market_data_service.get_snapshot.called
     assert mock_redis.set.called
 
 
 @pytest.mark.asyncio
 async def test_warm_orderbook_success(
-    cache_warmer, mock_redis, mock_market_data_fetcher
+    cache_warmer, mock_redis, mock_market_data_service
 ):
     """Test warming orderbook data."""
     # Act
@@ -246,7 +271,7 @@ async def test_warm_orderbook_success(
 
     # Assert
     assert result is True
-    assert mock_market_data_fetcher.fetch_orderbook.called
+    assert mock_market_data_service.get_snapshot.called
     assert mock_redis.set.called
 
 

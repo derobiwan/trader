@@ -161,6 +161,7 @@ class WebSocketHealthMonitor:
 
         # No messages received yet
         if not self.last_message_time:
+            self.metrics.consecutive_unhealthy_checks += 1
             logger.debug("Health check: No messages received yet")
             return False
 

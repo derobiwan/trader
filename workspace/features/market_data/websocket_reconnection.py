@@ -41,6 +41,11 @@ class ReconnectionStats:
             return 100.0
 
         uptime_time = total_time - self.total_downtime_seconds
+
+        # Ensure uptime is not negative due to timing issues
+        if uptime_time < 0:
+            uptime_time = 0.0
+
         return (uptime_time / total_time) * 100.0
 
 
@@ -134,7 +139,6 @@ class WebSocketReconnectionManager:
             Exception: If connect_func raises an unhandled exception
         """
         self.is_connecting = True
-        self.stats.total_attempts = 0
 
         while not self.is_connected:
             # Check max attempts

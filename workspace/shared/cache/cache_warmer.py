@@ -15,15 +15,17 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from dataclasses import dataclass, field
 import json
 
 # Import from workspace features
-from workspace.features.market_data.data_fetcher import MarketDataFetcher
-from workspace.shared.cache.redis_manager import RedisManager
-from workspace.features.balance_tracker.balance_fetcher import BalanceFetcher
-from workspace.features.position_tracker.position_service import PositionService
+if TYPE_CHECKING:
+    # Type-checking only imports (avoid circular dependencies and missing modules)
+    pass
+
+from workspace.features.market_data.market_data_service import MarketDataService
+from workspace.infrastructure.cache.redis_manager import RedisManager
 
 logger = logging.getLogger(__name__)
 
@@ -79,9 +81,9 @@ class CacheWarmer:
     def __init__(
         self,
         redis_manager: RedisManager,
-        market_data_fetcher: MarketDataFetcher,
-        balance_fetcher: BalanceFetcher,
-        position_service: PositionService,
+        market_data_service: MarketDataService,
+        balance_fetcher: Any,  # BalanceFetcher
+        position_service: Any,  # PositionService
         config: Optional[CacheConfig] = None,
     ):
         """
@@ -89,13 +91,13 @@ class CacheWarmer:
 
         Args:
             redis_manager: Redis cache manager
-            market_data_fetcher: Market data fetching service
+            market_data_service: Market data service
             balance_fetcher: Balance fetching service
             position_service: Position management service
             config: Cache warming configuration
         """
         self.redis = redis_manager
-        self.market_data = market_data_fetcher
+        self.market_data = market_data_service
         self.balance_fetcher = balance_fetcher
         self.position_service = position_service
         self.config = config or CacheConfig()
@@ -227,17 +229,29 @@ class CacheWarmer:
         try:
             cache_key = f"market:ohlcv:{symbol}:{self.config.market_ohlcv_timeframe}"
 
-            # Fetch OHLCV data
-            ohlcv_data = await self.market_data.fetch_ohlcv(
+            # Fetch OHLCV data from market data service
+            ohlcv_data = await self.market_data.get_ohlcv_history(
                 symbol=symbol,
                 timeframe=self.config.market_ohlcv_timeframe,
                 limit=self.config.market_ohlcv_candles,
             )
 
             if ohlcv_data:
+                # Convert to JSON-serializable format
+                ohlcv_json = [
+                    [
+                        ohlcv.timestamp.isoformat(),
+                        float(ohlcv.open),
+                        float(ohlcv.high),
+                        float(ohlcv.low),
+                        float(ohlcv.close),
+                        float(ohlcv.volume),
+                    ]
+                    for ohlcv in ohlcv_data
+                ]
                 # Store in cache
                 await self.redis.set(
-                    cache_key, json.dumps(ohlcv_data), ttl=self.config.market_ohlcv_ttl
+                    cache_key, json.dumps(ohlcv_json), ttl=self.config.market_ohlcv_ttl
                 )
                 return True
 
@@ -252,10 +266,23 @@ class CacheWarmer:
         try:
             cache_key = f"market:ticker:{symbol}"
 
-            # Fetch ticker data
-            ticker_data = await self.market_data.fetch_ticker(symbol)
+            # Fetch ticker data from market snapshot
+            snapshot = await self.market_data.get_snapshot(symbol)
 
-            if ticker_data:
+            if snapshot and snapshot.ticker:
+                # Convert ticker to dict for caching
+                ticker_data = {
+                    "symbol": snapshot.ticker.symbol,
+                    "last": float(snapshot.ticker.last_price),
+                    "bid": float(snapshot.ticker.bid_price)
+                    if snapshot.ticker.bid_price
+                    else None,
+                    "ask": float(snapshot.ticker.ask_price)
+                    if snapshot.ticker.ask_price
+                    else None,
+                    "volume": float(snapshot.ticker.volume_24h),
+                    "timestamp": snapshot.ticker.timestamp.isoformat(),
+                }
                 # Store in cache
                 await self.redis.set(
                     cache_key,
@@ -275,12 +302,26 @@ class CacheWarmer:
         try:
             cache_key = f"market:orderbook:{symbol}"
 
-            # Fetch orderbook data
-            orderbook_data = await self.market_data.fetch_orderbook(
-                symbol=symbol, limit=self.config.market_orderbook_levels
-            )
+            # Fetch orderbook data from market snapshot
+            snapshot = await self.market_data.get_snapshot(symbol)
 
-            if orderbook_data:
+            if snapshot and snapshot.orderbook:
+                # Convert orderbook to dict for caching
+                orderbook_data = {
+                    "bids": [
+                        [float(price), float(size)]
+                        for price, size in snapshot.orderbook.bids[
+                            : self.config.market_orderbook_levels
+                        ]
+                    ],
+                    "asks": [
+                        [float(price), float(size)]
+                        for price, size in snapshot.orderbook.asks[
+                            : self.config.market_orderbook_levels
+                        ]
+                    ],
+                    "timestamp": snapshot.orderbook.timestamp.isoformat(),
+                }
                 # Store in cache
                 await self.redis.set(
                     cache_key,

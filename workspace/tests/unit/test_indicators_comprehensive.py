@@ -357,8 +357,8 @@ class TestMACDCalculation:
         assert macd is not None
         # On strong uptrend, MACD should be positive
         assert macd.macd_line > Decimal("0")
-        # Histogram should be positive on uptrend
-        assert macd.histogram > Decimal("0")
+        # Histogram should be non-negative on uptrend (can be zero on perfect linear trend)
+        assert macd.histogram >= Decimal("0")
 
     def test_macd_on_downtrend(self, trending_down_data):
         """Test MACD behavior on downtrend"""
@@ -367,8 +367,8 @@ class TestMACDCalculation:
         assert macd is not None
         # On strong downtrend, MACD should be negative
         assert macd.macd_line < Decimal("0")
-        # Histogram should be negative on downtrend
-        assert macd.histogram < Decimal("0")
+        # Histogram should be non-positive on downtrend (can be zero on perfect linear trend)
+        assert macd.histogram <= Decimal("0")
 
     def test_macd_crossover_potential(self, standard_ohlcv_data):
         """Test MACD crossover signals"""

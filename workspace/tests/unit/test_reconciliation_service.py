@@ -96,22 +96,26 @@ def sample_exchange_position():
 # ============================================================================
 
 
-def test_reconciliation_service_initialization():
+def test_reconciliation_service_initialization(mock_position_service):
     """Test ReconciliationService initialization"""
     exchange = MagicMock()
-    service = ReconciliationService(exchange=exchange)
+    service = ReconciliationService(
+        exchange=exchange, position_service=mock_position_service
+    )
 
     assert service.exchange == exchange
+    assert service.position_service == mock_position_service
     assert service.periodic_interval == 300  # Default 5 minutes
     assert service.discrepancy_threshold == Decimal("0.00001")
     assert service.reconciliation_task is None
 
 
-def test_reconciliation_service_custom_params():
+def test_reconciliation_service_custom_params(mock_position_service):
     """Test custom parameters"""
     exchange = MagicMock()
     service = ReconciliationService(
         exchange=exchange,
+        position_service=mock_position_service,
         periodic_interval=600,
         discrepancy_threshold=Decimal("0.0001"),
     )
@@ -457,16 +461,18 @@ async def test_periodic_reconciliation_loop_execution(
 @pytest.mark.asyncio
 async def test_update_position_quantity(reconciliation_service):
     """Test updating position quantity in database"""
+    mock_conn = AsyncMock()
+    mock_conn.execute = AsyncMock()
+
+    # Context manager for acquire
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    acquire_ctx.__aexit__ = AsyncMock(return_value=None)
+
     with patch(
-        "workspace.features.trade_executor.reconciliation.get_pool"
-    ) as mock_get_pool:
-        mock_pool = AsyncMock()
-        mock_conn = MagicMock()
-        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_conn.__aexit__ = AsyncMock(return_value=None)
-        mock_conn.execute = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=mock_conn)
-        mock_get_pool.return_value = mock_pool
+        "workspace.features.trade_executor.reconciliation.DatabasePool"
+    ) as mock_pool_class:
+        mock_pool_class.get_connection = MagicMock(return_value=acquire_ctx)
 
         await reconciliation_service._update_position_quantity(
             position_id="pos-123",
@@ -480,16 +486,18 @@ async def test_update_position_quantity(reconciliation_service):
 @pytest.mark.asyncio
 async def test_update_position_quantity_error(reconciliation_service):
     """Test position quantity update error handling"""
+    mock_conn = AsyncMock()
+    mock_conn.execute = AsyncMock(side_effect=asyncpg.PostgresError("DB Error"))
+
+    # Context manager for acquire
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    acquire_ctx.__aexit__ = AsyncMock(return_value=None)
+
     with patch(
-        "workspace.features.trade_executor.reconciliation.get_pool"
-    ) as mock_get_pool:
-        mock_pool = AsyncMock()
-        mock_conn = MagicMock()
-        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_conn.__aexit__ = AsyncMock(return_value=None)
-        mock_conn.execute = AsyncMock(side_effect=asyncpg.PostgresError("DB Error"))
-        mock_pool.acquire = MagicMock(return_value=mock_conn)
-        mock_get_pool.return_value = mock_pool
+        "workspace.features.trade_executor.reconciliation.DatabasePool"
+    ) as mock_pool_class:
+        mock_pool_class.get_connection = MagicMock(return_value=acquire_ctx)
 
         with pytest.raises(Exception):
             await reconciliation_service._update_position_quantity(
@@ -516,16 +524,18 @@ async def test_store_reconciliation_result(reconciliation_service):
         timestamp=datetime.utcnow(),
     )
 
+    mock_conn = AsyncMock()
+    mock_conn.execute = AsyncMock()
+
+    # Context manager for acquire
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    acquire_ctx.__aexit__ = AsyncMock(return_value=None)
+
     with patch(
-        "workspace.features.trade_executor.reconciliation.get_pool"
-    ) as mock_get_pool:
-        mock_pool = AsyncMock()
-        mock_conn = MagicMock()
-        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_conn.__aexit__ = AsyncMock(return_value=None)
-        mock_conn.execute = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=mock_conn)
-        mock_get_pool.return_value = mock_pool
+        "workspace.features.trade_executor.reconciliation.DatabasePool"
+    ) as mock_pool_class:
+        mock_pool_class.get_connection = MagicMock(return_value=acquire_ctx)
 
         await reconciliation_service._store_reconciliation_result(result)
 
@@ -584,16 +594,18 @@ async def test_store_position_snapshot(reconciliation_service):
         timestamp=datetime.utcnow(),
     )
 
+    mock_conn = AsyncMock()
+    mock_conn.execute = AsyncMock()
+
+    # Context manager for acquire
+    acquire_ctx = AsyncMock()
+    acquire_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    acquire_ctx.__aexit__ = AsyncMock(return_value=None)
+
     with patch(
-        "workspace.features.trade_executor.reconciliation.get_pool"
-    ) as mock_get_pool:
-        mock_pool = AsyncMock()
-        mock_conn = MagicMock()
-        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_conn.__aexit__ = AsyncMock(return_value=None)
-        mock_conn.execute = AsyncMock()
-        mock_pool.acquire = MagicMock(return_value=mock_conn)
-        mock_get_pool.return_value = mock_pool
+        "workspace.features.trade_executor.reconciliation.DatabasePool"
+    ) as mock_pool_class:
+        mock_pool_class.get_connection = MagicMock(return_value=acquire_ctx)
 
         await reconciliation_service._store_position_snapshot(snapshot)
 

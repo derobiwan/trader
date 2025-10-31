@@ -8,8 +8,10 @@ Date: 2025-10-30
 """
 
 import asyncio
+from unittest.mock import AsyncMock
 
 import pytest
+import pytest_asyncio
 
 from workspace.infrastructure.cache.redis_manager import (
     RedisManager,
@@ -37,14 +39,100 @@ def redis_config():
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def redis_manager(redis_config):
-    """Create Redis manager instance"""
+    """Create Redis manager instance with mocked Redis client"""
     manager = RedisManager(**redis_config)
+
+    # In-memory storage for mock Redis
+    storage = {}
+    stats = {"hits": 0, "misses": 0, "commands": 0}
+
+    # Create mock Redis client with stateful behavior
+    mock_client = AsyncMock()
+    mock_pool = AsyncMock()
+    mock_pool.disconnect = AsyncMock()
+
+    # Mock basic Redis operations with state
+    async def mock_get(key):
+        stats["commands"] += 1
+        if key in storage:
+            stats["hits"] += 1
+            return storage.get(key)
+        else:
+            stats["misses"] += 1
+            return None
+
+    async def mock_set(key, value):
+        storage[key] = value
+        return True
+
+    async def mock_setex(key, ttl, value):
+        storage[key] = value
+        return True
+
+    async def mock_delete(*keys):
+        deleted = 0
+        for key in keys:
+            if key in storage:
+                del storage[key]
+                deleted += 1
+        return deleted
+
+    async def mock_exists(*keys):
+        return sum(1 for key in keys if key in storage)
+
+    async def mock_scan_iter(match=None):
+        """Mock scan_iter that yields matching keys"""
+        import re
+
+        if match:
+            # Convert Redis glob pattern to regex
+            pattern = match.replace("*", ".*").replace("?", ".")
+            regex = re.compile(f"^{pattern}$")
+            for key in list(storage.keys()):
+                if regex.match(key.decode() if isinstance(key, bytes) else key):
+                    yield key
+        else:
+            for key in list(storage.keys()):
+                yield key
+
+    # Mock info to return dynamic stats
+    async def mock_info(*args, **kwargs):
+        return {
+            "keyspace_hits": stats["hits"],
+            "keyspace_misses": stats["misses"],
+            "total_commands_processed": stats["commands"],
+        }
+
+    # Assign mocked methods
+    mock_client.ping = AsyncMock(return_value=True)
+    mock_client.get = mock_get
+    mock_client.set = mock_set
+    mock_client.setex = mock_setex
+    mock_client.delete = mock_delete
+    mock_client.exists = mock_exists
+    mock_client.scan_iter = mock_scan_iter
+    mock_client.info = mock_info
+    mock_client.close = AsyncMock()
+
+    # Override the initialize method to use mock client
+    async def fake_initialize():
+        if manager.is_initialized:
+            return
+
+        manager.client = mock_client
+        manager.pool = mock_pool
+        manager.is_initialized = True
+
+    manager.initialize = fake_initialize
+
     yield manager
+
     # Cleanup
     if manager.is_initialized:
-        await manager.close()
+        manager.is_initialized = False
+    storage.clear()
 
 
 # ============================================================================
@@ -656,3 +744,252 @@ async def test_redis_store_lists(redis_manager):
     assert result == data
 
     await redis_manager.delete("list_key")
+
+
+# ============================================================================
+# Additional Edge Case Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_redis_set_without_ttl(redis_manager):
+    """Test set operation without TTL explicitly"""
+    await redis_manager.initialize()
+
+    result = await redis_manager.set(
+        "persistent_key", {"data": "value"}, ttl_seconds=None
+    )
+    assert result is True
+
+    value = await redis_manager.get("persistent_key")
+    assert value == {"data": "value"}
+
+    await redis_manager.delete("persistent_key")
+
+
+@pytest.mark.asyncio
+async def test_redis_clear_with_no_matches(redis_manager):
+    """Test clearing with pattern that matches nothing"""
+    await redis_manager.initialize()
+
+    deleted = await redis_manager.clear("nonexistent_pattern:*")
+    assert deleted == 0
+
+
+@pytest.mark.asyncio
+async def test_redis_exists_without_initialization():
+    """Test exists operation without initialization"""
+    manager = RedisManager()
+
+    with pytest.raises(RuntimeError, match="Redis not initialized"):
+        await manager.exists("key")
+
+
+@pytest.mark.asyncio
+async def test_redis_clear_without_initialization():
+    """Test clear operation without initialization"""
+    manager = RedisManager()
+
+    with pytest.raises(RuntimeError, match="Redis not initialized"):
+        await manager.clear("*")
+
+
+@pytest.mark.asyncio
+async def test_redis_scan_iter_with_multiple_keys(redis_manager):
+    """Test scan_iter with multiple matching keys"""
+    await redis_manager.initialize()
+
+    # Create multiple keys
+    for i in range(10):
+        await redis_manager.set(f"scan_test_{i}", {"value": i})
+
+    # Clear them with pattern
+    deleted = await redis_manager.clear("scan_test_*")
+    assert deleted >= 10
+
+
+@pytest.mark.asyncio
+async def test_redis_get_stats_hit_rate_calculation(redis_manager):
+    """Test hit rate calculation in stats"""
+    await redis_manager.initialize()
+
+    # Perform operations to generate hits and misses
+    await redis_manager.set("hit_key", "value")
+    await redis_manager.get("hit_key")  # Hit
+    await redis_manager.get("miss_key")  # Miss
+
+    stats = await redis_manager.get_stats()
+
+    assert "hit_rate_percent" in stats
+    assert stats["total_requests"] >= 2
+
+    await redis_manager.delete("hit_key")
+
+
+@pytest.mark.asyncio
+async def test_redis_set_error_handling(redis_manager):
+    """Test set operation handles errors gracefully"""
+    await redis_manager.initialize()
+
+    # Mock client to simulate error
+    async def mock_set(*args, **kwargs):
+        raise Exception("Set error")
+
+    redis_manager.client.set = mock_set
+
+    result = await redis_manager.set("key", "value")
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_redis_set_error_handling_with_ttl(redis_manager):
+    """Test setex operation handles errors gracefully"""
+    await redis_manager.initialize()
+
+    # Mock client to simulate error
+    async def mock_setex(*args, **kwargs):
+        raise Exception("Setex error")
+
+    redis_manager.client.setex = mock_setex
+
+    result = await redis_manager.set("key", "value", ttl_seconds=60)
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_redis_delete_error_handling(redis_manager):
+    """Test delete operation handles errors gracefully"""
+    await redis_manager.initialize()
+
+    # Mock client to simulate error
+    async def mock_delete(*args, **kwargs):
+        raise Exception("Delete error")
+
+    redis_manager.client.delete = mock_delete
+
+    result = await redis_manager.delete("key")
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_redis_exists_error_handling(redis_manager):
+    """Test exists operation handles errors gracefully"""
+    await redis_manager.initialize()
+
+    # Mock client to simulate error
+    async def mock_exists(*args, **kwargs):
+        raise Exception("Exists error")
+
+    redis_manager.client.exists = mock_exists
+
+    result = await redis_manager.exists("key")
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_redis_clear_error_handling(redis_manager):
+    """Test clear operation handles errors gracefully"""
+    await redis_manager.initialize()
+
+    # Mock client to simulate error - must be an async generator
+    async def mock_scan_iter(*args, **kwargs):
+        raise Exception("Scan error")
+        yield  # Make it a generator (unreachable but needed for syntax)
+
+    redis_manager.client.scan_iter = mock_scan_iter
+
+    result = await redis_manager.clear("*")
+    assert result == 0
+
+
+@pytest.mark.asyncio
+async def test_redis_health_check_measures_latency(redis_manager):
+    """Test health check measures latency"""
+    await redis_manager.initialize()
+
+    health = await redis_manager.health_check()
+
+    assert health["healthy"] is True
+    assert "latency_ms" in health
+    assert isinstance(health["latency_ms"], float)
+    assert health["latency_ms"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_redis_health_check_error_handling(redis_manager):
+    """Test health check handles ping errors"""
+    await redis_manager.initialize()
+
+    # Mock ping to fail
+    async def mock_ping():
+        raise Exception("Ping failed")
+
+    redis_manager.client.ping = mock_ping
+
+    health = await redis_manager.health_check()
+
+    assert health["healthy"] is False
+    assert "error" in health
+
+
+@pytest.mark.asyncio
+async def test_redis_get_stats_error_handling(redis_manager):
+    """Test stats handles info errors"""
+    await redis_manager.initialize()
+
+    # Mock info to fail
+    async def mock_info(*args, **kwargs):
+        raise Exception("Info failed")
+
+    redis_manager.client.info = mock_info
+
+    stats = await redis_manager.get_stats()
+
+    assert "error" in stats
+
+
+@pytest.mark.asyncio
+async def test_redis_get_stats_zero_requests(redis_manager):
+    """Test stats with zero total requests"""
+    await redis_manager.initialize()
+
+    # Mock info to return zeros
+    async def mock_info(*args, **kwargs):
+        return {
+            "keyspace_hits": 0,
+            "keyspace_misses": 0,
+            "total_commands_processed": 0,
+        }
+
+    redis_manager.client.info = mock_info
+
+    stats = await redis_manager.get_stats()
+
+    assert stats["hit_rate_percent"] == 0
+    assert stats["total_requests"] == 0
+
+
+@pytest.mark.asyncio
+async def test_global_redis_close_without_init():
+    """Test closing global Redis without initialization"""
+    import workspace.infrastructure.cache.redis_manager as redis_module
+
+    redis_module._global_redis = None
+
+    # Should not raise error
+    await close_redis()
+
+
+@pytest.mark.asyncio
+async def test_redis_connection_pool_parameters(redis_config):
+    """Test connection pool uses correct parameters"""
+    manager = RedisManager(**redis_config)
+    await manager.initialize()
+
+    assert manager.pool is not None
+    # Pool should have correct database
+    # Note: We can't directly access pool.connection_kwargs easily,
+    # but we can verify the pool exists
+    assert manager.client is not None
+
+    await manager.close()

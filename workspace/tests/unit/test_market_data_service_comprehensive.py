@@ -141,6 +141,35 @@ class TestMarketDataServiceInitialization:
         assert service.running is False
         assert len(service.latest_tickers) == 0
         assert len(service.ohlcv_data) == len(mock_symbols)
+        # Default cache service should be created
+        assert service.cache is not None
+
+    def test_initialization_without_explicit_cache_service(self, mock_symbols):
+        """Test that default cache service is created when not provided"""
+        # Call MarketDataService WITHOUT cache_service parameter
+        # This should trigger the else branch (line 86-88) that creates default CacheService
+        service = MarketDataService(symbols=mock_symbols)
+
+        # Cache should be created (not None)
+        assert service.cache is not None
+        # Verify it's the default CacheService instance
+        from workspace.features.caching import CacheService
+
+        assert isinstance(service.cache, CacheService)
+
+    def test_initialization_with_provided_cache_service(self, mock_symbols):
+        """Test initialization with explicitly provided cache service"""
+        from workspace.features.caching import CacheService
+
+        # Create a custom cache service
+        custom_cache = CacheService(enabled=False)
+
+        # Pass it to the service
+        service = MarketDataService(symbols=mock_symbols, cache_service=custom_cache)
+
+        # Service should use the provided cache
+        assert service.cache is custom_cache
+        assert service.cache.enabled is False
 
     def test_initialization_with_custom_parameters(self, mock_symbols):
         """Test service initialization with custom parameters"""
@@ -172,6 +201,22 @@ class TestMarketDataServiceInitialization:
             formatted = service._format_symbol(symbol)
             assert "/" in formatted
             assert ":" in formatted
+
+    def test_symbol_formatting_edge_cases(self):
+        """Test symbol formatting edge cases"""
+        service = MarketDataService(symbols=["BTCUSDT"])
+
+        # Already formatted symbol should return as-is
+        formatted_symbol = "BTC/USDT:USDT"
+        assert service._format_symbol(formatted_symbol) == formatted_symbol
+
+        # USDT symbol should be formatted
+        assert service._format_symbol("BTCUSDT") == "BTC/USDT:USDT"
+        assert service._format_symbol("ETHUSDT") == "ETH/USDT:USDT"
+
+        # Non-USDT symbol should return as-is (fallback case)
+        weird_symbol = "BTCEUR"
+        assert service._format_symbol(weird_symbol) == weird_symbol
 
 
 # =============================================================================

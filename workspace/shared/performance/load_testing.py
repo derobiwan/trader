@@ -494,12 +494,18 @@ class LoadTester:
 
             thread_count = self.process.num_threads()
 
-            # Disk I/O
+            # Disk I/O (not available on all platforms, e.g., macOS)
             try:
                 io_counters = self.process.io_counters()
                 disk_read_mb = io_counters.read_bytes / (1024 * 1024)
                 disk_write_mb = io_counters.write_bytes / (1024 * 1024)
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
+            except (
+                psutil.AccessDenied,
+                psutil.NoSuchProcess,
+                AttributeError,
+                NotImplementedError,
+            ):
+                # I/O counters not available on this platform
                 disk_read_mb = 0.0
                 disk_write_mb = 0.0
 

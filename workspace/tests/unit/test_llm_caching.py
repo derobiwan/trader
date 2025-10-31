@@ -29,6 +29,7 @@ def create_test_snapshot(
         high_24h=Decimal(str(price + 500)),
         low_24h=Decimal(str(price - 500)),
         volume_24h=Decimal("1000"),
+        quote_volume_24h=Decimal(str(price * 1000)),
         change_24h=Decimal("100"),
         change_24h_pct=Decimal("2.0"),
         timestamp=datetime.utcnow(),
@@ -179,8 +180,9 @@ async def test_llm_cache_with_similar_prices():
     engine._call_llm = AsyncMock(return_value=(mock_response_text, mock_usage))
 
     # Prices within $10 should round to same value
+    # 45123 rounds to 45120, 45125 also rounds to 45120
     snapshot1 = create_test_snapshot("BTC/USDT:USDT", 45123.0, rsi=65.0, macd=100.0)
-    snapshot2 = create_test_snapshot("BTC/USDT:USDT", 45127.0, rsi=65.0, macd=100.0)
+    snapshot2 = create_test_snapshot("BTC/USDT:USDT", 45125.0, rsi=65.0, macd=100.0)
 
     # First call
     signals1 = await engine.generate_signals(
@@ -247,16 +249,23 @@ async def test_llm_cache_different_symbols():
 
     # Mock LLM to return different signals for each symbol
     def mock_call_llm_side_effect(prompt):
-        if "BTC" in prompt:
+        # Check which symbol is being analyzed (look for the market data section)
+        if "## BTC/USDT:USDT" in prompt:
             response = """
             ```json
             {"symbol": "BTC/USDT:USDT", "decision": "buy", "confidence": 0.8, "size_pct": 0.2, "reasoning": "BTC strong"}
             ```
             """
-        else:
+        elif "## ETH/USDT:USDT" in prompt:
             response = """
             ```json
             {"symbol": "ETH/USDT:USDT", "decision": "sell", "confidence": 0.7, "size_pct": 0.15, "reasoning": "ETH weak"}
+            ```
+            """
+        else:
+            response = """
+            ```json
+            {"symbol": "UNKNOWN", "decision": "hold", "confidence": 0.5, "size_pct": 0.0, "reasoning": "Unknown"}
             ```
             """
         mock_usage = {
