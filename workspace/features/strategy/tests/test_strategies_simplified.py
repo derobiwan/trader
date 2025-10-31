@@ -7,28 +7,29 @@ Author: Strategy Implementation Team
 Date: 2025-10-28
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Optional
 
+import pytest
+
+from workspace.features.market_data import (
+    EMA,
+    MACD,
+    OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
 from workspace.features.strategy import (
-    StrategyType,
     MeanReversionStrategy,
+    StrategyType,
     TrendFollowingStrategy,
     VolatilityBreakoutStrategy,
 )
 from workspace.features.trading_loop import TradingDecision
-from workspace.features.market_data import (
-    MarketDataSnapshot,
-    OHLCV,
-    Ticker,
-    RSI,
-    MACD,
-    EMA,
-    BollingerBands,
-    Timeframe,
-)
-
 
 # ============================================================================
 # Helper Functions
@@ -117,11 +118,11 @@ def create_bollinger_bands(
 
 def create_snapshot(
     price: Decimal = Decimal("50000.00"),
-    rsi: RSI = None,
-    macd: MACD = None,
-    ema_fast: EMA = None,
-    ema_slow: EMA = None,
-    bollinger: BollingerBands = None,
+    rsi: Optional[RSI] = None,
+    macd: Optional[MACD] = None,
+    ema_fast: Optional[EMA] = None,
+    ema_slow: Optional[EMA] = None,
+    bollinger: Optional[BollingerBands] = None,
 ) -> MarketDataSnapshot:
     """Create a market data snapshot with optional indicators"""
     return MarketDataSnapshot(

@@ -96,12 +96,15 @@ class QueryOptimizer:
         try:
             async with self.pool.acquire() as conn:
                 # Enable pg_stat_statements if available
-                await conn.execute("""
+                await conn.execute(
+                    """
                     CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
-                """)
+                """
+                )
 
                 # Create optimization metadata table
-                await conn.execute("""
+                await conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS optimization_metadata (
                         id SERIAL PRIMARY KEY,
                         optimization_type VARCHAR(50) NOT NULL,
@@ -112,7 +115,8 @@ class QueryOptimizer:
                         status VARCHAR(20),
                         details JSONB
                     );
-                """)
+                """
+                )
 
                 logger.info("Query optimizer initialized successfully")
 
@@ -306,12 +310,14 @@ class QueryOptimizer:
         try:
             async with self.pool.acquire() as conn:
                 # Check if pg_stat_statements is available
-                has_extension = await conn.fetchval("""
+                has_extension = await conn.fetchval(
+                    """
                     SELECT EXISTS (
                         SELECT 1 FROM pg_extension
                         WHERE extname = 'pg_stat_statements'
                     );
-                """)
+                """
+                )
 
                 if not has_extension:
                     logger.warning("pg_stat_statements extension not available")
@@ -386,7 +392,8 @@ class QueryOptimizer:
         """
         try:
             async with self.pool.acquire() as conn:
-                rows = await conn.fetch("""
+                rows = await conn.fetch(
+                    """
                     SELECT
                         schemaname,
                         tablename,
@@ -398,7 +405,8 @@ class QueryOptimizer:
                     FROM pg_stat_user_indexes
                     WHERE schemaname = 'public'
                     ORDER BY idx_scan DESC;
-                """)
+                """
+                )
 
                 stats = []
                 for row in rows:
@@ -450,7 +458,8 @@ class QueryOptimizer:
         """
         try:
             async with self.pool.acquire() as conn:
-                rows = await conn.fetch("""
+                rows = await conn.fetch(
+                    """
                     SELECT
                         schemaname,
                         tablename,
@@ -464,7 +473,8 @@ class QueryOptimizer:
                     FROM pg_stat_user_tables
                     WHERE schemaname = 'public'
                     ORDER BY n_live_tup DESC;
-                """)
+                """
+                )
 
                 stats = []
                 for row in rows:

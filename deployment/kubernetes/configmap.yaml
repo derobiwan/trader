@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-trader-config
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+    component: configuration
+data:
+  # Application Configuration
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+
+  # Trading Configuration
+  TRADING_MODE: "paper"  # Switch to "live" after validation
+  DECISION_INTERVAL: "180"  # 3 minutes in seconds
+  MAX_POSITION_SIZE: "0.1"  # 10% of portfolio
+  MAX_TOTAL_EXPOSURE: "0.8"  # 80% of portfolio
+  STOP_LOSS_PERCENTAGE: "0.02"  # 2% stop loss
+  TAKE_PROFIT_PERCENTAGE: "0.05"  # 5% take profit
+
+  # Assets Configuration
+  TRADING_PAIRS: "BTC/USDT,ETH/USDT,SOL/USDT,AVAX/USDT,MATIC/USDT,ARB/USDT"
+  BASE_CURRENCY: "USDT"
+
+  # Exchange Configuration
+  EXCHANGE_NAME: "bybit"
+  EXCHANGE_TESTNET: "false"
+
+  # Database Configuration
+  DATABASE_HOST: "postgres-service.llm-trader-prod.svc.cluster.local"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "llm_trader"
+  DATABASE_SSL_MODE: "require"
+
+  # Redis Configuration
+  REDIS_HOST: "redis-service.llm-trader-prod.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  CACHE_TTL_MARKET_DATA: "60"  # 1 minute
+  CACHE_TTL_LLM_RESPONSE: "3600"  # 1 hour
+
+  # LLM Configuration
+  LLM_PROVIDER: "openrouter"
+  LLM_MODEL: "anthropic/claude-3-haiku"
+  LLM_TEMPERATURE: "0.1"
+  LLM_MAX_TOKENS: "2000"
+  LLM_TIMEOUT: "30"
+
+  # Monitoring Configuration
+  METRICS_PORT: "8000"
+  HEALTH_CHECK_PORT: "8001"
+  PROMETHEUS_ENABLED: "true"
+
+  # Alerting Configuration
+  ALERT_CHANNELS: "email,slack"
+  ALERT_CRITICAL_ENABLED: "true"
+  ALERT_WARNING_ENABLED: "true"
+
+  # Performance Configuration
+  WORKER_THREADS: "4"
+  CONNECTION_POOL_SIZE: "20"
+  REQUEST_TIMEOUT: "30"
+
+  # Security Configuration
+  ENABLE_RATE_LIMITING: "true"
+  MAX_REQUESTS_PER_MINUTE: "60"
+  ENABLE_CORS: "false"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-trader-scripts
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+    component: scripts
+data:
+  init-db.sh: |
+    #!/bin/bash
+    set -e
+
+    echo "Initializing database..."
+
+    # Wait for PostgreSQL to be ready
+    until PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d postgres -c '\q'; do
+      echo "PostgreSQL is unavailable - sleeping"
+      sleep 2
+    done
+
+    echo "PostgreSQL is ready"
+
+    # Create database if not exists
+    PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -d postgres <<-EOSQL
+      SELECT 'CREATE DATABASE ${DATABASE_NAME}'
+      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DATABASE_NAME}');
+    EOSQL
+
+    # Run migrations
+    echo "Running database migrations..."
+    cd /app && alembic upgrade head
+
+    echo "Database initialization complete"
+
+  health-check.sh: |
+    #!/bin/bash
+    # Health check script for liveness probe
+
+    # Check if the application is responding
+    response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/health)
+
+    if [ "$response" = "200" ]; then
+      exit 0
+    else
+      exit 1
+    fi
+
+  readiness-check.sh: |
+    #!/bin/bash
+    # Readiness check script for readiness probe
+
+    # Check if the application is ready to serve traffic
+    response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/health/ready)
+
+    if [ "$response" = "200" ]; then
+      exit 0
+    else
+      exit 1
+    fi

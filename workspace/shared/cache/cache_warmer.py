@@ -274,12 +274,16 @@ class CacheWarmer:
                 ticker_data = {
                     "symbol": snapshot.ticker.symbol,
                     "last": float(snapshot.ticker.last_price),
-                    "bid": float(snapshot.ticker.bid_price)
-                    if snapshot.ticker.bid_price
-                    else None,
-                    "ask": float(snapshot.ticker.ask_price)
-                    if snapshot.ticker.ask_price
-                    else None,
+                    "bid": (
+                        float(snapshot.ticker.bid_price)
+                        if snapshot.ticker.bid_price
+                        else None
+                    ),
+                    "ask": (
+                        float(snapshot.ticker.ask_price)
+                        if snapshot.ticker.ask_price
+                        else None
+                    ),
                     "volume": float(snapshot.ticker.volume_24h),
                     "timestamp": snapshot.ticker.timestamp.isoformat(),
                 }
@@ -527,9 +531,11 @@ class CacheWarmer:
 
             stats = {
                 "warming": {
-                    "last_warm_time": self._last_warm_time.isoformat()
-                    if self._last_warm_time
-                    else None,
+                    "last_warm_time": (
+                        self._last_warm_time.isoformat()
+                        if self._last_warm_time
+                        else None
+                    ),
                     "last_warm_duration_ms": self.stats.warm_time_ms,
                     "total_keys_warmed": self.stats.total_keys,
                     "successful_keys": self.stats.successful_keys,

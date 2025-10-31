@@ -221,28 +221,28 @@ class PaperTradingPerformanceTracker:
                 "avg_loss": float(self.metrics["avg_loss"]),
                 "largest_win": float(self.metrics["largest_win"]),
                 "largest_loss": float(self.metrics["largest_loss"]),
-                "avg_trade_pnl": float(
-                    self.metrics["total_pnl"] / self.metrics["total_trades"]
-                )
-                if self.metrics["total_trades"] > 0
-                else 0.0,
+                "avg_trade_pnl": (
+                    float(self.metrics["total_pnl"] / self.metrics["total_trades"])
+                    if self.metrics["total_trades"] > 0
+                    else 0.0
+                ),
             },
             "risk_metrics": {
                 "max_drawdown": float(self.metrics["max_drawdown"]),
                 "sharpe_ratio": float(self.metrics["sharpe_ratio"]),
-                "risk_reward_ratio": float(
-                    abs(self.metrics["avg_win"] / self.metrics["avg_loss"])
-                )
-                if self.metrics["avg_loss"] != 0
-                else 0.0,
+                "risk_reward_ratio": (
+                    float(abs(self.metrics["avg_win"] / self.metrics["avg_loss"]))
+                    if self.metrics["avg_loss"] != 0
+                    else 0.0
+                ),
             },
             "time_analysis": {
                 "trading_days": len(self.daily_pnl),
-                "avg_trades_per_day": float(
-                    self.metrics["total_trades"] / len(self.daily_pnl)
-                )
-                if self.daily_pnl
-                else 0.0,
+                "avg_trades_per_day": (
+                    float(self.metrics["total_trades"] / len(self.daily_pnl))
+                    if self.daily_pnl
+                    else 0.0
+                ),
             },
         }
 
@@ -328,15 +328,19 @@ class PaperTradingPerformanceTracker:
                 "trades": stats["trades"],
                 "wins": stats["wins"],
                 "losses": stats["losses"],
-                "win_rate": float(stats["wins"] / stats["trades"] * 100)
-                if stats["trades"] > 0
-                else 0.0,
+                "win_rate": (
+                    float(stats["wins"] / stats["trades"] * 100)
+                    if stats["trades"] > 0
+                    else 0.0
+                ),
                 "total_pnl": float(stats["total_pnl"]),
                 "total_fees": float(stats["total_fees"]),
                 "net_pnl": float(stats["total_pnl"] - stats["total_fees"]),
-                "avg_pnl_per_trade": float(stats["total_pnl"] / stats["trades"])
-                if stats["trades"] > 0
-                else 0.0,
+                "avg_pnl_per_trade": (
+                    float(stats["total_pnl"] / stats["trades"])
+                    if stats["trades"] > 0
+                    else 0.0
+                ),
             }
 
         return result

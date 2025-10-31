@@ -34,10 +34,10 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 import asyncpg
-from asyncpg import Pool, Connection
+from asyncpg import Connection, Pool
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +197,8 @@ class DatabasePool:
             )
         """
         async with self.acquire() as conn:
-            return await conn.execute(query, *args, timeout=timeout)
+            result = await conn.execute(query, *args, timeout=timeout)
+            return str(result)
 
     async def fetch(self, query: str, *args, timeout: Optional[float] = None) -> list:
         """
@@ -215,7 +216,8 @@ class DatabasePool:
             positions = await pool.fetch("SELECT * FROM positions WHERE status = $1", "OPEN")
         """
         async with self.acquire() as conn:
-            return await conn.fetch(query, *args, timeout=timeout)
+            result = await conn.fetch(query, *args, timeout=timeout)
+            return list(result)
 
     async def fetchrow(
         self, query: str, *args, timeout: Optional[float] = None
@@ -383,7 +385,6 @@ async def get_pool() -> DatabasePool:
         pool = await get_pool()
         positions = await pool.fetch("SELECT * FROM positions")
     """
-    global _global_pool
     if _global_pool is None or not _global_pool.is_initialized:
         raise RuntimeError(
             "Global database pool not initialized. "

@@ -18,10 +18,11 @@ Usage:
     value = await redis.get("key")
 """
 
-import redis.asyncio as redis
-from typing import Optional, Any, Dict
-import logging
 import json
+import logging
+from typing import Any, Dict, Optional
+
+import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,7 @@ class RedisManager:
         Returns:
             Deserialized value or None if not found
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             raise RuntimeError("Redis not initialized. Call initialize() first.")
 
         try:
@@ -172,7 +173,7 @@ class RedisManager:
         Returns:
             True if successful
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             raise RuntimeError("Redis not initialized. Call initialize() first.")
 
         try:
@@ -202,12 +203,12 @@ class RedisManager:
         Returns:
             True if key existed and was deleted
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             raise RuntimeError("Redis not initialized. Call initialize() first.")
 
         try:
             result = await self.client.delete(key)
-            return result > 0
+            return bool(result > 0)
 
         except Exception as e:
             logger.error(f"Redis DELETE error for key '{key}': {e}")
@@ -223,11 +224,12 @@ class RedisManager:
         Returns:
             True if key exists
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             raise RuntimeError("Redis not initialized. Call initialize() first.")
 
         try:
-            return await self.client.exists(key) > 0
+            result = await self.client.exists(key)
+            return bool(result > 0)
 
         except Exception as e:
             logger.error(f"Redis EXISTS error for key '{key}': {e}")
@@ -243,7 +245,7 @@ class RedisManager:
         Returns:
             Number of keys deleted
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             raise RuntimeError("Redis not initialized. Call initialize() first.")
 
         try:
@@ -255,7 +257,7 @@ class RedisManager:
             if keys:
                 deleted = await self.client.delete(*keys)
                 logger.info(f"Cleared {deleted} keys matching '{pattern}'")
-                return deleted
+                return int(deleted)
 
             return 0
 
@@ -270,7 +272,7 @@ class RedisManager:
         Returns:
             Dictionary with Redis stats
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             return {"error": "Not initialized"}
 
         try:
@@ -302,7 +304,7 @@ class RedisManager:
         Returns:
             Health status dictionary
         """
-        if not self.is_initialized:
+        if not self.is_initialized or self.client is None:
             return {
                 "healthy": False,
                 "error": "Not initialized",
@@ -361,7 +363,6 @@ async def get_redis() -> RedisManager:
         redis = await get_redis()
         await redis.set("key", "value", ttl_seconds=300)
     """
-    global _global_redis
     if _global_redis is None or not _global_redis.is_initialized:
         raise RuntimeError(
             "Global Redis manager not initialized. "

@@ -1,0 +1,239 @@
+{
+  "dashboard": {
+    "title": "Risk Management Dashboard",
+    "tags": ["trading", "risk", "monitoring"],
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "refresh": "1m",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Portfolio Exposure",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "(sum(trading_position_size_usdt) / trading_balance_usdt) * 100",
+            "legendFormat": "Exposure %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 70, "color": "yellow"},
+                {"value": 85, "color": "red"}
+              ]
+            }
+          }
+        },
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [80], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "frequency": "1m",
+          "handler": 1,
+          "name": "High Portfolio Exposure",
+          "message": "Portfolio exposure > 80%"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Maximum Drawdown",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+        "targets": [
+          {
+            "expr": "trading_max_drawdown_pct",
+            "legendFormat": "Max Drawdown"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": -30, "color": "red"},
+                {"value": -15, "color": "yellow"},
+                {"value": -5, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Sharpe Ratio",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+        "targets": [
+          {
+            "expr": "trading_sharpe_ratio",
+            "legendFormat": "Sharpe Ratio"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 2,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.5, "color": "yellow"},
+                {"value": 1.0, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Position Sizes by Symbol",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "trading_position_size_usdt",
+            "legendFormat": "{{symbol}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "currencyUSD", "label": "Position Size"},
+          {"format": "short"}
+        ],
+        "legend": {"show": true, "alignAsTable": true}
+      },
+      {
+        "id": 5,
+        "title": "Stop Loss Triggers",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(trading_stop_loss_triggered_total[5m])",
+            "legendFormat": "Stop Loss Triggers/min"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Triggers"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.5], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "frequency": "5m",
+          "handler": 1,
+          "name": "Frequent Stop Loss",
+          "message": "High stop loss trigger rate detected"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Position Correlation Matrix",
+        "type": "heatmap",
+        "gridPos": {"h": 9, "w": 12, "x": 0, "y": 17},
+        "targets": [
+          {
+            "expr": "trading_position_correlation",
+            "legendFormat": "{{symbol1}}-{{symbol2}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "hideFrom": {"tooltip": false, "viz": false, "legend": false}
+            },
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Risk Limits Status",
+        "type": "table",
+        "gridPos": {"h": 9, "w": 12, "x": 12, "y": 17},
+        "targets": [
+          {
+            "expr": "trading_risk_limit_breached",
+            "format": "table",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Daily Loss Limit",
+        "type": "graph",
+        "gridPos": {"h": 9, "w": 24, "x": 0, "y": 26},
+        "targets": [
+          {
+            "expr": "sum(increase(trading_realized_pnl_total[24h]))",
+            "legendFormat": "Daily P&L"
+          },
+          {
+            "expr": "-trading_balance_usdt * 0.07",
+            "legendFormat": "Circuit Breaker (-7%)"
+          }
+        ],
+        "yaxes": [
+          {"format": "currencyUSD", "label": "P&L"},
+          {"format": "short"}
+        ],
+        "seriesOverrides": [
+          {
+            "alias": "Circuit Breaker (-7%)",
+            "color": "red",
+            "fill": 0,
+            "linewidth": 2,
+            "dashes": true
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0], "type": "lt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "last"},
+              "type": "query"
+            }
+          ],
+          "frequency": "5m",
+          "handler": 1,
+          "name": "Circuit Breaker Triggered",
+          "message": "CRITICAL: Daily loss limit reached!"
+        }
+      }
+    ]
+  }
+}

@@ -7,10 +7,10 @@ Author: Trading System Implementation Team
 Date: 2025-10-28
 """
 
-import logging
 import asyncio
-from typing import Callable, Any, Optional, Type
+import logging
 from enum import Enum
+from typing import Any, Callable, Optional, Type
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class RetryManager:
             jitter_amount = delay * 0.1 * random.random()
             delay += jitter_amount
 
-        return delay
+        return float(delay)
 
     @staticmethod
     def _fibonacci(n: int) -> int:

@@ -42,9 +42,9 @@ from fastapi import FastAPI
 
 from .config import settings
 from .middleware import (
+    not_found_handler,
     setup_middleware,
     validation_exception_handler,
-    not_found_handler,
 )
 from .routers import register_routers
 
@@ -211,9 +211,9 @@ def create_application() -> FastAPI:
         version="0.1.0",
         docs_url="/docs" if not settings.is_production else None,  # Disable in prod
         redoc_url="/redoc" if not settings.is_production else None,  # Disable in prod
-        openapi_url="/openapi.json"
-        if not settings.is_production
-        else None,  # Disable in prod
+        openapi_url=(
+            "/openapi.json" if not settings.is_production else None
+        ),  # Disable in prod
         lifespan=lifespan,
     )
 

@@ -11,9 +11,10 @@ Tests for:
 Uses FastAPI TestClient for synchronous testing.
 """
 
+import time
+
 import pytest
 from fastapi.testclient import TestClient
-import time
 
 from workspace.api.config import Settings
 

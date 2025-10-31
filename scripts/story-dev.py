@@ -211,9 +211,9 @@ class StoryDev:
 
             if story_id in registry["stories"]:
                 registry["stories"][story_id]["status"] = "completed"
-                registry["stories"][story_id]["completed_at"] = (
-                    datetime.now().isoformat()
-                )
+                registry["stories"][story_id][
+                    "completed_at"
+                ] = datetime.now().isoformat()
                 registry["statistics"]["completed"] += 1
                 registry["statistics"]["in_progress"] -= 1
 

@@ -7,11 +7,11 @@ Author: Risk Management Team
 Date: 2025-10-28
 """
 
-import logging
 import asyncio
-from decimal import Decimal
+import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict
+from decimal import Decimal
+from typing import Dict, Optional
 
 from .models import Protection, ProtectionLayer
 
@@ -366,7 +366,7 @@ class StopLossManager:
         else:
             loss = current_price - entry_price
 
-        return (loss / entry_price).abs()
+        return abs(loss / entry_price)
 
     async def _close_position_market(self, protection: Protection):
         """Close position at market (Layer 2)"""

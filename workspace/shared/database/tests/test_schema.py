@@ -9,37 +9,37 @@ Run with: pytest workspace/shared/database/tests/test_schema.py -v
 
 import asyncio
 import os
-import time
-from datetime import datetime, date
-from decimal import Decimal
-from uuid import uuid4
-
-import pytest
-import asyncpg
 
 # Import models
 import sys
+import time
+from datetime import date, datetime
+from decimal import Decimal
+from uuid import uuid4
+
+import asyncpg
+import pytest
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 )
 
-from workspace.shared.database.connection import DatabasePool
-from workspace.shared.database.models import (
-    Position,
-    PositionSide,
-    TradingSignal,
-    SignalType,
-    SignalAction,
+# Imports after path setup to ensure correct module resolution
+from workspace.shared.database.connection import DatabasePool  # noqa: E402
+from workspace.shared.database.models import (  # noqa: E402
+    CircuitBreakerState,
+    MarketData,
     Order,
     OrderSide,
-    OrderType,
     OrderStatus,
-    MarketData,
-    CircuitBreakerState,
+    OrderType,
+    Position,
+    PositionSide,
+    SignalAction,
+    SignalType,
+    TradingSignal,
     datetime_to_microseconds,
 )
-
 
 # ============================================================================
 # Test Configuration

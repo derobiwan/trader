@@ -15,7 +15,6 @@ from fastapi import APIRouter
 
 from . import health
 
-
 # ==================== Version 1 API Router ====================
 api_v1_router = APIRouter(prefix="/v1")
 

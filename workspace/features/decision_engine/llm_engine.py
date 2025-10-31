@@ -254,12 +254,16 @@ class LLMDecisionEngine:
                             decision=TradingDecision(signal_data["decision"]),
                             confidence=Decimal(str(signal_data["confidence"])),
                             size_pct=Decimal(str(signal_data["size_pct"])),
-                            stop_loss_pct=Decimal(str(signal_data["stop_loss_pct"]))
-                            if signal_data.get("stop_loss_pct")
-                            else None,
-                            take_profit_pct=Decimal(str(signal_data["take_profit_pct"]))
-                            if signal_data.get("take_profit_pct")
-                            else None,
+                            stop_loss_pct=(
+                                Decimal(str(signal_data["stop_loss_pct"]))
+                                if signal_data.get("stop_loss_pct")
+                                else None
+                            ),
+                            take_profit_pct=(
+                                Decimal(str(signal_data["take_profit_pct"]))
+                                if signal_data.get("take_profit_pct")
+                                else None
+                            ),
                             reasoning=signal_data.get("reasoning", ""),
                             model_used=signal_data.get("model_used", ""),
                             tokens_input=signal_data.get("tokens_input", 0),
@@ -336,12 +340,14 @@ class LLMDecisionEngine:
                         "decision": signal.decision.value,
                         "confidence": str(signal.confidence),
                         "size_pct": str(signal.size_pct),
-                        "stop_loss_pct": str(signal.stop_loss_pct)
-                        if signal.stop_loss_pct
-                        else None,
-                        "take_profit_pct": str(signal.take_profit_pct)
-                        if signal.take_profit_pct
-                        else None,
+                        "stop_loss_pct": (
+                            str(signal.stop_loss_pct) if signal.stop_loss_pct else None
+                        ),
+                        "take_profit_pct": (
+                            str(signal.take_profit_pct)
+                            if signal.take_profit_pct
+                            else None
+                        ),
                         "reasoning": signal.reasoning or "",
                         "model_used": signal.model_used or "",
                         "tokens_input": signal.tokens_input or 0,
@@ -604,9 +610,9 @@ class LLMDecisionEngine:
                 confidence=Decimal(str(confidence)),
                 size_pct=Decimal(str(size_pct)),
                 stop_loss_pct=Decimal(str(stop_loss_pct)) if stop_loss_pct else None,
-                take_profit_pct=Decimal(str(take_profit_pct))
-                if take_profit_pct
-                else None,
+                take_profit_pct=(
+                    Decimal(str(take_profit_pct)) if take_profit_pct else None
+                ),
                 reasoning=reasoning,
             )
 

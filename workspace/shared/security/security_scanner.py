@@ -450,9 +450,11 @@ class SecurityScanner:
                         category="code_security",
                         file_path=result.get("filename"),
                         line_number=result.get("line_number"),
-                        cwe_id=result.get("cwe", {}).get("id")
-                        if isinstance(result.get("cwe"), dict)
-                        else None,
+                        cwe_id=(
+                            result.get("cwe", {}).get("id")
+                            if isinstance(result.get("cwe"), dict)
+                            else None
+                        ),
                         recommendation=result.get(
                             "more_info", "See bandit documentation"
                         ),
@@ -985,9 +987,9 @@ class SecurityScanner:
                 self.scan_results["dependencies"] = await self.scan_dependencies()
                 self.scan_results["code_security"] = await self.scan_code()
                 self.scan_results["secrets"] = await self.detect_secrets()
-                self.scan_results[
-                    "best_practices"
-                ] = await self.validate_best_practices()
+                self.scan_results["best_practices"] = (
+                    await self.validate_best_practices()
+                )
 
             duration_ms = (asyncio.get_event_loop().time() - start_time) * 1000
 

@@ -238,9 +238,9 @@ class PaperTradingTestRunner:
             "total_cycles": len(self.results),
             "successful_cycles": successful_cycles,
             "failed_cycles": len(self.results) - successful_cycles,
-            "success_rate": successful_cycles / len(self.results) * 100
-            if self.results
-            else 0,
+            "success_rate": (
+                successful_cycles / len(self.results) * 100 if self.results else 0
+            ),
             "avg_cycle_duration": (
                 sum(r.duration_seconds for r in self.results) / len(self.results)
                 if self.results

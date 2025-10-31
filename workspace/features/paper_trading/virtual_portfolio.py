@@ -354,11 +354,15 @@ class VirtualPortfolio:
                 "side": pos["side"],
                 "quantity": float(pos["quantity"]),
                 "entry_price": float(pos["entry_price"]),
-                "unrealized_pnl": float(
-                    self.get_position_pnl(pos["symbol"], current_prices[pos["symbol"]])
-                )
-                if current_prices and pos["symbol"] in current_prices
-                else None,
+                "unrealized_pnl": (
+                    float(
+                        self.get_position_pnl(
+                            pos["symbol"], current_prices[pos["symbol"]]
+                        )
+                    )
+                    if current_prices and pos["symbol"] in current_prices
+                    else None
+                ),
             }
             for pos in self.positions.values()
         ]

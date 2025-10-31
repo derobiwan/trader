@@ -4,17 +4,18 @@ Unit tests for Position Reconciliation Service
 Tests all discrepancy detection types and auto-correction logic.
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from workspace.features.position_reconciliation import (
-    PositionReconciliationService,
-    ExchangePosition,
-    SystemPosition,
-    DiscrepancyType,
     DiscrepancySeverity,
+    DiscrepancyType,
+    ExchangePosition,
+    PositionReconciliationService,
+    SystemPosition,
 )
 
 

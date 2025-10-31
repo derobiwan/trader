@@ -6,9 +6,7 @@ Real-time view of reconciliation status.
 
 from datetime import datetime
 
-from workspace.features.position_reconciliation import (
-    PositionReconciliationService,
-)
+from workspace.features.position_reconciliation import PositionReconciliationService
 
 
 class ReconciliationDashboard:

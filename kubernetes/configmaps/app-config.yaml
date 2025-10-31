@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trading-config
+  namespace: trading-system
+  labels:
+    app: trading-engine
+data:
+  # Application environment
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+
+  # Cache settings
+  CACHE_TTL: "60"
+  CACHE_MAX_SIZE: "1000"
+
+  # Trading settings
+  TRADING_MODE: "paper"  # Change to "live" when ready
+  DECISION_INTERVAL: "180"  # 3 minutes in seconds
+  MAX_POSITIONS: "6"
+
+  # Risk management
+  MAX_POSITION_SIZE_PCT: "0.10"  # 10% of portfolio per position
+  MAX_PORTFOLIO_EXPOSURE: "0.80"  # 80% max total exposure
+  STOP_LOSS_PCT: "0.05"  # 5% stop loss
+  TAKE_PROFIT_PCT: "0.10"  # 10% take profit
+
+  # Position reconciliation
+  RECONCILIATION_INTERVAL: "300"  # 5 minutes
+  RECONCILIATION_TOLERANCE_QUANTITY: "0.01"  # 1%
+  RECONCILIATION_TOLERANCE_PRICE: "0.001"  # 0.1%
+
+  # WebSocket settings
+  WEBSOCKET_RECONNECT_BACKOFF_BASE: "1.0"
+  WEBSOCKET_RECONNECT_BACKOFF_MAX: "60.0"
+  WEBSOCKET_HEARTBEAT_INTERVAL: "30"
+
+  # Database settings
+  DB_POOL_MIN_SIZE: "10"
+  DB_POOL_MAX_SIZE: "50"
+  DB_POOL_TIMEOUT: "30"
+
+  # Redis settings
+  REDIS_POOL_SIZE: "50"
+  REDIS_SOCKET_TIMEOUT: "5"
+  REDIS_SOCKET_CONNECT_TIMEOUT: "5"
+
+  # Monitoring
+  METRICS_PORT: "8000"
+  HEALTH_CHECK_PORT: "8000"
+
+  # Alerting
+  ALERT_THROTTLE_SECONDS: "300"  # 5 minutes between duplicate alerts
+  ALERT_SEVERITY_INFO_CHANNELS: "email"
+  ALERT_SEVERITY_WARNING_CHANNELS: "email,slack"
+  ALERT_SEVERITY_CRITICAL_CHANNELS: "email,slack,pagerduty"
+
+  # Exchange settings
+  EXCHANGE_NAME: "bybit"
+  EXCHANGE_TESTNET: "true"  # Change to "false" for production
+  EXCHANGE_API_TIMEOUT: "30"
+  EXCHANGE_RATE_LIMIT_BUFFER: "0.8"  # Use only 80% of rate limit
+
+  # LLM settings
+  LLM_PROVIDER: "openrouter"
+  LLM_MODEL: "anthropic/claude-3-haiku"
+  LLM_MAX_TOKENS: "1000"
+  LLM_TEMPERATURE: "0.7"
+  LLM_CACHE_TTL: "180"  # 3 minutes
+
+  # Trading pairs
+  TRADING_SYMBOLS: "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,ADAUSDT,DOGEUSDT"
+
+  # Performance tracking
+  PERFORMANCE_CALCULATION_INTERVAL: "3600"  # 1 hour
+  PERFORMANCE_REPORT_DAILY: "true"
+  PERFORMANCE_REPORT_WEEKLY: "true"

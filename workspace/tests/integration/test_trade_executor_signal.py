@@ -12,13 +12,14 @@ Author: Integration Testing Team
 Date: 2025-10-28
 """
 
-import pytest
-import pytest_asyncio
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from workspace.features.trading_loop import TradingSignal, TradingDecision
-from workspace.features.trade_executor import TradeExecutor, OrderSide
+import pytest
+import pytest_asyncio
+
+from workspace.features.trade_executor import OrderSide, TradeExecutor
+from workspace.features.trading_loop import TradingDecision, TradingSignal
 
 
 class TestExecuteSignalIntegration:

@@ -7,24 +7,21 @@ Author: Decision Engine Implementation Team
 Date: 2025-10-28
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
 
-from workspace.features.decision_engine.llm_engine import (
-    LLMDecisionEngine,
-    LLMProvider,
-)
-from workspace.features.trading_loop import TradingDecision
+import pytest
+
+from workspace.features.decision_engine.llm_engine import LLMDecisionEngine, LLMProvider
 from workspace.features.market_data import (
-    MarketDataSnapshot,
     OHLCV,
+    RSI,
+    MarketDataSnapshot,
     Ticker,
     Timeframe,
-    RSI,
 )
-
+from workspace.features.trading_loop import TradingDecision
 
 # ============================================================================
 # Fixtures
@@ -522,7 +519,7 @@ def test_generate_fallback_signals(llm_engine, sample_snapshot):
 
     assert len(signals) == 2
 
-    for symbol, signal in signals.items():
+    for _symbol, signal in signals.items():
         assert signal.decision == TradingDecision.HOLD
         assert signal.confidence == Decimal("0.5")
         assert signal.size_pct == Decimal("0.0")
@@ -585,7 +582,9 @@ async def test_call_openrouter_network_error(llm_engine):
     with patch.object(llm_engine.client, "post", new=AsyncMock()) as mock_post:
         mock_post.side_effect = Exception("Network timeout")
 
-        with pytest.raises(Exception):
+        with pytest.raises(  # noqa: B017 - Testing generic exception handling
+            Exception
+        ):
             await llm_engine._call_openrouter("Test prompt")
 
 

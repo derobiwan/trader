@@ -14,10 +14,10 @@ Date: 2025-10-29
 Sprint: Sprint 2 Stream C
 """
 
-import smtplib
 import logging
-from email.mime.text import MIMEText
+import smtplib
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import List
 
 from ..alert_service import AlertChannel

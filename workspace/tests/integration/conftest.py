@@ -4,12 +4,13 @@ Integration Test Fixtures
 Shared fixtures for integration testing.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any
+from typing import Any, Dict, Optional
+
+import numpy as np
+import pandas as pd
+import pytest
 
 
 @pytest.fixture
@@ -23,10 +24,10 @@ def sample_ohlcv_data() -> pd.DataFrame:
 
     # Generate realistic-looking price data
     base_price = 50000
-    prices = [base_price]
+    prices: list[int] = [base_price]
     for _ in range(periods - 1):
         change = np.random.normal(0, 100)
-        prices.append(prices[-1] + change)
+        prices.append(int(prices[-1] + change))
 
     data = {
         "timestamp": dates,
@@ -131,9 +132,11 @@ def mock_trade_executor():
             position = {
                 "id": f"pos_{len(self.positions) + 1}",
                 "symbol": signal.symbol,
-                "entry_price": signal.entry_price
-                if hasattr(signal, "entry_price")
-                else Decimal("50000"),
+                "entry_price": (
+                    signal.entry_price
+                    if hasattr(signal, "entry_price")
+                    else Decimal("50000")
+                ),
                 "size_pct": signal.size_pct,
                 "stop_loss_pct": signal.stop_loss_pct,
                 "side": signal.decision.lower(),
@@ -142,7 +145,7 @@ def mock_trade_executor():
             return position
 
         async def close_position(
-            self, position_id: str, reason: str = None, force: bool = False
+            self, position_id: str, reason: Optional[str] = None, force: bool = False
         ):
             """Mock close position"""
             for i, pos in enumerate(self.positions):
@@ -286,7 +289,7 @@ def create_bollinger_bands(upper: Decimal, middle: Decimal, lower: Decimal):
 
 def create_snapshot(
     price: Decimal = Decimal("50000.00"),
-    rsi_value: Decimal = None,
+    rsi_value: Optional[Decimal] = None,
     is_bullish: bool = True,
 ):
     """Create a market data snapshot with optional indicators"""

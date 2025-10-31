@@ -14,9 +14,10 @@ Date: 2025-10-29
 Sprint: Sprint 2 Stream C
 """
 
-import httpx
 import logging
 from typing import Optional
+
+import httpx
 
 from ..alert_service import AlertChannel
 from ..models import Alert, AlertSeverity

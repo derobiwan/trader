@@ -8,18 +8,17 @@ Date: 2025-10-28
 """
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 # Import components
 from workspace.features.market_data import MarketDataService, MarketDataSnapshot
-from workspace.features.trade_executor import TradeExecutor
-from workspace.features.position_manager import PositionManager
 from workspace.features.paper_trading import PaperTradingExecutor
-
+from workspace.features.position_manager import PositionManager
+from workspace.features.trade_executor import TradeExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +189,8 @@ class TradingEngine:
         print(f"Cycle complete: {result.success}")
         ```
     """
+
+    trade_executor: Union[TradeExecutor, PaperTradingExecutor]
 
     def __init__(
         self,
@@ -381,7 +382,7 @@ class TradingEngine:
             # Placeholder: Generate HOLD signals for all symbols
             logger.debug("No decision engine configured, generating HOLD signals")
 
-            for symbol, snapshot in snapshots.items():
+            for symbol, _snapshot in snapshots.items():
                 signal = TradingSignal(
                     symbol=symbol,
                     decision=TradingDecision.HOLD,

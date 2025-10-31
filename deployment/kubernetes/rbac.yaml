@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: llm-trader-sa
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: llm-trader-role
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: llm-trader-rolebinding
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: llm-trader-role
+subjects:
+- kind: ServiceAccount
+  name: llm-trader-sa
+  namespace: llm-trader-prod
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: llm-trader-metrics-reader
+  labels:
+    app: llm-crypto-trader
+rules:
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: llm-trader-metrics-reader-binding
+  labels:
+    app: llm-crypto-trader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: llm-trader-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: llm-trader-sa
+  namespace: llm-trader-prod

@@ -219,9 +219,11 @@ class MarketDataService:
                     volume_24h=Decimal(str(cached_ticker.get("volume_24h", 0))),
                     change_24h=Decimal(str(cached_ticker.get("change_24h", 0))),
                     change_24h_pct=Decimal(str(cached_ticker.get("change_24h_pct", 0))),
-                    timestamp=datetime.fromisoformat(cached_ticker["timestamp"])
-                    if isinstance(cached_ticker["timestamp"], str)
-                    else cached_ticker["timestamp"],
+                    timestamp=(
+                        datetime.fromisoformat(cached_ticker["timestamp"])
+                        if isinstance(cached_ticker["timestamp"], str)
+                        else cached_ticker["timestamp"]
+                    ),
                 )
 
             # Cache miss
@@ -237,22 +239,26 @@ class MarketDataService:
                 "last": str(ticker.last),
                 "bid": str(ticker.bid) if ticker.bid else "0",
                 "ask": str(ticker.ask) if ticker.ask else "0",
-                "high_24h": str(ticker.high_24h)
-                if hasattr(ticker, "high_24h")
-                else "0",
+                "high_24h": (
+                    str(ticker.high_24h) if hasattr(ticker, "high_24h") else "0"
+                ),
                 "low_24h": str(ticker.low_24h) if hasattr(ticker, "low_24h") else "0",
-                "volume_24h": str(ticker.volume_24h)
-                if hasattr(ticker, "volume_24h")
-                else "0",
-                "change_24h": str(ticker.change_24h)
-                if hasattr(ticker, "change_24h")
-                else "0",
-                "change_24h_pct": str(ticker.change_24h_pct)
-                if hasattr(ticker, "change_24h_pct")
-                else "0",
-                "timestamp": ticker.timestamp.isoformat()
-                if hasattr(ticker.timestamp, "isoformat")
-                else str(ticker.timestamp),
+                "volume_24h": (
+                    str(ticker.volume_24h) if hasattr(ticker, "volume_24h") else "0"
+                ),
+                "change_24h": (
+                    str(ticker.change_24h) if hasattr(ticker, "change_24h") else "0"
+                ),
+                "change_24h_pct": (
+                    str(ticker.change_24h_pct)
+                    if hasattr(ticker, "change_24h_pct")
+                    else "0"
+                ),
+                "timestamp": (
+                    ticker.timestamp.isoformat()
+                    if hasattr(ticker.timestamp, "isoformat")
+                    else str(ticker.timestamp)
+                ),
             }
             # Cache for 30 seconds
             cache_key = f"market_data:ticker:{formatted_symbol}"
@@ -298,9 +304,11 @@ class MarketDataService:
                     OHLCV(
                         symbol=candle["symbol"],
                         timeframe=Timeframe(candle["timeframe"]),
-                        timestamp=datetime.fromisoformat(candle["timestamp"])
-                        if isinstance(candle["timestamp"], str)
-                        else candle["timestamp"],
+                        timestamp=(
+                            datetime.fromisoformat(candle["timestamp"])
+                            if isinstance(candle["timestamp"], str)
+                            else candle["timestamp"]
+                        ),
                         open=Decimal(str(candle["open"])),
                         high=Decimal(str(candle["high"])),
                         low=Decimal(str(candle["low"])),
@@ -326,12 +334,16 @@ class MarketDataService:
             serialized = [
                 {
                     "symbol": c.symbol,
-                    "timeframe": c.timeframe.value
-                    if hasattr(c.timeframe, "value")
-                    else str(c.timeframe),
-                    "timestamp": c.timestamp.isoformat()
-                    if hasattr(c.timestamp, "isoformat")
-                    else str(c.timestamp),
+                    "timeframe": (
+                        c.timeframe.value
+                        if hasattr(c.timeframe, "value")
+                        else str(c.timeframe)
+                    ),
+                    "timestamp": (
+                        c.timestamp.isoformat()
+                        if hasattr(c.timestamp, "isoformat")
+                        else str(c.timestamp)
+                    ),
                     "open": str(c.open),
                     "high": str(c.high),
                     "low": str(c.low),

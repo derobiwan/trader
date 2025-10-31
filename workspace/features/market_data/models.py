@@ -10,8 +10,9 @@ Date: 2025-10-27
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
 from enum import Enum
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field, validator
 
 
@@ -232,6 +233,16 @@ class MACD(BaseModel):
         json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
 
     @property
+    def value(self) -> Decimal:
+        """Return the MACD line value (main value)"""
+        return self.macd_line
+
+    @property
+    def is_bullish(self) -> bool:
+        """Check if MACD is in bullish state"""
+        return self.macd_line > self.signal_line and self.histogram > 0
+
+    @property
     def is_bullish_crossover(self) -> bool:
         """Check if MACD line crossed above signal line (bullish)"""
         # Would need previous values to detect crossover
@@ -305,6 +316,21 @@ class BollingerBands(BaseModel):
     class Config:
         use_enum_values = True
         json_encoders = {Decimal: lambda v: str(v), datetime: lambda v: v.isoformat()}
+
+    @property
+    def upper(self) -> Decimal:
+        """Alias for upper_band"""
+        return self.upper_band
+
+    @property
+    def middle(self) -> Decimal:
+        """Alias for middle_band"""
+        return self.middle_band
+
+    @property
+    def lower(self) -> Decimal:
+        """Alias for lower_band"""
+        return self.lower_band
 
     @validator("bandwidth", always=True)
     def calculate_bandwidth(cls, v, values):

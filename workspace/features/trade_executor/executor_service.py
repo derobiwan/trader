@@ -10,38 +10,37 @@ Date: 2025-10-27
 
 import asyncio
 import logging
+import time
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
-import time
+from typing import Any, Dict, Optional
 
 import ccxt.async_support as ccxt
 from ccxt.base.errors import (
-    NetworkError,
-    ExchangeError,
-    RateLimitExceeded,
-    InvalidOrder,
     InsufficientFunds,
+    InvalidOrder,
+    NetworkError,
+    RateLimitExceeded,
 )
 
-from .models import (
-    Order,
-    OrderType,
-    OrderSide,
-    OrderStatus,
-    TimeInForce,
-    ExecutionResult,
-)
-from workspace.shared.database.connection import DatabasePool
-from workspace.features.position_manager import PositionService
-from workspace.features.trade_history import TradeHistoryService, TradeType
-from workspace.features.monitoring.metrics import MetricsService
 from workspace.features.error_recovery import (
     CircuitBreaker,
     RetryManager,
     RetryStrategy,
 )
+from workspace.features.monitoring.metrics import MetricsService
+from workspace.features.position_manager import PositionService
+from workspace.features.trade_history import TradeHistoryService, TradeType
+from workspace.shared.database.connection import get_pool
 
+from .models import (
+    ExecutionResult,
+    Order,
+    OrderSide,
+    OrderStatus,
+    OrderType,
+    TimeInForce,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +127,9 @@ class TradeExecutor:
                 logger.warning("Trade Executor initialized in PRODUCTION mode")
 
         # Initialize Position Manager (or use provided one for testing)
-        if position_service is not None:
-            self.position_service = position_service
-        else:
-            self.position_service = PositionService()
+        # Note: If None, will be initialized in initialize() method with pool
+        self.position_service = position_service
+        self._position_service_provided = position_service is not None
 
         # Initialize Trade History Service (or use provided one for testing)
         if trade_history_service is not None:
@@ -155,12 +153,13 @@ class TradeExecutor:
 
         # Initialize Circuit Breakers (optional)
         self.enable_circuit_breaker = enable_circuit_breaker
+        self.exchange_circuit_breaker: Optional[CircuitBreaker]
         if enable_circuit_breaker:
             self.exchange_circuit_breaker = CircuitBreaker(
                 name="exchange_api",
                 failure_threshold=5,
                 recovery_timeout_seconds=60,
-                expected_exception=(NetworkError, ExchangeError),
+                expected_exception=Exception,  # Base exception type
             )
             logger.info("Circuit breaker enabled for exchange API")
         else:
@@ -176,6 +175,12 @@ class TradeExecutor:
     async def initialize(self):
         """Initialize exchange and load markets"""
         try:
+            # Initialize PositionService if not provided
+            if not self._position_service_provided:
+                pool = await get_pool()
+                self.position_service = PositionService(pool=pool)
+                logger.info("PositionService initialized with global pool")
+
             await self.exchange.load_markets()
             logger.info(
                 f"Exchange markets loaded: {len(self.exchange.markets)} symbols"
@@ -293,7 +298,7 @@ class TradeExecutor:
             logger.error(f"Error fetching balance from exchange: {e}", exc_info=True)
             raise
 
-    async def execute_signal(
+    async def execute_signal(  # noqa: C901 - Complex orchestration logic
         self,
         signal: Any,  # TradingSignal from trading_loop
         account_balance_chf: Decimal,
@@ -433,9 +438,11 @@ class TradeExecutor:
                         quantity=quantity,
                         stop_price=stop_loss_price,
                         reduce_only=True,
-                        position_id=order_result.order.position_id
-                        if order_result.order
-                        else None,
+                        position_id=(
+                            order_result.order.position_id
+                            if order_result.order
+                            else None
+                        ),
                         metadata={"protection_layer": "layer1"},
                     )
 
@@ -483,9 +490,11 @@ class TradeExecutor:
                         quantity=quantity,
                         stop_price=stop_loss_price,
                         reduce_only=True,
-                        position_id=order_result.order.position_id
-                        if order_result.order
-                        else None,
+                        position_id=(
+                            order_result.order.position_id
+                            if order_result.order
+                            else None
+                        ),
                         metadata={"protection_layer": "layer1"},
                     )
 
@@ -501,6 +510,8 @@ class TradeExecutor:
                 logger.info(f"Executing CLOSE signal for {signal.symbol}")
 
                 # Get current position
+                if self.position_service is None:
+                    raise RuntimeError("Position service not initialized")
                 positions = await self.position_service.get_open_positions()
                 position = next(
                     (p for p in positions if p.symbol == signal.symbol), None
@@ -550,7 +561,7 @@ class TradeExecutor:
                 latency_ms=latency_ms,
             )
 
-    async def create_market_order(
+    async def create_market_order(  # noqa: C901 - Complex order execution with retry logic
         self,
         symbol: str,
         side: OrderSide,
@@ -975,6 +986,17 @@ class TradeExecutor:
                         latency_ms=latency_ms,
                     )
 
+        # Should not reach here, but mypy needs explicit return
+        latency_ms = Decimal(str((time.time() - start_time) * 1000)).quantize(
+            Decimal("0.01")
+        )
+        return ExecutionResult(
+            success=False,
+            error_code="UNEXPECTED_ERROR",
+            error_message="Order execution failed unexpectedly",
+            latency_ms=latency_ms,
+        )
+
     async def create_stop_market_order(
         self,
         symbol: str,
@@ -1115,6 +1137,8 @@ class TradeExecutor:
             entry_price = Decimal(str(ticker["last"]))
 
             # Create position in Position Manager (validates risk limits)
+            if self.position_service is None:
+                raise RuntimeError("Position service not initialized")
             position = await self.position_service.create_position(
                 symbol=symbol,
                 side=side,
@@ -1146,6 +1170,8 @@ class TradeExecutor:
                     f"Failed to execute order for position {position.id}: {order_result.error_message}"
                 )
                 # Mark position as failed
+                if self.position_service is None:
+                    raise RuntimeError("Position service not initialized")
                 await self.position_service.close_position(
                     position_id=position.id,
                     close_price=entry_price,
@@ -1153,9 +1179,12 @@ class TradeExecutor:
                 )
                 return order_result
 
-            logger.info(
-                f"Position opened successfully: {position.id} (Order: {order_result.order.exchange_order_id})"
-            )
+            if order_result.order is not None:
+                logger.info(
+                    f"Position opened successfully: {position.id} (Order: {order_result.order.exchange_order_id})"
+                )
+            else:
+                logger.info(f"Position opened successfully: {position.id}")
 
             return order_result
 
@@ -1184,6 +1213,8 @@ class TradeExecutor:
         """
         try:
             # Get position from Position Manager
+            if self.position_service is None:
+                raise RuntimeError("Position service not initialized")
             position = await self.position_service.get_position(position_id)
             if not position:
                 return ExecutionResult(
@@ -1235,15 +1266,20 @@ class TradeExecutor:
                 return order_result
 
             # Update position in database
+            if self.position_service is None:
+                raise RuntimeError("Position service not initialized")
             await self.position_service.close_position(
                 position_id=position_id,
                 close_price=close_price,
                 reason=reason,
             )
 
-            logger.info(
-                f"Position closed successfully: {position_id} (Order: {order_result.order.exchange_order_id})"
-            )
+            if order_result.order is not None:
+                logger.info(
+                    f"Position closed successfully: {position_id} (Order: {order_result.order.exchange_order_id})"
+                )
+            else:
+                logger.info(f"Position closed successfully: {position_id}")
 
             return order_result
 
@@ -1299,6 +1335,9 @@ class TradeExecutor:
 
                 return order
 
+            # Order not found in active orders
+            return None
+
         except Exception as e:
             logger.error(f"Error fetching order status: {e}", exc_info=True)
             return None
@@ -1316,7 +1355,8 @@ class TradeExecutor:
     async def _store_order(self, order: Order):
         """Store order in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO orders (
@@ -1359,7 +1399,8 @@ class TradeExecutor:
     async def _update_order(self, order: Order):
         """Update order in database"""
         try:
-            async with DatabasePool.get_connection() as conn:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
                 await conn.execute(
                     """
                     UPDATE orders SET

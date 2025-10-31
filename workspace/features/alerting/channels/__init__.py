@@ -9,8 +9,8 @@ Sprint: Sprint 2 Stream C
 """
 
 from .email_channel import EmailAlertChannel
-from .slack_channel import SlackAlertChannel
 from .pagerduty_channel import PagerDutyAlertChannel
+from .slack_channel import SlackAlertChannel
 
 __all__ = [
     "EmailAlertChannel",

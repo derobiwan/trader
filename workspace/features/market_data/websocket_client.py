@@ -13,12 +13,12 @@ import json
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Callable, Optional, List, Any
+from typing import Any, Callable, Dict, List, Optional
+
 import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets.client import ClientProtocol
 
-from .models import Ticker, OHLCV, Timeframe
-
+from .models import OHLCV, Ticker, Timeframe
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class BybitWebSocketClient:
     def __init__(
         self,
         symbols: List[str],
-        timeframes: List[Timeframe] = None,
+        timeframes: Optional[List[Timeframe]] = None,
         testnet: bool = True,
         on_ticker: Optional[Callable[[Ticker], None]] = None,
         on_kline: Optional[Callable[[OHLCV], None]] = None,
@@ -85,11 +85,11 @@ class BybitWebSocketClient:
         self.ping_interval = ping_interval
 
         # WebSocket connection
-        self.ws: Optional[WebSocketClientProtocol] = None
+        self.ws: Optional[ClientProtocol] = None
         self.running = False
 
         # Subscription tracking
-        self.subscribed_channels = []
+        self.subscribed_channels: list[str] = []
 
         # Connection state
         self.url = self.TESTNET_PUBLIC_URL if testnet else self.MAINNET_PUBLIC_URL

@@ -11,8 +11,8 @@ Date: 2025-10-28
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Callable, Optional, Awaitable
 from enum import Enum
+from typing import Awaitable, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -192,23 +192,25 @@ class TradingScheduler:
         Returns:
             Dictionary with scheduler metrics
         """
+        from typing import Any, Dict
+
         now = datetime.utcnow()
 
-        status = {
+        status: Dict[str, Any] = {
             "state": self.state.value,
             "cycle_count": self.cycle_count,
             "error_count": self.error_count,
-            "last_cycle": self.last_cycle_time.isoformat()
-            if self.last_cycle_time
-            else None,
-            "next_cycle": self.next_cycle_time.isoformat()
-            if self.next_cycle_time
-            else None,
+            "last_cycle": (
+                self.last_cycle_time.isoformat() if self.last_cycle_time else None
+            ),
+            "next_cycle": (
+                self.next_cycle_time.isoformat() if self.next_cycle_time else None
+            ),
         }
 
         if self.next_cycle_time and self.state == SchedulerState.RUNNING:
             seconds_until_next = (self.next_cycle_time - now).total_seconds()
-            status["seconds_until_next_cycle"] = max(0, seconds_until_next)
+            status["seconds_until_next_cycle"] = float(max(0, seconds_until_next))
 
         return status
 

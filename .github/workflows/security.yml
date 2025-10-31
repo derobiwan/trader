@@ -1,0 +1,193 @@
+name: Security Scanning
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety pip-audit
+
+      - name: Run safety check
+        run: |
+          pip install -r requirements.txt
+          safety check --json --output safety-report.json || true
+          safety check
+
+      - name: Run pip-audit
+        run: |
+          pip-audit --desc --output pip-audit-report.json || true
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-scan-results
+          path: |
+            safety-report.json
+            pip-audit-report.json
+
+  secret-scan:
+    name: Secret Detection Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for secret detection
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.before }}
+          head: ${{ github.sha }}
+          extra_args: --only-verified
+
+  code-scan:
+    name: Static Code Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install bandit
+        run: |
+          pip install bandit[toml]
+
+      - name: Run bandit security scan
+        run: |
+          bandit -r workspace/ -f json -o bandit-report.json --skip B101,B104,B108,B608 --exclude '**/tests/**' || true
+
+      - name: Upload bandit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-results
+          path: bandit-report.json
+
+  container-scan:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t trading-engine:scan .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'trading-engine:scan'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Run Trivy in SARIF mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'trading-engine:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  kubernetes-scan:
+    name: Kubernetes Manifest Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Kubesec scan on each manifest
+        run: |
+          for file in kubernetes/deployments/*.yaml; do
+            echo "Scanning $file"
+            docker run --rm -v $(pwd):/workspace kubesec/kubesec:2.11.0 scan /workspace/$file || true
+          done
+
+      - name: Run Checkov scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: kubernetes/
+          framework: kubernetes
+          output_format: cli
+          soft_fail: true
+
+  security-summary:
+    name: Security Summary
+    needs: [dependency-scan, secret-scan, code-scan]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check security scan results
+        run: |
+          echo "=== Security Scan Summary ==="
+          echo "Dependency Scan: ${{ needs.dependency-scan.result }}"
+          echo "Secret Scan: ${{ needs.secret-scan.result }}"
+          echo "Code Scan: ${{ needs.code-scan.result }}"
+
+          if [ "${{ needs.dependency-scan.result }}" != "success" ]; then
+            echo "⚠️ Dependency vulnerabilities detected"
+          fi
+          if [ "${{ needs.secret-scan.result }}" != "success" ]; then
+            echo "⚠️ Secrets detected in code"
+          fi
+          if [ "${{ needs.code-scan.result }}" != "success" ]; then
+            echo "⚠️ Code security issues detected"
+          fi
+
+          # Fail if critical scans failed
+          if [ "${{ needs.secret-scan.result }}" == "failure" ]; then
+            echo "❌ CRITICAL: Secrets detected! Blocking merge."
+            exit 1
+          fi
+
+          echo "✅ Security scans completed"

@@ -61,32 +61,32 @@ Usage:
 
 import asyncio
 import logging
-from datetime import datetime
 from datetime import date as Date
+from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 import asyncpg
 
+from workspace.features.position_manager.models import (
+    CIRCUIT_BREAKER_LOSS_CHF,
+    USD_CHF_RATE,
+    CloseReason,
+    DailyPnLSummary,
+    PositionCreateRequest,
+    PositionNotFoundError,
+    PositionStatistics,
+    PositionWithPnL,
+    RiskLimitError,
+    ValidationError,
+)
 from workspace.shared.database.connection import DatabasePool
 from workspace.shared.database.models import (
     Position,
     PositionSide,
     PositionStatus,
     usd_to_chf,
-)
-from workspace.features.position_manager.models import (
-    PositionCreateRequest,
-    PositionWithPnL,
-    DailyPnLSummary,
-    PositionStatistics,
-    CloseReason,
-    ValidationError,
-    RiskLimitError,
-    PositionNotFoundError,
-    CIRCUIT_BREAKER_LOSS_CHF,
-    USD_CHF_RATE,
 )
 
 logger = logging.getLogger(__name__)
@@ -242,9 +242,11 @@ class PositionService:
                                 "entry_price": str(request.entry_price),
                                 "leverage": request.leverage,
                                 "stop_loss": str(request.stop_loss),
-                                "take_profit": str(request.take_profit)
-                                if request.take_profit
-                                else None,
+                                "take_profit": (
+                                    str(request.take_profit)
+                                    if request.take_profit
+                                    else None
+                                ),
                                 "signal_id": str(signal_id) if signal_id else None,
                                 "notes": notes,
                             },
@@ -286,6 +288,9 @@ class PositionService:
                         f"Failed to create position after {self._max_retries} attempts"
                     ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))  # Exponential backoff
+
+        # Should not reach here due to raise above, but mypy needs explicit return
+        raise ConnectionError("Failed to create position - unexpected error")
 
     # ========================================================================
     # Position Updates
@@ -377,6 +382,9 @@ class PositionService:
                         f"Failed to update position after {self._max_retries} attempts"
                     ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))
+
+        # Should not reach here due to raise above, but mypy needs explicit return
+        raise ConnectionError("Failed to update position - unexpected error")
 
     # ========================================================================
     # Position Closure
@@ -552,6 +560,9 @@ class PositionService:
                         f"Failed to close position after {self._max_retries} attempts"
                     ) from e
                 await asyncio.sleep(0.5 * (attempt + 1))
+
+        # Should not reach here due to raise above, but mypy needs explicit return
+        raise ConnectionError("Failed to close position - unexpected error")
 
     # ========================================================================
     # Position Queries

@@ -80,9 +80,7 @@ class CacheService:
         storage_mode = (
             "redis"
             if (use_redis and enabled)
-            else "in-memory"
-            if enabled
-            else "disabled"
+            else "in-memory" if enabled else "disabled"
         )
         logger.info(f"Cache Service initialized ({storage_mode} mode)")
 

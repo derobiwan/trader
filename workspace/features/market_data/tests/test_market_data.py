@@ -7,24 +7,24 @@ Author: Market Data Service Implementation Team
 Date: 2025-10-27
 """
 
-import pytest
 import asyncio
-from decimal import Decimal
 from datetime import datetime, timedelta
+from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
-from workspace.features.market_data.models import (
-    OHLCV,
-    Ticker,
-    RSI,
-    MACD,
-    BollingerBands,
-    Timeframe,
-    MarketDataSnapshot,
-)
+import pytest
+
 from workspace.features.market_data.indicators import IndicatorCalculator
 from workspace.features.market_data.market_data_service import MarketDataService
-
+from workspace.features.market_data.models import (
+    MACD,
+    OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
+    Ticker,
+    Timeframe,
+)
 
 # ============================================================================
 # Fixtures

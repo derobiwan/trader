@@ -8,10 +8,10 @@ Date: 2025-10-28
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
-from decimal import Decimal
 from datetime import datetime, timezone
+from decimal import Decimal
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class ValidationStatus(str, Enum):
@@ -256,7 +256,7 @@ class CircuitBreakerStatus:
             f"Trades Today: {self.daily_trade_count} (W: {self.daily_winning_trades}, L: {self.daily_losing_trades})",
         ]
 
-        if self.is_tripped():
+        if self.is_tripped() and self.tripped_at is not None:
             lines.append(f"⚠️ TRIPPED at {self.tripped_at.strftime('%H:%M:%S UTC')}")
 
         if self.is_manual_reset_required():

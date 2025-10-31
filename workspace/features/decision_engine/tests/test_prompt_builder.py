@@ -7,22 +7,22 @@ Author: Decision Engine Implementation Team
 Date: 2025-10-28
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
 
+import pytest
+
 from workspace.features.decision_engine.prompt_builder import PromptBuilder
 from workspace.features.market_data import (
-    MarketDataSnapshot,
+    EMA,
+    MACD,
     OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
     Ticker,
     Timeframe,
-    RSI,
-    MACD,
-    EMA,
-    BollingerBands,
 )
-
 
 # ============================================================================
 # Fixtures

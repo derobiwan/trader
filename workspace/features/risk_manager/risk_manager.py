@@ -10,16 +10,16 @@ Date: 2025-10-28
 
 import logging
 from decimal import Decimal
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
-from .models import (
-    RiskValidation,
-    RiskCheckResult,
-    ValidationStatus,
-    Protection,
-    CircuitBreakerStatus,
-)
 from .circuit_breaker import CircuitBreaker
+from .models import (
+    CircuitBreakerStatus,
+    Protection,
+    RiskCheckResult,
+    RiskValidation,
+    ValidationStatus,
+)
 from .stop_loss_manager import StopLossManager
 
 logger = logging.getLogger(__name__)
@@ -436,7 +436,8 @@ class RiskManager:
     async def _get_open_positions(self) -> List[Any]:
         """Get list of currently open positions"""
         if self.position_tracker:
-            return await self.position_tracker.get_open_positions()
+            positions = await self.position_tracker.get_open_positions()
+            return list(positions) if positions else []
         return []
 
     async def _calculate_total_exposure(self) -> Decimal:
@@ -450,7 +451,7 @@ class RiskManager:
             getattr(pos, "size_pct", Decimal("0")) for pos in positions
         )
 
-        return total_exposure
+        return Decimal(str(total_exposure))
 
     async def _get_daily_pnl(self) -> Decimal:
         """Get today's P&L in CHF"""

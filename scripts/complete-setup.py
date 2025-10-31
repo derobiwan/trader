@@ -563,7 +563,9 @@ graph LR
 
 ---
 *Template Version: 1.0.0 | Framework: PRPs Agentic Engineering*
-""".format(timestamp=datetime.now().isoformat())
+""".format(
+        timestamp=datetime.now().isoformat()
+    )
 
     template_path = BASE_DIR / ".claude" / "PROJECT-TEMPLATE.md"
     with open(template_path, "w") as f:

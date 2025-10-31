@@ -7,16 +7,13 @@ Author: Trading Loop Implementation Team
 Date: 2025-10-28
 """
 
-import pytest
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock
 
-from workspace.features.trading_loop.scheduler import (
-    TradingScheduler,
-    SchedulerState,
-)
+import pytest
 
+from workspace.features.trading_loop.scheduler import SchedulerState, TradingScheduler
 
 # ============================================================================
 # Fixtures

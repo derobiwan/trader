@@ -8,24 +8,24 @@ Author: Trade Executor Implementation Team
 Date: 2025-10-27
 """
 
-import pytest
 import asyncio
 from decimal import Decimal
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
+from workspace.features.trade_executor.executor_service import TradeExecutor
 from workspace.features.trade_executor.models import (
     Order,
-    OrderType,
     OrderSide,
     OrderStatus,
-    TimeInForce,
-    StopLossProtection,
+    OrderType,
     ReconciliationResult,
+    StopLossProtection,
+    TimeInForce,
 )
-from workspace.features.trade_executor.executor_service import TradeExecutor
-from workspace.features.trade_executor.stop_loss_manager import StopLossManager
 from workspace.features.trade_executor.reconciliation import ReconciliationService
-
+from workspace.features.trade_executor.stop_loss_manager import StopLossManager
 
 # ============================================================================
 # Fixtures

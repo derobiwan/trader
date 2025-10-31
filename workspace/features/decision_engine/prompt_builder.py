@@ -7,9 +7,9 @@ Author: Decision Engine Implementation Team
 Date: 2025-10-28
 """
 
-from typing import Dict, Optional
 from datetime import datetime
 from decimal import Decimal
+from typing import Dict, Optional
 
 from workspace.features.market_data import MarketDataSnapshot
 

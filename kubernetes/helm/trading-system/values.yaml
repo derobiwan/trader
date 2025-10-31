@@ -1,0 +1,143 @@
+# Default values for trading-system Helm chart
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global settings
+global:
+  namespace: trading-system
+  environment: production
+
+# Trading Engine configuration
+tradingEngine:
+  replicaCount: 3
+  image:
+    repository: trading-engine
+    pullPolicy: Always
+    tag: "latest"
+
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8000
+
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+
+  autoscaling:
+    enabled: false
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  image:
+    repository: timescale/timescaledb
+    tag: "2.13.0-pg15"
+
+  persistence:
+    enabled: true
+    size: 50Gi
+    storageClass: standard
+
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "1000m"
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: standard
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+# Application configuration (ConfigMap)
+config:
+  environment: "production"
+  logLevel: "INFO"
+  tradingMode: "paper"
+  decisionInterval: 180
+  maxPositions: 6
+
+  # Risk management
+  maxPositionSizePct: 0.10
+  maxPortfolioExposure: 0.80
+  stopLossPct: 0.05
+  takeProfitPct: 0.10
+
+  # Trading symbols
+  tradingSymbols: "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,ADAUSDT,DOGEUSDT"
+
+  # Exchange
+  exchangeName: "bybit"
+  exchangeTestnet: true
+
+# Secrets configuration (must be created separately)
+secrets:
+  existingSecret: "trading-secrets"
+
+# Monitoring
+monitoring:
+  prometheus:
+    enabled: true
+    port: 8000
+    path: /metrics
+
+  grafana:
+    enabled: true
+    dashboards:
+      - trading-overview
+      - risk-metrics
+      - performance
+
+# Security
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Service Account
+serviceAccount:
+  create: true
+  name: trading-engine-sa
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Ingress (optional)
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: trading.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

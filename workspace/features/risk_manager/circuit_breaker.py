@@ -7,14 +7,14 @@ Author: Risk Management Team
 Date: 2025-10-28
 """
 
-import logging
 import asyncio
+import logging
 import secrets
-from decimal import Decimal
 from datetime import datetime, time, timezone
-from typing import Optional, List
+from decimal import Decimal
+from typing import Callable, List, Optional
 
-from .models import CircuitBreakerStatus, CircuitBreakerState
+from .models import CircuitBreakerState, CircuitBreakerStatus
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class CircuitBreaker:
         )
 
         # Alert callbacks
-        self._alert_callbacks: List[callable] = []
+        self._alert_callbacks: List[Callable] = []
 
         logger.info(
             f"Circuit Breaker initialized: "
@@ -296,14 +296,15 @@ class CircuitBreaker:
         else:
             self.status.daily_losing_trades += 1
 
-    def register_alert_callback(self, callback: callable):
+    def register_alert_callback(self, callback: Callable):
         """
         Register alert callback function
 
         Args:
             callback: Async function(level: str, message: str)
         """
-        self._alert_callbacks.append(callback)
+        if callable(callback):
+            self._alert_callbacks.append(callback)
 
     async def _send_alert(self, level: str, message: str):
         """

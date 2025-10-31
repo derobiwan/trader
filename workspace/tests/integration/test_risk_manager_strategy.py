@@ -4,9 +4,10 @@ Integration Tests: Risk Manager + Strategy
 Tests verifying risk manager correctly validates strategy signals.
 """
 
-import pytest
-from decimal import Decimal
 from dataclasses import dataclass
+from decimal import Decimal
+
+import pytest
 
 from workspace.features.risk_manager import RiskManager, ValidationStatus
 from workspace.features.strategy import (

@@ -5,12 +5,12 @@ Continuous position sync with exchange to detect and correct discrepancies.
 """
 
 from .models import (
+    DiscrepancySeverity,
+    DiscrepancyType,
     ExchangePosition,
-    SystemPosition,
     PositionDiscrepancy,
     ReconciliationResult,
-    DiscrepancyType,
-    DiscrepancySeverity,
+    SystemPosition,
 )
 from .reconciliation_service import PositionReconciliationService
 

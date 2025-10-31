@@ -242,11 +242,13 @@ async def test_detect_secrets(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "test.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 api_key = "sk_live_1234567890abcdef"
 password = "supersecretpassword"
 # This is a comment with api_key = "fake"
-""")
+"""
+    )
 
     # Act
     result = await security_scanner.detect_secrets()
@@ -264,13 +266,15 @@ async def test_detect_secrets_false_positives(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "test.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 # False positives - should be ignored
 api_key = "example"
 password = "password123"
 token = "***REDACTED***"
 secret = "your_secret_here"
-""")
+"""
+    )
 
     # Act
     result = await security_scanner.detect_secrets()
@@ -286,10 +290,12 @@ async def test_detect_secrets_in_comments(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "test.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 # api_key = "sk_live_1234567890"
 # This comment should be ignored
-""")
+"""
+    )
 
     # Act
     result = await security_scanner.detect_secrets()
@@ -317,12 +323,14 @@ async def test_validate_best_practices(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "test.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 import requests
 
 # Disabled SSL verification - bad practice
 response = requests.get('https://api.example.com', verify=False)
-""")
+"""
+    )
 
     # Act
     result = await security_scanner.validate_best_practices()
@@ -339,7 +347,8 @@ async def test_check_ssl_verification(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "test.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 import ssl
 import requests
 
@@ -347,7 +356,8 @@ import requests
 ctx = ssl._create_unverified_context()
 response = requests.get('url', verify=False)
 ssl.CERT_NONE
-""")
+"""
+    )
 
     # Act
     issues = await security_scanner._check_ssl_verification()
@@ -362,11 +372,13 @@ async def test_check_sql_injection(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "test.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 # Bad practice - SQL injection vulnerable
 cursor.execute("SELECT * FROM users WHERE id = " + user_id)
 cursor.execute(f"SELECT * FROM users WHERE name = '{name}'")
-""")
+"""
+    )
 
     # Act
     issues = await security_scanner._check_sql_injection()
@@ -381,12 +393,14 @@ async def test_check_hardcoded_credentials(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "app.py"  # Not a test file
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 # Bad practices
 password = "mysecretpassword"
 username = "admin"
 default_password = "changeme"
-""")
+"""
+    )
 
     # Act
     issues = await security_scanner._check_hardcoded_credentials()
@@ -401,10 +415,12 @@ async def test_check_hardcoded_credentials_skip_tests(security_scanner, tmp_path
     # Arrange
     test_file = tmp_path / "workspace" / "test_auth.py"  # Test file
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 # This is a test file - should be ignored
 password = "test_password"
-""")
+"""
+    )
 
     # Act
     issues = await security_scanner._check_hardcoded_credentials()
@@ -420,11 +436,13 @@ async def test_check_debug_mode(security_scanner, tmp_path):
     # Arrange
     test_file = tmp_path / "workspace" / "app.py"
     test_file.parent.mkdir(parents=True)
-    test_file.write_text("""
+    test_file.write_text(
+        """
 # Bad practice
 DEBUG = True
 app.run(debug=True)
-""")
+"""
+    )
 
     # Act
     issues = await security_scanner._check_debug_mode()

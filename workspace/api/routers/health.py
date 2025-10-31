@@ -15,16 +15,15 @@ These endpoints are used by:
 """
 
 import logging
-import psutil
 import time
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
+import psutil
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
 
 from ..config import Settings, get_settings
-
 
 # Configure logger
 logger = logging.getLogger(__name__)

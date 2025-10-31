@@ -4,8 +4,9 @@ Integration Tests: Strategy + Market Data
 Tests verifying strategies work correctly with market data snapshots.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from workspace.features.strategy import (
     MeanReversionStrategy,

@@ -9,12 +9,12 @@ Date: 2025-10-28
 
 import logging
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from workspace.features.market_data import MarketDataSnapshot
 from workspace.features.trading_loop import TradingDecision
-from .base_strategy import BaseStrategy, StrategySignal, StrategyType
 
+from .base_strategy import BaseStrategy, StrategySignal, StrategyType
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +180,9 @@ class MeanReversionStrategy(BaseStrategy):
 
     def _calculate_buy_confidence(self, snapshot: MarketDataSnapshot) -> Decimal:
         """Calculate confidence for BUY signal"""
+        if snapshot.rsi is None:
+            return Decimal("0.5")  # Default confidence
+
         rsi_value = snapshot.rsi.value
 
         # Base confidence from RSI (lower RSI = higher confidence)
@@ -191,6 +194,9 @@ class MeanReversionStrategy(BaseStrategy):
 
     def _calculate_sell_confidence(self, snapshot: MarketDataSnapshot) -> Decimal:
         """Calculate confidence for SELL signal"""
+        if snapshot.rsi is None:
+            return Decimal("0.5")  # Default confidence
+
         rsi_value = snapshot.rsi.value
 
         # Base confidence from RSI (higher RSI = higher confidence)

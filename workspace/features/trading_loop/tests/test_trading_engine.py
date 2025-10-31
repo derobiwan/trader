@@ -7,28 +7,28 @@ Author: Trading Loop Implementation Team
 Date: 2025-10-28
 """
 
-import pytest
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock
 
-from workspace.features.trading_loop.trading_engine import (
-    TradingEngine,
-    TradingDecision,
-    TradingSignal,
-    TradingCycleResult,
-)
+import pytest
+
 from workspace.features.market_data import (
-    MarketDataSnapshot,
+    EMA,
+    MACD,
     OHLCV,
+    RSI,
+    BollingerBands,
+    MarketDataSnapshot,
     Ticker,
     Timeframe,
-    RSI,
-    MACD,
-    EMA,
-    BollingerBands,
 )
-
+from workspace.features.trading_loop.trading_engine import (
+    TradingCycleResult,
+    TradingDecision,
+    TradingEngine,
+    TradingSignal,
+)
 
 # ============================================================================
 # Fixtures

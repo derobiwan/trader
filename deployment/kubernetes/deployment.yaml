@@ -1,0 +1,303 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-trader-app
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+    component: application
+    version: v1.0.0
+spec:
+  replicas: 2
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: llm-crypto-trader
+      component: application
+  template:
+    metadata:
+      labels:
+        app: llm-crypto-trader
+        component: application
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: llm-trader-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      initContainers:
+      - name: db-migration
+        image: llm-trader:latest
+        imagePullPolicy: Always
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          echo "Running database migrations..."
+          alembic upgrade head
+          echo "Migrations complete"
+        envFrom:
+        - configMapRef:
+            name: llm-trader-config
+        - secretRef:
+            name: llm-trader-secrets
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)?sslmode=$(DATABASE_SSL_MODE)"
+      containers:
+      - name: llm-trader
+        image: llm-trader:latest
+        imagePullPolicy: Always
+        ports:
+        - name: metrics
+          containerPort: 8000
+          protocol: TCP
+        - name: health
+          containerPort: 8001
+          protocol: TCP
+        - name: api
+          containerPort: 8080
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: llm-trader-config
+        - secretRef:
+            name: llm-trader-secrets
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)?sslmode=$(DATABASE_SSL_MODE)"
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/$(REDIS_DB)"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: health
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30
+        volumeMounts:
+        - name: cache-storage
+          mountPath: /app/cache
+        - name: logs-storage
+          mountPath: /app/logs
+      volumes:
+      - name: cache-storage
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: logs-storage
+        emptyDir:
+          sizeLimit: 2Gi
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - llm-crypto-trader
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-trader-celery-worker
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+    component: celery-worker
+    version: v1.0.0
+spec:
+  replicas: 3
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: llm-crypto-trader
+      component: celery-worker
+  template:
+    metadata:
+      labels:
+        app: llm-crypto-trader
+        component: celery-worker
+        version: v1.0.0
+    spec:
+      serviceAccountName: llm-trader-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: celery-worker
+        image: llm-trader:latest
+        imagePullPolicy: Always
+        command: ["celery"]
+        args:
+        - "-A"
+        - "app.celery_app"
+        - "worker"
+        - "--loglevel=info"
+        - "--concurrency=4"
+        - "--max-tasks-per-child=100"
+        envFrom:
+        - configMapRef:
+            name: llm-trader-config
+        - secretRef:
+            name: llm-trader-secrets
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)?sslmode=$(DATABASE_SSL_MODE)"
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/$(REDIS_DB)"
+        - name: CELERY_BROKER_URL
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/1"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/2"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - celery
+            - "-A"
+            - "app.celery_app"
+            - "inspect"
+            - "ping"
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 10
+        volumeMounts:
+        - name: logs-storage
+          mountPath: /app/logs
+      volumes:
+      - name: logs-storage
+        emptyDir:
+          sizeLimit: 1Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-trader-celery-beat
+  namespace: llm-trader-prod
+  labels:
+    app: llm-crypto-trader
+    component: celery-beat
+    version: v1.0.0
+spec:
+  replicas: 1  # Must be exactly 1 for beat scheduler
+  revisionHistoryLimit: 10
+  strategy:
+    type: Recreate  # Beat must be single instance
+  selector:
+    matchLabels:
+      app: llm-crypto-trader
+      component: celery-beat
+  template:
+    metadata:
+      labels:
+        app: llm-crypto-trader
+        component: celery-beat
+        version: v1.0.0
+    spec:
+      serviceAccountName: llm-trader-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: celery-beat
+        image: llm-trader:latest
+        imagePullPolicy: Always
+        command: ["celery"]
+        args:
+        - "-A"
+        - "app.celery_app"
+        - "beat"
+        - "--loglevel=info"
+        - "--schedule=/app/celerybeat-schedule"
+        envFrom:
+        - configMapRef:
+            name: llm-trader-config
+        - secretRef:
+            name: llm-trader-secrets
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/$(DATABASE_NAME)?sslmode=$(DATABASE_SSL_MODE)"
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/$(REDIS_DB)"
+        - name: CELERY_BROKER_URL
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/1"
+        - name: CELERY_RESULT_BACKEND
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/2"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "ps aux | grep 'celery.*beat' | grep -v grep"
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 10
+        volumeMounts:
+        - name: schedule-storage
+          mountPath: /app
+      volumes:
+      - name: schedule-storage
+        persistentVolumeClaim:
+          claimName: celery-beat-pvc
