@@ -1,8 +1,10 @@
 """
 Trading Scheduler
 
-Manages the 3-minute trading cycle with precise timing, state management,
+Manages the trading cycle with configurable timing, precise state management,
 and error recovery.
+
+Default interval: Configured via TRADING_CYCLE_INTERVAL_SECONDS environment variable (default: 180s)
 
 Author: Trading Loop Implementation Team
 Date: 2025-10-28
@@ -13,6 +15,8 @@ import logging
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Awaitable, Callable, Optional
+
+from workspace.api.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +35,17 @@ class TradingScheduler:
     """
     Trading Scheduler
 
-    Manages 3-minute trading cycles with precise timing and error recovery.
+    Manages trading cycles with configurable timing and error recovery.
 
     Features:
-    - Precise 3-minute intervals (180 seconds)
+    - Configurable intervals (default from settings.trading_cycle_interval_seconds)
     - State management (running/paused/stopped)
     - Error recovery with configurable retry
     - Cycle tracking and metrics
     - Graceful shutdown
 
     Attributes:
-        interval_seconds: Trading interval (default: 180s = 3min)
+        interval_seconds: Trading interval (default: from TRADING_CYCLE_INTERVAL_SECONDS env var)
         on_cycle: Callback function executed each cycle
         max_retries: Maximum retry attempts on error
         retry_delay: Delay between retries (seconds)
@@ -51,17 +55,19 @@ class TradingScheduler:
         async def trading_cycle():
             print("Executing trading cycle...")
 
-        scheduler = TradingScheduler(
-            interval_seconds=180,
-            on_cycle=trading_cycle,
-        )
+        # Uses default from settings (TRADING_CYCLE_INTERVAL_SECONDS env var)
+        scheduler = TradingScheduler(on_cycle=trading_cycle)
+
+        # Or specify custom interval
+        scheduler = TradingScheduler(interval_seconds=60, on_cycle=trading_cycle)
+
         await scheduler.start()
         ```
     """
 
     def __init__(
         self,
-        interval_seconds: int = 180,  # 3 minutes
+        interval_seconds: Optional[int] = None,
         on_cycle: Optional[Callable[[], Awaitable[None]]] = None,
         max_retries: int = 3,
         retry_delay: int = 5,
@@ -71,7 +77,7 @@ class TradingScheduler:
         Initialize Trading Scheduler
 
         Args:
-            interval_seconds: Trading cycle interval (default: 180s)
+            interval_seconds: Trading cycle interval (default: from settings.trading_cycle_interval_seconds)
             on_cycle: Async callback function for each cycle
             max_retries: Maximum retry attempts on error (default: 3)
             retry_delay: Delay between retries in seconds (default: 5)
@@ -79,7 +85,11 @@ class TradingScheduler:
                               If True, waits until next multiple of interval_seconds
                               e.g., for 3min interval, starts at 00:00, 00:03, 00:06, etc.
         """
-        self.interval_seconds = interval_seconds
+        self.interval_seconds = (
+            interval_seconds
+            if interval_seconds is not None
+            else settings.trading_cycle_interval_seconds
+        )
         self.on_cycle = on_cycle
         self.max_retries = max_retries
         self.retry_delay = retry_delay

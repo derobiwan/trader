@@ -19,6 +19,7 @@ Environment Variables:
     - REDIS_PORT: Redis port (default: 6379)
     - CAPITAL_CHF: Initial capital in CHF (default: 2626.96)
     - CIRCUIT_BREAKER_CHF: Circuit breaker loss limit (default: -183.89)
+    - TRADING_CYCLE_INTERVAL_SECONDS: Trading cycle interval (default: 180)
     - LOG_LEVEL: Logging level (default: INFO)
     - CORS_ORIGINS: Allowed CORS origins (comma-separated)
 """
@@ -46,7 +47,7 @@ class Settings(BaseSettings):
 
     environment: str = Field(
         default="development",
-        description="Environment: development, staging, production",
+        description="Environment: development, testnet, staging, production",
     )
 
     debug: bool = Field(
@@ -109,9 +110,14 @@ class Settings(BaseSettings):
 
     max_position_size_pct: Decimal = Field(
         default=Decimal("0.1"),
-        ge=Decimal("0.01"),
-        le=Decimal("1.0"),
-        description="Maximum position size as percentage of capital",
+        description="Maximum position size as percentage of capital (0-1.0 internal, accepts 0-100 input)",
+    )
+
+    trading_cycle_interval_seconds: int = Field(
+        default=180,
+        ge=10,
+        le=3600,
+        description="Trading cycle interval in seconds (default: 180 = 3 minutes, min: 10, max: 3600)",
     )
 
     # ==================== CORS Settings ====================
@@ -158,7 +164,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_environment(cls, v: str) -> str:
         """Validate environment is one of allowed values."""
-        allowed = ["development", "staging", "production"]
+        allowed = ["development", "testnet", "staging", "production"]
         if v.lower() not in allowed:
             raise ValueError(f"Environment must be one of: {allowed}")
         return v.lower()
@@ -188,6 +194,27 @@ class Settings(BaseSettings):
         if v <= 0:
             raise ValueError("Capital must be positive")
         return v
+
+    @field_validator("max_position_size_pct", mode="after")
+    @classmethod
+    def normalize_position_size(cls, v: Decimal) -> Decimal:
+        """
+        Normalize percentage-based configuration.
+
+        Accepts either fractional (0.1 == 10%) or percentage (10 == 10%),
+        stores internally as fractional for downstream calculations.
+        """
+        if v <= 0:
+            raise ValueError("Max position size must be positive")
+        if v <= Decimal("1"):
+            normalized = v
+        else:
+            if v > Decimal("100"):
+                raise ValueError("Max position size percentage must be <= 100")
+            normalized = v / Decimal("100")
+        if normalized > Decimal("1"):
+            raise ValueError("Max position size percentage must be <= 100")
+        return normalized
 
     # ==================== Computed Properties ====================
     @property

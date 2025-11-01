@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from workspace.api.config import settings
 from workspace.features.market_data import MarketDataSnapshot
 from workspace.features.trading_loop import TradingSignal, TradingDecision
 from workspace.features.caching import CacheService
@@ -214,7 +215,7 @@ class LLMDecisionEngine:
         """
         Generate trading signals for all symbols with LLM response caching
 
-        Cache TTL: 180 seconds (3 minutes - one decision cycle)
+        Cache TTL: Matches trading cycle interval (TRADING_CYCLE_INTERVAL_SECONDS)
 
         Args:
             snapshots: Market data snapshots for each symbol
@@ -330,7 +331,7 @@ class LLMDecisionEngine:
                 f"time: {generation_time_ms}ms)"
             )
 
-            # Cache the signals for 180 seconds (one decision cycle)
+            # Cache the signals for one decision cycle
             if use_cache:
                 # Serialize signals for caching
                 serialized_signals = {}
@@ -356,7 +357,11 @@ class LLMDecisionEngine:
                         "generation_time_ms": signal.generation_time_ms or 0,
                     }
 
-                await self.cache.set(cache_key, serialized_signals, ttl_seconds=180)
+                await self.cache.set(
+                    cache_key,
+                    serialized_signals,
+                    ttl_seconds=settings.trading_cycle_interval_seconds,
+                )
                 logger.debug(f"Cached LLM signals with key: {cache_key[:16]}...")
 
             return signals
