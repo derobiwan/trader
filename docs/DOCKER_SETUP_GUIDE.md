@@ -124,6 +124,11 @@ PAPER_TRADING=true
 TRADING_ENABLED=false  # Keep false until you're ready
 BINANCE_TESTNET=true
 
+# Trading Cycle Interval (seconds)
+# Default: 180 (3 minutes) | Min: 10 | Max: 3600
+# For testing, you can use shorter intervals like 60 seconds
+TRADING_CYCLE_INTERVAL_SECONDS=60
+
 # Binance Testnet API Keys (from testnet.binance.vision)
 BINANCE_TESTNET_API_KEY=your_testnet_api_key_here
 BINANCE_TESTNET_API_SECRET=your_testnet_secret_here
